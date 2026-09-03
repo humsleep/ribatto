@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./sample.mov)",
+      "Read(./ios/.build/**)",
+      "Read(./ios/**/*.xcuserstate)"
+    ],
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(du:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(swiftc:*)",
+      "Bash(xcodebuild:* build)",
+      "Bash(xcrun simctl list:*)"
+    ]
+  }
+}

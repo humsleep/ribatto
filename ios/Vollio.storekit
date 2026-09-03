@@ -1,0 +1,37 @@
+{
+  "identifier": "A1B2C3D4",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "4400",
+      "familyShareable": true,
+      "internalID": "RC000001",
+      "localizations": [
+        {
+          "description": "Unlimited video imports, all racket sports, highlight reels. One-time purchase, no subscription.",
+          "displayName": "Vollio Pro",
+          "locale": "en_US"
+        },
+        {
+          "description": "영상 무제한 가져오기, 모든 종목, 하이라이트 합본. 구독 없이 한 번만 결제합니다.",
+          "displayName": "Vollio Pro",
+          "locale": "ko_KR"
+        }
+      ],
+      "productID": "com.vollio.pro",
+      "referenceName": "Vollio Pro",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "ko_KR",
+    "_storefront": "KOR",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

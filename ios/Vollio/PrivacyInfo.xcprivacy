@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Vollio does not track. Every frame and every sample is analysed on
+	     the device; nothing is uploaded, there is no analytics SDK, no
+	     network call, and no account. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- Nothing leaves the device, so nothing is "collected" in Apple's
+	     sense. Photos access reads the video in place and writes clips back;
+	     that is not collection. This must stay in step with the App Privacy
+	     answers in App Store Connect ("Data Not Collected"). -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<!-- The only required-reason API in the app. UserDefaults backs
+	     @AppStorage (language, onboarding flag) and PurchaseManager's
+	     entitlement counters — all of it this app's own data, never shared
+	     with or read from another app or a device-wide identifier. -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

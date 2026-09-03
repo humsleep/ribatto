@@ -1,0 +1,26 @@
+# 대용량 원본 영상 (6.6GB) — 절대 커밋 금지
+sample.mov
+*.mov
+*.mp4
+*.MOV
+*.MP4
+
+# 빌드 산출물
+ios/.build/
+.build/
+DerivedData/
+build/
+*.o
+*.dSYM/
+
+# Xcode 사용자 상태
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+.swiftpm/
+
+# 로컬 전용 설정
+.claude/settings.local.json
+
+# macOS
+.DS_Store

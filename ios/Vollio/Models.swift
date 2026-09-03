@@ -1,0 +1,368 @@
+import CoreGraphics
+import Foundation
+
+// MARK: - Sport
+
+enum Sport: String, Codable, CaseIterable, Identifiable {
+    case tennis, badminton, pickleball, padel
+    var id: String { rawValue }
+
+    /// Impact-sound frequency band (Hz). Racquet-string impacts sit higher
+    /// than paddle "pops"; badminton exchanges are faster than tennis points.
+    var band: (lo: Float, hi: Float) {
+        switch self {
+        case .tennis:     return (1500, 7000)
+        case .badminton:  return (2000, 7800)
+        case .pickleball, .padel: return (700, 4500)
+        }
+    }
+    /// Max in-rally gap between hits (s).
+    var gap: Double {
+        switch self {
+        case .tennis: return 3.5
+        case .badminton: return 2.5
+        case .pickleball, .padel: return 3.0
+        }
+    }
+    /// Rallies closer than this are merged (s).
+    var mergeGap: Double {
+        switch self {
+        case .tennis: return 5.0
+        case .badminton: return 4.0
+        case .pickleball, .padel: return 4.5
+        }
+    }
+    var emoji: String {
+        switch self {
+        case .tennis, .padel: return "🎾"
+        case .badminton: return "🏸"
+        case .pickleball: return "🥎"
+        }
+    }
+}
+
+// MARK: - Sensitivity
+
+enum Sensitivity: String, Codable, CaseIterable, Identifiable {
+    case low, normal, high
+    var id: String { rawValue }
+
+    /// (loose flux percentile, strong flux percentile, min hit span s, min hits)
+    var params: (loosePct: Double, strongPct: Double, minSpan: Double, minHits: Int) {
+        switch self {
+        case .high:   return (98.5, 99.3, 1.2, 3)
+        case .normal: return (99.0, 99.5, 2.0, 3)
+        case .low:    return (99.3, 99.6, 3.0, 4)
+        }
+    }
+}
+
+// MARK: - Aspect
+
+enum AspectSetting: String, Codable, CaseIterable, Identifiable {
+    case auto, landscape, vertical, portrait45
+    var id: String { rawValue }
+}
+
+/// The shape a clip is rendered into. Carried around as a string because
+/// `Session.renderedOrientation` has always been one, and sessions saved
+/// before 4:5 existed still have to decode.
+///
+/// Why 4:5 is here: a 9:16 crop of a 16:9 source keeps only
+/// (9/16)÷(16/9) = 31.6% of its width. Rendering a real rally both ways put the
+/// opponent at 96% of that width — inside the frame, but on its edge, and gone
+/// the moment either player moves. 4:5 keeps 45% and leaves real margin, which
+/// is what a doubles or baseline-to-baseline exchange needs.
+enum OutputFrame: String {
+    case landscape      // 16:9
+    case vertical       // 9:16
+    case portrait45     // 4:5
+
+    /// Unknown strings fall back to landscape, matching the old default.
+    init(_ raw: String?) { self = OutputFrame(rawValue: raw ?? "") ?? .landscape }
+
+    /// width : height of the rendered frame.
+    var ratio: (w: CGFloat, h: CGFloat) {
+        switch self {
+        case .landscape:  return (16, 9)
+        case .vertical:   return (9, 16)
+        case .portrait45: return (4, 5)
+        }
+    }
+
+    /// Taller than wide, so the crop cuts horizontally and panning/tracking
+    /// have something to choose.
+    var isPortrait: Bool { self != .landscape }
+
+    /// How much of a 16:9 source's width survives this crop.
+    var widthKeptFrom169: CGFloat { (ratio.w / ratio.h) / (16.0 / 9.0) }
+
+    /// width ÷ height, for SwiftUI's `.aspectRatio`.
+    var aspectRatio: CGFloat { ratio.w / ratio.h }
+
+    var label: String {
+        switch self {
+        case .landscape:  return "16:9"
+        case .vertical:   return "9:16"
+        case .portrait45: return "4:5"
+        }
+    }
+}
+
+// MARK: - Rally segment
+
+struct RallySegment: Codable, Equatable {
+    var start: Double
+    var end: Double
+    var hits: Int
+    /// How good a point this looked, 0…1, from shot count, crowd reaction and
+    /// length. nil on rallies detected before scoring existed — sorting treats
+    /// those as unscored rather than as zero.
+    var score: Double? = nil
+    /// True once the user has dragged the trim handles, so a re-detect knows
+    /// not to quietly throw their edit away.
+    var trimmed: Bool? = nil
+
+    var duration: Double { end - start }
+}
+
+// MARK: - Target player
+
+/// A specific person the user picked to keep centred when a wide match is
+/// cropped to vertical — the "that's me" of a personal highlight reel.
+///
+/// The box is normalized (0…1 on each axis) in the source's *display* space:
+/// after `preferredTransform`, origin at the top-left. That's the same space
+/// `SmartCrop`/`PlayerTracker` and the picker UI all work in, so it survives a
+/// change of resolution and needs no rotation handling downstream.
+struct TargetPlayer: Codable, Equatable {
+    var x: Double
+    var y: Double
+    var width: Double
+    var height: Double
+    /// Source time (s) of the frame the box was drawn on. The tracker seeds
+    /// from the nearest sampled frame and walks outward.
+    var pickedAt: Double
+
+    var rect: CGRect {
+        CGRect(x: x, y: y, width: width, height: height)
+    }
+
+    init(rect: CGRect, pickedAt: Double) {
+        x = Double(rect.origin.x)
+        y = Double(rect.origin.y)
+        width = Double(rect.size.width)
+        height = Double(rect.size.height)
+        self.pickedAt = pickedAt
+    }
+}
+
+
+// MARK: - Caption
+
+enum CaptionStyle: String, Codable, CaseIterable, Identifiable {
+    case plain      // tinted text with a soft shadow
+    case bar        // tinted text on a translucent black pill
+    case accent     // solid pill in the chosen colour, text inverted onto it
+    case outline    // tinted text with a hard contrasting edge
+    var id: String { rawValue }
+}
+
+/// The palette a caption can be tinted with.
+///
+/// Fixed swatches rather than a free colour picker: each of these was chosen to
+/// stay legible burned over court video — grass, hard court and sky all sit in
+/// the middle of the range — and to survive a platform re-encode, which eats
+/// saturated reds and thin strokes first.
+enum CaptionColor: String, Codable, CaseIterable, Identifiable {
+    case white, volt, sun, sky, rose, ink
+    var id: String { rawValue }
+
+    /// Components in 0…1, matching `Theme` where they overlap.
+    var rgb: (r: Double, g: Double, b: Double) {
+        switch self {
+        case .white: return (1.000, 1.000, 1.000)
+        case .volt:  return (0.784, 0.965, 0.243)
+        case .sun:   return (1.000, 0.780, 0.200)
+        case .sky:   return (0.350, 0.720, 1.000)
+        case .rose:  return (1.000, 0.420, 0.520)
+        case .ink:   return (0.050, 0.060, 0.080)
+        }
+    }
+
+    /// Bright enough that anything drawn on top of it has to be dark.
+    var isLight: Bool {
+        let c = rgb
+        return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b > 0.6
+    }
+}
+
+enum CaptionFont: String, Codable, CaseIterable, Identifiable {
+    case system     // SF Pro Heavy — neutral
+    case condensed  // narrow and loud, the broadcast-graphic look
+    case rounded    // SF Rounded — friendly, reads well on video
+    case mono       // SF Mono — good for times and scores
+    case serif      // New York — editorial
+    var id: String { rawValue }
+}
+
+struct CaptionSettings: Codable, Equatable {
+    var enabled = false
+    var text = ""
+    var style: CaptionStyle = .bar
+    var color: CaptionColor = .white
+    var font: CaptionFont = .rounded
+    /// font size multiplier, 1.0 = 4.5% of the frame height
+    var size: Double = 1.0
+    /// centre of the caption, normalized in the frame with y measured from the
+    /// top, so it can sit anywhere the user drags it
+    var x: Double = 0.5
+    var y: Double = 0.88
+
+    var isVisible: Bool { enabled && !text.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    init() {}
+
+    /// Hand-written so captions saved before free positioning existed still
+    /// decode — a throw here would take the whole session down with it.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
+        style = try c.decodeIfPresent(CaptionStyle.self, forKey: .style) ?? .bar
+        color = try c.decodeIfPresent(CaptionColor.self, forKey: .color) ?? .white
+        font = try c.decodeIfPresent(CaptionFont.self, forKey: .font) ?? .rounded
+        size = try c.decodeIfPresent(Double.self, forKey: .size) ?? 1.0
+        x = try c.decodeIfPresent(Double.self, forKey: .x) ?? 0.5
+        y = try c.decodeIfPresent(Double.self, forKey: .y) ?? 0.88
+    }
+}
+
+// MARK: - Session
+
+struct Session: Identifiable, Codable, Equatable {
+    var id: UUID
+    var name: String
+    /// When the video was imported into the app.
+    var createdAt: Date
+    /// When the match was actually filmed, from the video's own metadata.
+    /// nil on sessions imported before this was read, and on sources that
+    /// carry no capture date at all.
+    var capturedAt: Date? = nil
+    var duration: Double
+    var width: Int
+    var height: Int
+    var sport: Sport = .tennis
+    var sensitivity: Sensitivity = .normal
+    var aspect: AspectSetting = .auto
+    var segments: [RallySegment]? = nil
+    var renderedOrientation: String? = nil   // OutputFrame raw value
+    /// nil on sessions rendered before tiered export existed = free tier
+    var renderedPro: Bool? = nil
+    /// what the current segments were detected with — nil = never detected
+    var detectedSport: Sport? = nil
+    var detectedSensitivity: Sensitivity? = nil
+    /// user-composed caption burned into the clips
+    /// Photos asset this session reads from. When set the video is never
+    /// copied into the app — a 30-minute 4K match would cost ~8 GB twice over.
+    var assetIdentifier: String? = nil
+    /// Where the match was filmed, read from the video's own metadata.
+    var latitude: Double? = nil
+    var longitude: Double? = nil
+    var placeName: String? = nil
+    var caption: CaptionSettings? = nil
+    var renderedCaption: CaptionSettings? = nil
+    /// Pro: follow the players when cropping to vertical. nil = on by default.
+    var smartCrop: Bool? = nil
+    var renderedSmartCrop: Bool? = nil
+    /// Pro: one specific person to keep centred in the vertical crop. nil means
+    /// use SmartCrop's aggregate-motion framing. Only takes effect on a vertical
+    /// crop of a wider source, with smart crop on.
+    var targetPlayer: TargetPlayer? = nil
+    var renderedTargetPlayer: TargetPlayer? = nil
+    /// Per-clip overrides of `targetPlayer`, keyed by clip index as a string
+    /// (an Int-keyed dictionary encodes as a flat array, which is unreadable
+    /// in the session file). A clip with no entry follows the session-wide
+    /// choice: picking once covers the whole match, and only a rally where the
+    /// wrong person was followed needs re-pointing.
+    ///
+    /// Optional, not a defaulted dictionary: the synthesized decoder calls
+    /// plain `decode` for a non-optional property, so adding one throws on
+    /// every session file written before it existed — and a throw here loses
+    /// the whole session, exactly as `CaptionSettings` warns.
+    var clipTargets: [String: TargetPlayer]?
+    var renderedClipTargets: [String: TargetPlayer]?
+
+    /// The player to follow in one clip: its own override, else the session's.
+    func target(forClip index: Int) -> TargetPlayer? {
+        clipTargets?[String(index)] ?? targetPlayer
+    }
+
+    var smartCropEnabled: Bool { smartCrop ?? true }
+    var hasHighlight: Bool = false
+
+    /// The date the user means when they say "that match" — the day they
+    /// played, not the evening they got round to importing it. Everything
+    /// user-facing (cards, stats, sorting) reads this.
+    var playedAt: Date { capturedAt ?? createdAt }
+
+    /// True when the import happened on a different day than the match, which
+    /// is the only case where showing both dates tells the user anything.
+    var importDiffersFromCapture: Bool {
+        guard let capturedAt else { return false }
+        return !Calendar.current.isDate(capturedAt, inSameDayAs: createdAt)
+    }
+
+    var sourceOrientation: String { height > width ? "vertical" : "landscape" }
+    var effectiveOrientation: String {
+        aspect == .auto ? sourceOrientation : aspect.rawValue
+    }
+
+    /// Settings changed since the clips were made — needs a re-detect.
+    var needsRedetect: Bool {
+        guard segments != nil else { return false }
+        return detectedSport != sport || detectedSensitivity != sensitivity
+    }
+
+    /// Only the aspect changed — a re-render is enough, no re-detect.
+    var needsRerender: Bool {
+        guard segments != nil, !needsRedetect else { return false }
+        return renderedOrientation != effectiveOrientation
+            || (renderedCaption ?? CaptionSettings()) != (caption ?? CaptionSettings())
+            || (renderedSmartCrop ?? false) != effectiveSmartCrop
+            || (effectiveSmartCrop && renderedTargetPlayer != targetPlayer)
+            || (effectiveSmartCrop
+                && (renderedClipTargets ?? [:]) != (clipTargets ?? [:]))
+    }
+
+    /// Smart crop only does something on a portrait crop of a wider source —
+    /// 4:5 crops horizontally too, so it counts.
+    var effectiveSmartCrop: Bool {
+        smartCropEnabled && OutputFrame(effectiveOrientation).isPortrait
+    }
+
+    var hasPendingChanges: Bool { needsRedetect || needsRerender }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, createdAt, capturedAt, duration, width, height,
+             sport, sensitivity, aspect, segments, renderedOrientation,
+             renderedPro, detectedSport, detectedSensitivity,
+             assetIdentifier, latitude, longitude, placeName,
+             caption, renderedCaption,
+             smartCrop, renderedSmartCrop,
+             targetPlayer, renderedTargetPlayer,
+             clipTargets, renderedClipTargets, hasHighlight
+    }
+}
+
+// MARK: - Processing state
+
+enum ProcessingStage: Equatable {
+    case queued
+    case audio
+    case detect
+    case render(done: Int, total: Int)
+    case merge
+    case reel(done: Int, total: Int)
+    case failed(String)
+}
