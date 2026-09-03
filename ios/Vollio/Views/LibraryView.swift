@@ -20,6 +20,7 @@ struct LibraryView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var purchases: PurchaseManager
     @AppStorage("rc_lang") private var lang = "en"
+    @State private var showLicenses = false
     @State private var pickerItem: PhotosPickerItem?
     @State private var importing = false
     @State private var showPaywall = false
@@ -119,6 +120,7 @@ struct LibraryView: View {
             }
             .sheet(isPresented: $showPaywall) { PaywallView(feature: paywallFeature) }
             .sheet(isPresented: $showOwner) { OwnerSheet() }
+            .sheet(isPresented: $showLicenses) { LicensesView() }
             .fullScreenCover(isPresented: $recording) {
                 VideoRecorder { url in
                     importing = true
@@ -351,6 +353,14 @@ struct LibraryView: View {
                     if lang == l.code { Label(l.label, systemImage: "checkmark") }
                     else { Text(l.label) }
                 }
+            }
+            Divider()
+            // The bundled fonts ship under the OFL, which requires their
+            // licence to be included with them. This is where it lives.
+            Button {
+                showLicenses = true
+            } label: {
+                Label(L.s("licenses", lang), systemImage: "doc.text")
             }
         } label: {
             Image(systemName: "globe")

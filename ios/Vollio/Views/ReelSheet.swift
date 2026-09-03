@@ -19,6 +19,8 @@ struct ReelSheet: View {
     @State private var target: ReelTarget = .reels
     @State private var frame: OutputFrame = .vertical
     @State private var pace: ReelPace = .full
+    /// nil keeps whatever each session's own caption looks like.
+    @State private var preset: ReelPreset? = nil
     @State private var building = false
     @State private var done: (url: URL, plan: ReelPlan)?
     @State private var player: AVPlayer?
@@ -94,6 +96,46 @@ struct ReelSheet: View {
 
     // MARK: - Setup
 
+    /// Presets sit above the individual controls because they set several of
+    /// them at once: picking one seeds the pace and the frame, and keeps
+    /// restyling the caption. Every control below stays editable afterwards —
+    /// a preset is a starting point, not a mode.
+    private var presetCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L.s("reel_preset", lang))
+                .font(.subheadline.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    Button {
+                        preset = nil
+                    } label: {
+                        Text(L.s("preset_own", lang)).chip(active: preset == nil)
+                    }
+                    .buttonStyle(.plain)
+                    ForEach(ReelPreset.allCases) { p in
+                        Button {
+                            preset = p
+                            pace = p.pace
+                            frame = p.frame
+                        } label: {
+                            Text(L.s("preset_" + p.rawValue, lang))
+                                .chip(active: preset == p)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+            Text(L.s(preset == nil ? "preset_own_d" : "preset_" + preset!.rawValue + "_d", lang))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(14)
+        .rcCard()
+    }
+
     private var setupView: some View {
         VStack(spacing: 18) {
             VStack(spacing: 8) {
@@ -116,6 +158,7 @@ struct ReelSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            presetCard
             if entries.count > 1 { runningOrderCard }
             paceCard
 
@@ -415,7 +458,8 @@ struct ReelSheet: View {
         let pairs = chosen.map { (session: $0.session, clip: $0.clip) }
         guard !pairs.isEmpty,
               let out = await store.buildReel(from: pairs, target: target,
-                                              frame: frame, pace: pace) else {
+                                              frame: frame, pace: pace,
+                                              preset: preset) else {
             message = L.s("source_missing", lang)
             return
         }

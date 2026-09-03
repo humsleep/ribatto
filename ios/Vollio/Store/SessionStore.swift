@@ -646,7 +646,8 @@ final class SessionStore: ObservableObject {
     func buildReel(from pairs: [(session: Session, clip: ClipInfo)],
                    target: ReelTarget,
                    frame: OutputFrame = .vertical,
-                   pace: ReelPace = .full) async -> (url: URL, plan: ReelPlan)? {
+                   pace: ReelPace = .full,
+                   preset: ReelPreset? = nil) async -> (url: URL, plan: ReelPlan)? {
         let ordered = pairs.sorted {
             ($0.session.playedAt, $0.clip.segment.start)
                 < ($1.session.playedAt, $1.clip.segment.start)
@@ -670,7 +671,8 @@ final class SessionStore: ObservableObject {
             let useSmartCrop = isPro && pair.session.smartCropEnabled
             items.append(ReelItem(asset: asset,
                                   segment: pair.clip.segment,
-                                  caption: pair.session.caption,
+                                  caption: preset?.applied(to: pair.session.caption)
+                                      ?? pair.session.caption,
                                   smartCrop: useSmartCrop,
                                   targetPlayer: useSmartCrop
                                       ? pair.session.target(forClip: pair.clip.index) : nil))
@@ -683,7 +685,8 @@ final class SessionStore: ObservableObject {
         do {
             try? fm.createDirectory(at: reelsDir, withIntermediateDirectories: true)
             let out = reelsDir.appendingPathComponent(
-                "reel_\(target.rawValue)_\(frame.rawValue)_\(pace.rawValue).mp4")
+                "reel_\(target.rawValue)_\(frame.rawValue)_\(pace.rawValue)"
+                + "_\(preset?.rawValue ?? "own").mp4")
             let plan = try await ReelBuilder.build(
                 items: items, target: target, frame: frame, pace: pace,
                 pro: isPro, to: out) { [weak self] done, total in

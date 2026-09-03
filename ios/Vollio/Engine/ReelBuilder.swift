@@ -85,6 +85,64 @@ enum ReelPace: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// A named starting point for a reel: how each rally is cut, what shape it is
+/// rendered into, and how the caption looks while it is in there.
+///
+/// A preset never touches what a caption SAYS — the text stays whatever the
+/// session set, because that is the user's content. It only restyles it, so
+/// trying a different look costs one tap and loses nothing.
+enum ReelPreset: String, CaseIterable, Identifiable {
+    case clean          // the rally, plainly
+    case broadcast      // scoreboard bar up top
+    case highlight      // the finish, shouted
+    case teaser         // hook first, feed-shaped
+
+    var id: String { rawValue }
+
+    var pace: ReelPace {
+        switch self {
+        case .clean, .broadcast: return .full
+        case .highlight: return .impact
+        case .teaser: return .hook
+        }
+    }
+
+    /// 4:5 for the one meant to sit in a feed; 9:16 for the ones meant to fill
+    /// a phone.
+    var frame: OutputFrame {
+        self == .teaser ? .portrait45 : .vertical
+    }
+
+    /// The look laid over each session's own caption.
+    var look: (style: CaptionStyle, color: CaptionColor, font: CaptionFont,
+               size: Double, y: Double) {
+        switch self {
+        case .clean:
+            return (.plain, .white, .rounded, 1.00, 0.90)
+        case .broadcast:
+            return (.accent, .volt, .bebas, 1.05, 0.11)
+        case .highlight:
+            return (.outline, .sun, .anton, 1.30, 0.15)
+        case .teaser:
+            return (.bar, .rose, .anton, 1.15, 0.86)
+        }
+    }
+
+    /// The session's caption, restyled. Returns nil when there was no caption
+    /// to restyle, so a preset never puts words on a clip that had none.
+    func applied(to caption: CaptionSettings?) -> CaptionSettings? {
+        guard var c = caption else { return nil }
+        let l = look
+        c.style = l.style
+        c.color = l.color
+        c.font = l.font
+        c.size = l.size
+        c.y = l.y
+        c.x = 0.5
+        return c
+    }
+}
+
 /// One rally to put in the reel, described by where it came from rather than
 /// by the clip file — going back to the original lets the vertical framing be
 /// computed from full-width footage instead of re-cropping a finished crop.

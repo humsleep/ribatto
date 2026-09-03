@@ -203,7 +203,22 @@ enum CaptionFont: String, Codable, CaseIterable, Identifiable {
     case rounded    // SF Rounded — friendly, reads well on video
     case mono       // SF Mono — good for times and scores
     case serif      // New York — editorial
+    case anton      // Anton — the poster-weight sans reels are built on
+    case bebas      // Bebas Neue — tall condensed caps, scoreboard energy
     var id: String { rawValue }
+
+    /// PostScript name of the bundled face, or nil for a system one.
+    ///
+    /// Neither bundled face carries Hangul or Kana; CoreText and SwiftUI both
+    /// substitute a system font for the glyphs they lack, so a Korean caption
+    /// set in Anton renders rather than showing tofu.
+    var bundledName: String? {
+        switch self {
+        case .anton: return "Anton-Regular"
+        case .bebas: return "BebasNeue-Regular"
+        default: return nil
+        }
+    }
 }
 
 struct CaptionSettings: Codable, Equatable {

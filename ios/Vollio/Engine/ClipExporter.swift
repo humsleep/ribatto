@@ -513,8 +513,30 @@ enum ClipExporter {
         return place(image, in: size)
     }
 
-    /// Bold system font in the requested design, with Korean/Japanese glyphs.
+    /// Registers the bundled OFL faces with CoreText. A `static let` so it
+    /// runs exactly once, whoever touches it first — the SwiftUI preview needs
+    /// them registered just as much as the burn-in does.
+    ///
+    /// In the command-line validators there is no app bundle and the lookup
+    /// simply finds nothing; those paths fall back to a system face.
+    static let bundledFontsRegistered: Void = {
+        for name in ["Anton-Regular", "BebasNeue-Regular"] {
+            guard let url = Bundle.main.url(forResource: name, withExtension: "ttf")
+            else { continue }
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+    }()
+
+    /// Bold system font in the requested design, with Korean/Japanese glyphs —
+    /// or a bundled face when the caption asks for one.
     private static func resolveFont(_ style: CaptionFont, size: CGFloat) -> CTFont {
+        if let name = style.bundledName {
+            _ = bundledFontsRegistered
+            let font = CTFontCreateWithName(name as CFString, size, nil)
+            // CTFontCreateWithName never fails; it substitutes silently. Check
+            // we got what we asked for before trusting it.
+            if (CTFontCopyPostScriptName(font) as String) == name { return font }
+        }
 #if canImport(UIKit)
         let width: UIFont.Width = style == .condensed ? .compressed : .standard
         let base = UIFont.systemFont(ofSize: size, weight: .heavy, width: width)
@@ -523,7 +545,9 @@ enum ClipExporter {
         case .rounded: design = .rounded
         case .serif: design = .serif
         case .mono: design = .monospaced
-        case .system, .condensed: design = .default
+        // .anton and .bebas only reach here when their bundled file is
+        // missing, so they take the neutral system face.
+        case .system, .condensed, .anton, .bebas: design = .default
         }
         if let descriptor = base.fontDescriptor.withDesign(design) {
             return CTFontCreateWithFontDescriptor(descriptor as CTFontDescriptor, size, nil)

@@ -256,13 +256,19 @@ extension CaptionFont {
         case .rounded: return .rounded
         case .serif: return .serif
         case .mono: return .monospaced
-        case .system, .condensed: return .default
+        case .system, .condensed, .anton, .bebas: return .default
         }
     }
     var width: Font.Width { self == .condensed ? .compressed : .standard }
 
     /// The face applied to both the preview and the burned caption.
     func font(size: CGFloat) -> Font {
-        .system(size: size, weight: .heavy, design: design).width(width)
+        if let bundledName {
+            _ = ClipExporter.bundledFontsRegistered
+            // fixedSize: a display face at a size the preview computed from the
+            // frame must not then be scaled again by Dynamic Type.
+            return .custom(bundledName, fixedSize: size)
+        }
+        return .system(size: size, weight: .heavy, design: design).width(width)
     }
 }
