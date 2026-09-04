@@ -64,6 +64,18 @@ ios/Vollio/
 Pro: 무제한 · 원본화질(가로4K/세로1080p) · 워터마크 없음 · 일괄저장 · 클립병합 · **스마트 세로 크롭**(SmartCrop) · **특정 인물 추적**(PlayerTracker, TargetPlayerSheet에서 선택) · **타구 카운터 번인**(Session.shotCounter) · **스코어보드 번인**(Session.scoreboard)
 캡션 자동 문구(토큰)·환호 배지·즐겨찾기·포인트 태깅·상대 태그·랠리 추가/분할은 무료. 일괄저장은 2개 이상 선택 시 Pro.
 
+## 마케팅 자산
+
+`marketing/` — 앱스토어 스크린샷 5장(1320x2868, 6.9인치 규격)과 등록 문구(`app-store-copy.md`).
+스크린샷은 `ios/Tools/make_screenshots.swift`가 만든다. 실기기 캡처를 헤드라인과 함께 합성하는 방식이며,
+캡처를 갱신하려면 시뮬레이터 화면을 `xcrun simctl io <udid> screenshot`으로 다시 찍어 넣고 도구를 재실행한다.
+
+```bash
+swift Tools/make_screenshots.swift <캡처폴더> <출력폴더>   # ios/ 에서 실행
+```
+
+스크린샷 속 세션 이름·코트·상대는 데모용으로 채운 값이다. 실제 사용자 데이터가 아니다.
+
 ## 빌드 / 실행
 
 ```bash
