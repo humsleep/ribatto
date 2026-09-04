@@ -16,16 +16,18 @@ struct PaywallView: View {
                 VStack(spacing: 22) {
                     header
                     features
-                    priceBlock
-                    Text(L.s("paywall_note", lang))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 8)
                 }
                 .padding(20)
             }
-            .background(Color.black.ignoresSafeArea())
+            .background(Theme.background.ignoresSafeArea())
+            // The price and the button stay on screen however long the list
+            // is; a buyer should never have to hunt for them.
+            .safeAreaInset(edge: .bottom) {
+                priceBlock
+                    .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 6)
+                    .background(Theme.background.ignoresSafeArea())
+                    .overlay(Rectangle().fill(Theme.hairline).frame(height: 1), alignment: .top)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
@@ -38,6 +40,9 @@ struct PaywallView: View {
                     .font(.footnote)
                 }
             }
+            // StoreKit is only queried at launch, so an app first opened
+            // offline had no product and a permanently dead Unlock button.
+            .task { await purchases.refresh() }
             .onChange(of: purchases.isPro) { _, pro in
                 if pro { dismiss() }
             }
@@ -45,15 +50,21 @@ struct PaywallView: View {
         .preferredColorScheme(.dark)
     }
 
+    private var subtitleKey: String {
+        if feature != nil { return L.s("paywall_sub_feature", lang) }
+        return purchases.remainingFree > 0 ? L.s("paywall_sub_open", lang)
+                                           : L.s("paywall_sub", lang)
+    }
+
     private var header: some View {
         VStack(spacing: 10) {
             ZStack {
                 Circle()
                     .fill(RadialGradient(colors: [accent.opacity(0.35), .clear],
-                                         center: .center, startRadius: 4, endRadius: 90))
-                    .frame(width: 180, height: 180)
+                                         center: .center, startRadius: 4, endRadius: 60))
+                    .frame(width: 120, height: 120)
                 Image(systemName: "scissors")
-                    .font(.system(size: 56, weight: .medium))
+                    .font(.system(size: 40, weight: .medium))
                     .foregroundStyle(accent)
             }
             Text(L.s("paywall_title", lang))
@@ -67,10 +78,23 @@ struct PaywallView: View {
                     .padding(.horizontal, 14).padding(.vertical, 9)
                     .background(Theme.accent.opacity(0.14), in: Capsule())
             }
-            Text(feature == nil ? L.s("paywall_sub", lang) : L.s("paywall_sub_feature", lang))
+            // "You've used your free imports" is only true when they are gone;
+            // the pill opens this screen at any time.
+            Text(subtitleKey)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            // Against a subscription competitor this line is the pitch, so it
+            // belongs here rather than in grey type at the bottom.
+            Label(L.s("no_sub_pitch", lang), systemImage: "checkmark.seal.fill")
+                .font(.footnote.bold())
+                .foregroundStyle(accent)
+                .multilineTextAlignment(.center)
+            // What the free tier actually is, so the list below reads as a
+            // difference rather than a brochure.
+            Text(String(format: L.s("paywall_free_fmt", lang), PurchaseManager.freeLimit))
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
     }
 
@@ -78,13 +102,13 @@ struct PaywallView: View {
         VStack(spacing: 14) {
             row("infinity", L.s("feat_unlimited", lang), L.s("feat_unlimited_d", lang))
             row("4k.tv", L.s("feat_quality", lang), L.s("feat_quality_d", lang))
+            row("drop.degreesign.slash", L.s("feat_nowm", lang), L.s("feat_nowm_d", lang))
             row("person.and.arrow.left.and.arrow.right",
                 L.s("feat_smartcrop", lang), L.s("feat_smartcrop_d", lang))
             row("person.fill.viewfinder",
                 L.s("feat_target", lang), L.s("feat_target_d", lang))
+            row("number.circle.fill", L.s("shot_counter", lang), L.s("feat_counter_d", lang))
             row("photo.on.rectangle.angled", L.s("feat_saveall", lang), L.s("feat_saveall_d", lang))
-            row("sportscourt", L.s("feat_sports", lang), L.s("feat_sports_d", lang))
-            row("iphone.gen3", L.s("feat_offline", lang), L.s("feat_offline_d", lang))
         }
         .padding(16)
         .background(Theme.surface,
@@ -107,9 +131,21 @@ struct PaywallView: View {
 
     private var priceBlock: some View {
         VStack(spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(purchases.priceText).font(.system(size: 34, weight: .heavy))
-                Text(L.s("once", lang)).font(.subheadline.bold()).foregroundStyle(.secondary)
+            // StoreKit may still be fetching the product: a dash next to
+            // "once" looked broken, so say what is happening instead.
+            if purchases.product == nil {
+                VStack(spacing: 6) {
+                    Text(L.s("price_loading", lang))
+                        .font(.subheadline.bold()).foregroundStyle(.secondary)
+                    Button(L.s("retry", lang)) { Task { await purchases.refresh() } }
+                        .font(.caption.bold())
+                }
+                .frame(minHeight: 40)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(purchases.priceText).font(.system(size: 34, weight: .heavy))
+                    Text(L.s("once", lang)).font(.subheadline.bold()).foregroundStyle(.secondary)
+                }
             }
             Text(L.s("no_subscription", lang))
                 .font(.footnote.bold())
@@ -130,11 +166,15 @@ struct PaywallView: View {
             .rcPrimary()
             .tint(accent)
             .foregroundStyle(.black)
-            .disabled(purchases.isPurchasing)
+            .disabled(purchases.isPurchasing || purchases.product == nil)
 
             if let err = purchases.errorMessage {
-                Text(err).font(.caption2).foregroundStyle(.red)
+                Text(err).font(.caption2).foregroundStyle(Theme.danger)
             }
+            Text(L.s("paywall_note", lang))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
         }
     }
 }

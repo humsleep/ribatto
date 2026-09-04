@@ -21,11 +21,13 @@ struct TrimSheet: View {
     @State private var end: Double
     @State private var player: AVPlayer?
     @State private var working = false
+    @State private var splitAt: Double
 
     init(clip: ClipInfo) {
         self.clip = clip
         _start = State(initialValue: clip.segment.start)
         _end = State(initialValue: clip.segment.end)
+        _splitAt = State(initialValue: (clip.segment.start + clip.segment.end) / 2)
     }
 
     private var session: Session? { store.sessions.first { $0.id == clip.sessionID } }
@@ -62,6 +64,32 @@ struct TrimSheet: View {
                             .font(.subheadline.monospacedDigit().bold())
                             .foregroundStyle(Theme.accent)
                     }
+                }
+                .padding(14)
+                .rcCard()
+
+                // Two points run together by the detector are one clip that
+                // nobody wants to post; cutting it is the other half of trimming.
+                VStack(alignment: .leading, spacing: 10) {
+                    handle(L.s("split_rally", lang), value: $splitAt,
+                           range: (start + store.minClipSeconds)...(end - store.minClipSeconds),
+                           preview: splitAt)
+                    Text(L.s("split_hint", lang))
+                        .font(.caption2).foregroundStyle(.tertiary)
+                    Button {
+                        working = true
+                        Task {
+                            await store.splitRally(clip, at: splitAt)
+                            working = false
+                            dismiss()
+                        }
+                    } label: {
+                        Label(L.s("split_rally", lang), systemImage: "scissors")
+                            .font(.subheadline.bold())
+                            .frame(maxWidth: .infinity, minHeight: 24)
+                    }
+                    .rcSecondary()
+                    .disabled(working || end - start < store.minClipSeconds * 2)
                 }
                 .padding(14)
                 .rcCard()

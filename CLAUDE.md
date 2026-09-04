@@ -22,14 +22,20 @@ ios/Vollio/
   VollioApp.swift        진입점 · 온보딩 분기 · 3탭(라이브러리/모든 클립/시즌)
   Models.swift             Sport·Sensitivity·AspectSetting·Session·RallySegment·CaptionSettings
   L10n.swift               인앱 다국어 (en 기본 / ko / ja) — 문자열은 여기 3곳 모두 추가
+  CaptionText.swift        캡션 토큰 {score} {rank} {shots} {tempo} {duration} {rally} {opponent} {place} {date} {sport} → 렌더 직전 클립별 문구로 치환(SessionStore)
+  TennisScore.swift        태그된 승자 → 스코어라인. 테니스·파델은 15/30/40 + 게임/세트, 배드민턴·피클볼은 랠리포인트(21/11)
   Engine/                  ★ 핵심 로직, 실측 검증됨
     AudioLoader.swift      영상 → 16kHz 모노 샘플
     RallyDetector.swift    타구음 감지 (vDSP FFT + 2단 임계값)
                            + 랠리 점수화: 타구수 0.40 / 환호(voiceE 급등) 0.35 / 길이 0.25
+                           RallySegment.hitTimes(타구 시각)·cheer(환호 비율, 3.5↑이면 🔥 배지·"환호 큰 순" 정렬)도 보존
+                           승자·즐겨찾기는 감지가 아니라 사용자 입력(RallySegment.winner/favourite)
     SmartCrop.swift        세로 크롭용 관심영역 추적 — 모션 기반(사람 인식 아님). 설계 이유는 파일 주석 참고
     PlayerTracker.swift    특정 인물 추적 — Vision 시드 추적 + 재획득 + SmartCrop 모션 폴백. Session.targetPlayer 있을 때 사용
                            Keyframe.box(디스플레이 좌표)를 채워 ClipExporter의 재프레이밍 입력이 됨
     ClipExporter.swift     클립 컷 · 화면비 · 페이드 · 워터마크/캡션 번인
+                           + 타구 카운터(ShotCounter, Pro): 프레임 시각별로 타구 수 픽셀 번인. 타구 시각은 RallySegment.hitTimes
+                           + 스코어보드 번인(좌상단). 카운터와 겹치면 카운터가 아랫줄로 내려간다
                            크롭은 `transform(window:)` 하나로 통일 — 소스의 사각 영역을 출력 프레임에 매핑
                            `reframed(...)`: 추적 박스가 있으면 피사체에 맞춰 축소·이동(최대 2배 줌), 없으면 기존 전체높이 창
     ReelBuilder.swift      여러 랠리를 하나의 세로 릴스로 (길이캡: reels 90s/shorts 60s/tiktok 180s)
@@ -44,12 +50,14 @@ ios/Vollio/
   Views/                   SessionDetailView(설정) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더) · TargetPlayerSheet(추적 대상 선택)
                            LibraryView · StatsView · CaptionEditorView · PaywallView 등
+                           SortMenu.swift: ClipSort(6종 정렬) + 정렬 메뉴 — 세션 화면·모든클립 탭 공용
 ```
 
 ## Pro 티어 경계 (isPro 로 게이팅)
 
 무료: 가져오기 3개 · 720p · 워터마크 · 중앙 고정 크롭
-Pro: 무제한 · 원본화질(가로4K/세로1080p) · 워터마크 없음 · 일괄저장 · 클립병합 · **스마트 세로 크롭**(SmartCrop) · **특정 인물 추적**(PlayerTracker, TargetPlayerSheet에서 선택)
+Pro: 무제한 · 원본화질(가로4K/세로1080p) · 워터마크 없음 · 일괄저장 · 클립병합 · **스마트 세로 크롭**(SmartCrop) · **특정 인물 추적**(PlayerTracker, TargetPlayerSheet에서 선택) · **타구 카운터 번인**(Session.shotCounter) · **스코어보드 번인**(Session.scoreboard)
+캡션 자동 문구(토큰)·환호 배지·즐겨찾기·포인트 태깅·상대 태그·랠리 추가/분할은 무료. 일괄저장은 2개 이상 선택 시 Pro.
 
 ## 빌드 / 실행
 
@@ -62,5 +70,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 ## 작업 규칙
 
 - 코드 삭제·수정 전에 **반드시 사용자에게 확인**받는다.
-- git 저장소 아님. 커밋 개념 없음.
+- git 저장소다(main). 커밋은 사용자가 요청할 때만 한다.
 - 문자열 추가 시 L10n.swift의 en/ko/ja 3곳 모두.
+- 오너 패널(OwnerSheet) 진입은 `#if DEBUG`. 릴리스에 숨은 기능이 있으면 심사 2.3.1 거절 사유다.
+- 긴 렌더는 `beginBackgroundTask`로 보호된다. `.failed`는 진행 중이 아니라 메시지이므로 busy 판정은 `isBusy`를 쓴다.
+- 재렌더는 원본을 먼저 확보한 뒤 기존 클립을 지운다. 순서를 되돌리면 원본이 사라진 세션의 클립이 전부 날아간다.

@@ -125,11 +125,9 @@ struct LibraryView: View {
                 VideoRecorder { url in
                     importing = true
                     Task {
-                        // count the import only once a session actually exists,
-                        // so a failed decode doesn't spend a free import
-                        if await store.importVideo(from: url, name: importName()) {
-                            purchases.noteSessionCreated()
-                        } else {
+                        // the store spends the free import the moment the
+                        // session is written, so nothing is counted here
+                        if await store.importVideo(from: url, name: importName()) == false {
                             importError = L.s("import_failed", lang)
                         }
                         importing = false
@@ -173,12 +171,7 @@ struct LibraryView: View {
                     } else {
                         created = false
                     }
-                    // spend a free import only on a session that got created
-                    if created {
-                        purchases.noteSessionCreated()
-                    } else {
-                        importError = L.s("import_failed", lang)
-                    }
+                    if !created { importError = L.s("import_failed", lang) }
                     importing = false
                     pickerItem = nil
                 }
@@ -336,9 +329,14 @@ struct LibraryView: View {
         // Plain gestures rather than a Button: a Button consumes the touch on
         // press, so the long press never got a chance to fire.
         .contentShape(Capsule())
+        // Debug-only: a passphrase-gated switch that grants the paid
+        // entitlement is undocumented functionality in a shipped build, which
+        // App Review rejects under 2.3.1.
+#if DEBUG
         .onLongPressGesture(minimumDuration: 1.2) {
             showOwner = true
         } onPressingChanged: { _ in }
+#endif
         .onTapGesture {
             if !purchases.isPro { showPaywall = true }
         }
@@ -477,7 +475,7 @@ struct SessionCard: View {
         if let stage = store.progress[session.id] {
             StageLabel(stage: stage)
         } else if let segs = session.segments {
-            Text("\(String(segs.count)) \(L.s("clips", lang))")
+            Text("\(String(segs.count)) \(L.s(segs.count == 1 ? "clip_one" : "clips", lang))")
                 .font(.caption.bold()).foregroundStyle(.tint)
         } else {
             Text(L.s("not_detected", lang))

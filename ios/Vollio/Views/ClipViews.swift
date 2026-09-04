@@ -54,6 +54,23 @@ struct ClipCard: View {
                                             in: RoundedRectangle(cornerRadius: 6))
                                 .padding(6)
                             Spacer()
+                            if clip.segment.isFavourite {
+                                Image(systemName: "star.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.accent)
+                                    .padding(.horizontal, 6).padding(.vertical, 4)
+                                    .background(.black.opacity(0.65),
+                                                in: RoundedRectangle(cornerRadius: 6))
+                                    .padding(6)
+                            }
+                            if clip.segment.isLoud {
+                                Text("🔥 " + L.s("cheer_badge", lang))
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 7).padding(.vertical, 3)
+                                    .background(.black.opacity(0.65),
+                                                in: RoundedRectangle(cornerRadius: 6))
+                                    .padding(6)
+                            }
                         }
                         Spacer()
                     }
@@ -124,6 +141,15 @@ struct ClipPlayerSheet: View {
         }
     }
 
+    /// The winner of this rally as currently stored — read back from the store
+    /// rather than held locally, so tagging updates every screen at once.
+    private var winner: PointWinner? {
+        session?.segments?[safe: clip.index]?.winner
+    }
+    private var isFavourite: Bool {
+        session?.segments?[safe: clip.index]?.isFavourite ?? false
+    }
+
     private var session: Session? {
         store.sessions.first { $0.id == clip.sessionID }
     }
@@ -168,6 +194,27 @@ struct ClipPlayerSheet: View {
                     .padding(.bottom, 8)
                 }
 
+                // Who won this point. The score is only ever what the user
+                // says: tagging here is the whole input to the scoreboard.
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L.s("who_won", lang))
+                        .font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        ForEach(PointWinner.allCases) { side in
+                            Button {
+                                store.setWinner(clip, winner == side ? nil : side)
+                            } label: {
+                                Text(L.s(side.key, lang))
+                                    .frame(maxWidth: .infinity)
+                                    .chip(active: winner == side)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
+
                 // one rally is the most common thing to post, so the route to a
                 // reel sits on the clip itself rather than only behind selection
                 Button {
@@ -190,6 +237,12 @@ struct ClipPlayerSheet: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(role: .destructive) { confirmDelete = true } label: {
                         Image(systemName: "trash")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { store.toggleFavourite(clip) } label: {
+                        Image(systemName: isFavourite ? "star.fill" : "star")
+                            .foregroundStyle(isFavourite ? Theme.accent : .secondary)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -254,7 +307,7 @@ struct AllClipsView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var purchases: PurchaseManager
     @AppStorage("rc_lang") private var lang = "en"
-    @State private var sort: Sort = .recent
+    @State private var sort: ClipSort = .time
     @State private var playing: ClipInfo?
     @State private var search = ""
     @State private var sportFilter: Sport?
@@ -270,8 +323,7 @@ struct AllClipsView: View {
     @State private var confirmDelete = false
     @State private var saveMessage: String?
     @State private var showPaywall = false
-
-    enum Sort { case recent, best, long, short }
+    @State private var favesOnly = false
 
     /// Relative windows rather than a date picker — "that match last month" is
     /// how people actually look for a clip, and it needs no calendar UI.
@@ -309,6 +361,7 @@ struct AllClipsView: View {
             if let placeFilter, pair.session.placeName != placeFilter { return false }
             if let whenFilter, !whenFilter.contains(pair.session.playedAt) { return false }
             if let shapeFilter, pair.clip.orientation != shapeFilter { return false }
+            if favesOnly && !pair.clip.segment.isFavourite { return false }
             if pair.clip.segment.hits < minHits { return false }
             if Int(pair.clip.duration) < minSeconds { return false }
             guard !search.isEmpty else { return true }
@@ -323,8 +376,11 @@ struct AllClipsView: View {
     var body: some View {
         NavigationStack {
             Group {
-                let items = sorted(matching(store.allClips()))
-                if items.isEmpty {
+                let all = store.allClips()
+                let items = sorted(matching(all))
+                // Empty state only when there is nothing at all: a filter that
+                // matches nothing must keep the filter bar so it can be cleared.
+                if all.isEmpty {
                     VStack(spacing: 10) {
                         Text("🎬").font(.system(size: 44))
                         Text(L.s("empty_clips", lang))
@@ -334,13 +390,15 @@ struct AllClipsView: View {
                     .padding(32)
                 } else {
                     ScrollView {
-                        Picker("", selection: $sort) {
-                            Text(L.s("sort_time", lang)).tag(Sort.recent)
-                            Text(L.s("sort_best", lang)).tag(Sort.best)
-                            Text(L.s("sort_long", lang)).tag(Sort.long)
-                            Text(L.s("sort_short", lang)).tag(Sort.short)
+                        HStack {
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text(L.s("clips_title", lang)).font(.headline)
+                                Text(String(items.count))
+                                    .font(.subheadline.bold()).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            SortMenu(sort: $sort)
                         }
-                        .pickerStyle(.segmented)
                         .padding(.horizontal)
                         // Collapsed, the panel is a single row, so it earns its
                         // place as soon as there are enough clips to sift —
@@ -494,6 +552,9 @@ struct AllClipsView: View {
                             minHits = minHits == h ? 0 : h
                         }
                     }
+                    chipButton(L.s("f_fav", lang), active: favesOnly, icon: "star.fill") {
+                        favesOnly.toggle()
+                    }
                 }
             } else if activeFilterCount > 0 {
                 activeSummary
@@ -561,11 +622,12 @@ struct AllClipsView: View {
         (sportFilter == nil ? 0 : 1) + (minSeconds == 0 ? 0 : 1)
             + (placeFilter == nil ? 0 : 1) + (whenFilter == nil ? 0 : 1)
             + (shapeFilter == nil ? 0 : 1) + (minHits == 0 ? 0 : 1)
+            + (favesOnly ? 1 : 0)
     }
 
     private func clearFilters() {
         sportFilter = nil; minSeconds = 0; placeFilter = nil
-        whenFilter = nil; shapeFilter = nil; minHits = 0
+        whenFilter = nil; shapeFilter = nil; minHits = 0; favesOnly = false
     }
 
     private var selectionBar: some View {
@@ -592,13 +654,16 @@ struct AllClipsView: View {
 
             HStack(spacing: 10) {
                 Button {
-                    guard purchases.isPro else { showPaywall = true; return }
+                    guard purchases.isPro || selection.count <= 1 else {
+                        showPaywall = true; return
+                    }
                     Task { await saveSelected() }
                 } label: {
                     HStack(spacing: 6) {
                         Label(L.s("save", lang),
-                              systemImage: purchases.isPro ? "square.and.arrow.down" : "lock.fill")
-                        if !purchases.isPro { ProBadge() }
+                              systemImage: purchases.isPro || selection.count <= 1
+                                  ? "square.and.arrow.down" : "lock.fill")
+                        if !purchases.isPro && selection.count > 1 { ProBadge() }
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -650,15 +715,13 @@ struct AllClipsView: View {
     private func sorted(_ items: [(session: Session, clip: ClipInfo)])
         -> [(session: Session, clip: ClipInfo)] {
         switch sort {
-        case .recent:
+        case .time:
             return items.sorted {
                 ($0.session.playedAt, $0.clip.segment.start)
                     > ($1.session.playedAt, $1.clip.segment.start)
             }
-        case .best: return items.sorted {
-            ($0.clip.segment.score ?? -1) > ($1.clip.segment.score ?? -1) }
-        case .long: return items.sorted { $0.clip.duration > $1.clip.duration }
-        case .short: return items.sorted { $0.clip.duration < $1.clip.duration }
+        default:
+            return items.sorted { sort.precedes($0.clip, $1.clip) }
         }
     }
 }

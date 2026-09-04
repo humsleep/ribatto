@@ -39,6 +39,9 @@ final class PurchaseManager: ObservableObject {
         UserDefaults.standard.integer(forKey: PurchaseManager.counterKey)
     @Published var isPurchasing = false
     @Published var errorMessage: String?
+    /// Set by the app so this type stays free of the L10n table; shown when the
+    /// App Store has no product to sell (offline, or a store outage).
+    var unavailableMessage = "Product unavailable"
     /// True once the owner passphrase has been accepted on this device.
     @Published private(set) var ownerMode =
         UserDefaults.standard.bool(forKey: PurchaseManager.ownerModeKey)
@@ -118,6 +121,9 @@ final class PurchaseManager: ObservableObject {
     func purchase() async {
         isPurchasing = true
         defer { isPurchasing = false }
+        // A message from an earlier attempt must not outlive it, or a
+        // successful purchase still shows the old failure underneath.
+        errorMessage = nil
 
         if let product {
             do {
@@ -142,13 +148,14 @@ final class PurchaseManager: ObservableObject {
         errorMessage = nil
         await updateEntitlement()
 #else
-        if product == nil { errorMessage = "Product unavailable" }
+        if product == nil { errorMessage = unavailableMessage }
 #endif
     }
 
     func restore() async {
         isPurchasing = true
         defer { isPurchasing = false }
+        errorMessage = nil
 #if DEBUG
         // In test builds the Restore button doubles as "back to free" so the
         // free tier can be re-tested without reinstalling.

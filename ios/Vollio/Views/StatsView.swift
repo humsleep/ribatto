@@ -23,6 +23,11 @@ struct SeasonStats {
     var places: [(name: String, visits: Int, rallies: Int)] = []
     /// Rallies per month, oldest first, always 6 entries.
     var monthly: [(month: Date, rallies: Int, matches: Int)] = []
+    /// Points won and lost against each named opponent, most played first.
+    /// Only sessions where points were actually tagged appear.
+    var opponents: [(name: String, won: Int, lost: Int, matches: Int)] = []
+    /// Strikes per minute of play, all time.
+    var tempo: Double = 0
 
     /// Only meaningful when both months actually have rallies; otherwise a
     /// quiet month reads as a collapse in form.
@@ -95,6 +100,27 @@ struct StatsView: View {
                     }
                 }
 
+                // Head-to-head only appears once points have been tagged; an
+                // empty card would read as a broken feature.
+                if !s.opponents.isEmpty {
+                    card {
+                        Text(L.s("opponent", lang)).font(.caption).foregroundStyle(.secondary)
+                        ForEach(s.opponents.prefix(6), id: \.name) { o in
+                            HStack(spacing: 12) {
+                                Image(systemName: "person.2.fill")
+                                    .foregroundStyle(Theme.accent).frame(width: 22)
+                                Text(o.name).font(.subheadline).lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text(String(format: L.s("record_fmt", lang), o.won, o.lost))
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(o.won >= o.lost ? Theme.accent : .primary)
+                                Text(String(format: L.s("visits_fmt", lang), o.matches))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
                 if !s.places.isEmpty {
                     card {
                         Text(L.s("courts", lang)).font(.caption).foregroundStyle(.secondary)
@@ -119,6 +145,9 @@ struct StatsView: View {
                         big(String(s.matches), L.s("matches", lang))
                         big(String(s.rallies), L.s("rallies", lang))
                         big(String(s.shots), L.s("shots", lang))
+                        if s.tempo > 0 {
+                            big(String(Int(s.tempo.rounded())), L.s("tempo", lang))
+                        }
                     }
                 }
 
@@ -472,9 +501,21 @@ extension StatsView {
         var monthShots = 0, monthRallyCount = 0
         var prevShots = 0, prevRallyCount = 0
 
+        var opponentTotals: [String: (won: Int, lost: Int, matches: Int)] = [:]
+        var tempoSum = 0.0, tempoCount = 0
+
         for session in store.sessions {
             let clips = store.clips(of: session)
             guard !clips.isEmpty else { continue }
+            for t in clips.compactMap(\.segment.tempo) {
+                tempoSum += t; tempoCount += 1
+            }
+            if let name = session.opponent, session.taggedPoints > 0 {
+                let r = TennisScore.record(session.segments ?? [])
+                var entry = opponentTotals[name] ?? (0, 0, 0)
+                entry.won += r.me; entry.lost += r.them; entry.matches += 1
+                opponentTotals[name] = entry
+            }
             s.matches += 1
             s.rallies += clips.count
             let secs = clips.reduce(0) { $0 + $1.duration }
@@ -535,6 +576,11 @@ extension StatsView {
         s.avgShots = s.rallies > 0 ? Double(s.shots) / Double(s.rallies) : 0
         s.monthAvgShots = monthRallyCount > 0 ? Double(monthShots) / Double(monthRallyCount) : 0
         s.prevAvgShots = prevRallyCount > 0 ? Double(prevShots) / Double(prevRallyCount) : 0
+        s.tempo = tempoCount > 0 ? tempoSum / Double(tempoCount) : 0
+        s.opponents = opponentTotals
+            .map { (name: $0.key, won: $0.value.won, lost: $0.value.lost,
+                    matches: $0.value.matches) }
+            .sorted { $0.matches > $1.matches }
         return s
     }
 }

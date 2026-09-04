@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 import CoreLocation
 import Photos
+import UIKit
 import SwiftUI
 
 /// One clip of one session, derived from disk + metadata.
@@ -24,6 +25,9 @@ final class SessionStore: ObservableObject {
     @Published var progress: [UUID: ProcessingStage] = [:]
     /// Mirrored from PurchaseManager so the export path knows the tier.
     @Published var isPro = false
+    /// Called once a new session exists on disk, so the free allowance is spent
+    /// even if processing is interrupted.
+    var onSessionRegistered: (() -> Void)?
 
     private let fm = FileManager.default
     /// Shown when the original has been deleted from Photos.
@@ -289,6 +293,9 @@ final class SessionStore: ObservableObject {
             }
             sessions.insert(s, at: 0)
             try? JSONEncoder().encode(s).write(to: metaURL(id))
+            // Counted here, not after processing: a force-quit mid-detect used
+            // to leave the session on disk with the free allowance untouched.
+            onSessionRegistered?()
             resolvePlaceName(for: id)             // needs the network; don't block
             await process(sessionID: id)          // auto-detect on import
             return true
@@ -325,6 +332,115 @@ final class SessionStore: ObservableObject {
     func setSmartCrop(_ s: Session, _ on: Bool) {
         var v = s; v.smartCrop = on; save(v)
     }
+    func setShotCounter(_ s: Session, _ on: Bool) {
+        var v = s; v.shotCounter = on; save(v)
+    }
+    func setScoreboard(_ s: Session, _ on: Bool) {
+        var v = s; v.scoreboard = on; save(v)
+    }
+    func setOpponent(_ s: Session, _ name: String) {
+        var v = s
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        v.opponent = trimmed.isEmpty ? nil : trimmed
+        save(v)
+    }
+
+    /// Who won one rally. Tagging changes the score on every rally after it,
+    /// which is why the whole session is marked for a re-render rather than
+    /// just this clip.
+    func setWinner(_ clip: ClipInfo, _ winner: PointWinner?) {
+        guard let s = sessions.first(where: { $0.id == clip.sessionID }),
+              var segments = s.segments, clip.index < segments.count else { return }
+        segments[clip.index].winner = winner
+        mutate(s.id) { $0.segments = segments }
+    }
+
+    /// Starring is a library affordance, not an export setting: it must never
+    /// mark the session as needing a re-render.
+    func toggleFavourite(_ clip: ClipInfo) {
+        guard let s = sessions.first(where: { $0.id == clip.sessionID }),
+              var segments = s.segments, clip.index < segments.count else { return }
+        segments[clip.index].favourite = !(segments[clip.index].favourite ?? false)
+        mutate(s.id) { $0.segments = segments }
+    }
+
+    /// A rally the detector missed, added by hand. Rallies stay in timeline
+    /// order, so this renumbers everything after it — which is also why the
+    /// clip files are rebuilt rather than patched.
+    @discardableResult
+    func addRally(to session: Session, start: Double, end: Double) async -> Bool {
+        guard !isBusy(session.id), end - start >= minClipSeconds else { return false }
+        var segments = session.segments ?? []
+        let seg = RallySegment(start: max(0, start),
+                               end: min(session.duration, end),
+                               hits: 0, score: nil, trimmed: true)
+        let at = segments.firstIndex { $0.start > seg.start } ?? segments.count
+        segments.insert(seg, at: at)
+        mutate(session.id) {
+            $0.segments = segments
+            $0.hasHighlight = false
+            // indices moved, so per-clip overrides no longer point at the
+            // clips they were chosen for
+            $0.clipTargets = shift($0.clipTargets, insertedAt: at)
+            $0.renderedClipTargets = nil
+        }
+        try? fm.removeItem(at: highlightURL(session))
+        await render(sessionID: session.id)
+        return true
+    }
+
+    /// Cuts one rally in two at `at` seconds — for the point the detector ran
+    /// together with the next one.
+    @discardableResult
+    func splitRally(_ clip: ClipInfo, at time: Double) async -> Bool {
+        guard let session = sessions.first(where: { $0.id == clip.sessionID }),
+              var segments = session.segments, clip.index < segments.count,
+              !isBusy(session.id) else { return false }
+        let seg = segments[clip.index]
+        guard time - seg.start >= minClipSeconds,
+              seg.end - time >= minClipSeconds else { return false }
+        // Strikes and the crowd reaction belong to whichever half they land in;
+        // the score is no longer meaningful for either, so both are unscored.
+        let firstHits = (seg.hitTimes ?? []).filter { $0 < time }
+        let secondHits = (seg.hitTimes ?? []).filter { $0 >= time }
+        var first = RallySegment(start: seg.start, end: time,
+                                 hits: firstHits.isEmpty ? seg.hits / 2 : firstHits.count,
+                                 score: nil, trimmed: true,
+                                 hitTimes: seg.hitTimes == nil ? nil : firstHits)
+        var second = RallySegment(start: time, end: seg.end,
+                                  hits: secondHits.isEmpty ? seg.hits - seg.hits / 2 : secondHits.count,
+                                  score: nil, trimmed: true,
+                                  hitTimes: seg.hitTimes == nil ? nil : secondHits,
+                                  cheer: seg.cheer)
+        first.winner = seg.winner
+        second.favourite = seg.favourite
+        segments.replaceSubrange(clip.index...clip.index, with: [first, second])
+        mutate(session.id) {
+            $0.segments = segments
+            $0.hasHighlight = false
+            $0.clipTargets = shift($0.clipTargets, insertedAt: clip.index + 1)
+            $0.renderedClipTargets = nil
+        }
+        try? fm.removeItem(at: highlightURL(session))
+        await render(sessionID: session.id)
+        return true
+    }
+
+    /// Moves per-clip overrides up by one from `insertedAt`, so they stay with
+    /// the rally the user picked them for.
+    private func shift(_ targets: [String: TargetPlayer]?,
+                       insertedAt: Int) -> [String: TargetPlayer]? {
+        guard let targets, !targets.isEmpty else { return targets }
+        var out: [String: TargetPlayer] = [:]
+        for (key, value) in targets {
+            guard let i = Int(key) else { continue }
+            out[String(i >= insertedAt ? i + 1 : i)] = value
+        }
+        return out
+    }
+    /// The in-app language, for strings burned into video (the counter's
+    /// label, a caption's "Best #1").
+    var lang: String { UserDefaults.standard.string(forKey: "rc_lang") ?? "en" }
     /// Picking a player only matters through the smart-crop path, so turn that
     /// on with it; clearing the player leaves smart crop as the user had it.
     func setTargetPlayer(_ s: Session, _ target: TargetPlayer?) {
@@ -344,7 +460,7 @@ final class SessionStore: ObservableObject {
         guard let session = sessions.first(where: { $0.id == clip.sessionID }),
               let segments = session.segments,
               clip.index < segments.count,
-              progress[session.id] == nil else { return }
+              !isBusy(session.id) else { return }
         let key = String(clip.index)
         mutate(session.id) {
             var targets = $0.clipTargets ?? [:]
@@ -369,11 +485,15 @@ final class SessionStore: ObservableObject {
                 source: source, segment: segments[clip.index],
                 orientation: updated.renderedOrientation ?? updated.effectiveOrientation,
                 pro: updated.renderedPro ?? isPro,
-                caption: updated.renderedCaption,
+                caption: CaptionText.resolve(updated.renderedCaption, session: updated,
+                                             segments: segments, index: clip.index, lang: lang),
                 smartCrop: true,
                 clipURL: dir.appendingPathComponent("\(base).mp4"),
                 thumbURL: dir.appendingPathComponent("\(base).jpg"),
-                targetPlayer: updated.target(forClip: clip.index))
+                targetPlayer: updated.target(forClip: clip.index),
+                counter: (updated.renderedShotCounter ?? false)
+                    ? ShotCounter.make(for: segments[clip.index],
+                                       label: L.s("counter_label", lang)) : nil)
             // Only this clip was re-cut, so only this clip's record moves —
             // leaving the rest of `renderedClipTargets` alone keeps the
             // "settings changed" hint honest about the clips still stale.
@@ -392,7 +512,11 @@ final class SessionStore: ObservableObject {
     /// moved, otherwise just re-render at the new aspect.
     func apply(sessionID: UUID) async {
         guard let s = sessions.first(where: { $0.id == sessionID }) else { return }
-        if s.segments == nil || s.needsRedetect {
+        // Sessions detected before strike times were kept have nothing for the
+        // counter to draw; a re-detect fills them in (trims are preserved).
+        let lacksHitTimes = isPro && s.shotCounterEnabled
+            && (s.segments ?? []).contains { $0.hitTimes == nil }
+        if s.segments == nil || s.needsRedetect || lacksHitTimes {
             await process(sessionID: sessionID)
         } else if s.needsRerender {
             await render(sessionID: sessionID)
@@ -403,21 +527,29 @@ final class SessionStore: ObservableObject {
 
     func process(sessionID: UUID) async {
         guard let s = sessions.first(where: { $0.id == sessionID }),
-              progress[sessionID] == nil else { return }
+              !isBusy(sessionID) else { return }
+        // A previous failure is a message, not work in flight — clear it so the
+        // run that the user just asked for is not blocked by it.
+        progress[sessionID] = nil
+        let task = beginBackgroundTask()
+        defer { endBackgroundTask(task) }
         do {
             progress[sessionID] = .audio
             guard let source = await loadAsset(s) else {
                 progress[sessionID] = .failed(missingSourceMessage)
                 return
             }
-            let samples = try await AudioLoader.loadMono16k(asset: source)
-
-            progress[sessionID] = .detect
             let sport = s.sport, sens = s.sensitivity, dur = s.duration
-            let segments = await Task.detached(priority: .userInitiated) {
-                RallyDetector.detect(samples: samples, sampleRate: AudioLoader.sampleRate,
-                                     duration: dur, sensitivity: sens, sport: sport)
-            }.value
+            // Scoped so the 16 kHz samples (≈345 MB on a 90-minute recording)
+            // are freed before the render, which needs the memory for frames.
+            let segments: [RallySegment] = try await {
+                let samples = try await AudioLoader.loadMono16k(asset: source)
+                progress[sessionID] = .detect
+                return await Task.detached(priority: .userInitiated) {
+                    RallyDetector.detect(samples: samples, sampleRate: AudioLoader.sampleRate,
+                                         duration: dur, sensitivity: sens, sport: sport)
+                }.value
+            }()
             mutate(sessionID) {
                 $0.segments = segments
                 $0.detectedSport = sport
@@ -429,10 +561,40 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    /// Work actually in flight. A `.failed` entry is a message left on screen,
+    /// so it must not lock the session out of being retried.
+    func isBusy(_ id: UUID) -> Bool {
+        guard let stage = progress[id] else { return false }
+        if case .failed = stage { return false }
+        return true
+    }
+
+    /// Keeps a multi-minute export alive when the user leaves the app. Without
+    /// it the export is killed mid-file and the session lands in `.failed`.
+    private func beginBackgroundTask() -> UIBackgroundTaskIdentifier {
+        UIApplication.shared.beginBackgroundTask(withName: "VollioRender") {}
+    }
+    private func endBackgroundTask(_ id: UIBackgroundTaskIdentifier) {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+    }
+
     func render(sessionID: UUID, alreadyRunning: Bool = false) async {
         guard let s = sessions.first(where: { $0.id == sessionID }),
               let segments = s.segments else { return }
-        if !alreadyRunning && progress[sessionID] != nil { return }
+        if !alreadyRunning && isBusy(sessionID) { return }
+        if !alreadyRunning { progress[sessionID] = nil }
+        let bgTask = alreadyRunning ? UIBackgroundTaskIdentifier.invalid
+                                    : beginBackgroundTask()
+        defer { endBackgroundTask(bgTask) }
+        // The source has to be in hand BEFORE the old clips are deleted: this
+        // used to wipe every clip and only then discover the original was gone
+        // from Photos, leaving the user with nothing at all.
+        progress[sessionID] = .audio
+        guard let source = await loadAsset(s) else {
+            progress[sessionID] = .failed(missingSourceMessage)
+            return
+        }
         do {
             let cdir = clipsDir(s)
             try? fm.removeItem(at: cdir)
@@ -444,15 +606,16 @@ final class SessionStore: ObservableObject {
             let pro = isPro
             let caption = s.caption
             let useSmartCrop = isPro && s.effectiveSmartCrop
+            let counterLabel = isPro && s.shotCounterEnabled ? L.s("counter_label", lang) : nil
+            let scores = isPro && s.scoreboardEnabled
+                ? TennisScore.line(for: segments, sport: s.sport, lang: lang)
+                : []
+            let winners = s.winnerTags
             let target = useSmartCrop ? s.targetPlayer : nil
             let perClip = useSmartCrop ? (s.clipTargets ?? [:]) : [:]
             mutate(sessionID) {
                 $0.hasHighlight = false
                 $0.renderedOrientation = orient
-            }
-            guard let source = await loadAsset(s) else {
-                progress[sessionID] = .failed(missingSourceMessage)
-                return
             }
             // 1) posters for every rally (no encoding — takes a moment, not minutes)
             for (i, seg) in segments.enumerated() {
@@ -469,20 +632,27 @@ final class SessionStore: ObservableObject {
                 let base = String(format: "clip_%02d", i + 1)
                 try await ClipExporter.export(
                     source: source, segment: seg, orientation: orient, pro: pro,
-                    caption: caption, smartCrop: useSmartCrop,
+                    caption: CaptionText.resolve(caption, session: s, segments: segments,
+                                                 index: i, lang: lang),
+                    smartCrop: useSmartCrop,
                     clipURL: cdir.appendingPathComponent("\(base).mp4"),
                     // Replaces the source-aspect placeholder written above with
                     // a poster cut from the finished clip. Without this a
                     // portrait clip kept a 16:9 still, and the card had to
                     // stretch to hold it.
                     thumbURL: cdir.appendingPathComponent("\(base).jpg"),
-                    targetPlayer: useSmartCrop ? s.target(forClip: i) : nil)
+                    targetPlayer: useSmartCrop ? s.target(forClip: i) : nil,
+                    counter: counterLabel.flatMap { ShotCounter.make(for: seg, label: $0) },
+                    scoreboard: i < scores.count ? scores[i] : nil)
             }
             mutate(sessionID) {
                 $0.renderedOrientation = orient
                 $0.renderedPro = pro
                 $0.renderedCaption = caption
                 $0.renderedSmartCrop = useSmartCrop
+                $0.renderedShotCounter = counterLabel != nil
+                $0.renderedScoreboard = !scores.isEmpty
+                $0.renderedWinners = winners
                 $0.renderedTargetPlayer = target
                 $0.renderedClipTargets = perClip
             }
@@ -504,7 +674,7 @@ final class SessionStore: ObservableObject {
               var segments = session.segments,
               clip.index < segments.count,
               end - start >= minClipSeconds,
-              progress[session.id] == nil else { return }
+              !isBusy(session.id) else { return }
         segments[clip.index].start = max(0, start)
         segments[clip.index].end = min(session.duration, end)
         segments[clip.index].trimmed = true
@@ -528,12 +698,15 @@ final class SessionStore: ObservableObject {
                 source: source, segment: segment,
                 orientation: session.renderedOrientation ?? session.effectiveOrientation,
                 pro: session.renderedPro ?? isPro,
-                caption: session.renderedCaption,
+                caption: CaptionText.resolve(session.renderedCaption, session: session,
+                                             segments: segments, index: clip.index, lang: lang),
                 smartCrop: session.renderedSmartCrop ?? false,
                 clipURL: dir.appendingPathComponent("\(base).mp4"),
                 thumbURL: dir.appendingPathComponent("\(base).jpg"),
                 targetPlayer: (session.renderedSmartCrop ?? false)
-                    ? session.target(forClip: clip.index) : nil)
+                    ? session.target(forClip: clip.index) : nil,
+                counter: (session.renderedShotCounter ?? false)
+                    ? ShotCounter.make(for: segment, label: L.s("counter_label", lang)) : nil)
             objectWillChange.send()
         } catch {
             progress[session.id] = .failed(error.localizedDescription)
@@ -654,7 +827,7 @@ final class SessionStore: ObservableObject {
         }
         guard !ordered.isEmpty else { return nil }
         let key = ordered[0].session.id
-        guard progress[key] == nil else { return nil }
+        guard !isBusy(key) else { return nil }
         progress[key] = .reel(done: 0, total: ordered.count)
         defer { progress[key] = nil }
 
@@ -669,13 +842,23 @@ final class SessionStore: ObservableObject {
             }
             guard let asset = assets[sid] else { continue }
             let useSmartCrop = isPro && pair.session.smartCropEnabled
+            let styled = preset?.applied(to: pair.session.caption) ?? pair.session.caption
             items.append(ReelItem(asset: asset,
                                   segment: pair.clip.segment,
-                                  caption: preset?.applied(to: pair.session.caption)
-                                      ?? pair.session.caption,
+                                  caption: CaptionText.resolve(
+                                      styled, session: pair.session,
+                                      segments: pair.session.segments ?? [],
+                                      index: pair.clip.index, lang: lang),
                                   smartCrop: useSmartCrop,
                                   targetPlayer: useSmartCrop
-                                      ? pair.session.target(forClip: pair.clip.index) : nil))
+                                      ? pair.session.target(forClip: pair.clip.index) : nil,
+                                  counterLabel: isPro && pair.session.shotCounterEnabled
+                                      ? L.s("counter_label", lang) : nil,
+                                  scoreboard: isPro && pair.session.scoreboardEnabled
+                                      ? TennisScore.line(for: pair.session.segments ?? [],
+                                                         sport: pair.session.sport,
+                                                         lang: lang)[safe: pair.clip.index]
+                                      : nil))
         }
         guard !items.isEmpty else {
             progress[key] = .failed(missingSourceMessage)
@@ -732,5 +915,14 @@ final class SessionStore: ObservableObject {
             }
         }
         save(s)
+    }
+}
+
+
+extension Array {
+    /// Bounds-checked lookup: a clip index can outrun a freshly re-detected
+    /// session, and a crash there would take the whole reel down.
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }

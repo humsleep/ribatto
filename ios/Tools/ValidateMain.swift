@@ -47,9 +47,9 @@ Task {
                              kept, pct, Date().timeIntervalSince(t1)))
                 if sens == .normal {
                     for (i, s) in segs.enumerated() {
-                        print(String(format: "        #%2d  %@ - %@  (%4.1fs, %2d hits)",
+                        print(String(format: "        #%2d  %@ - %@  (%4.1fs, %2d hits, cheer %.2f, score %.2f)",
                                      i + 1, mmss(s.start), mmss(s.end),
-                                     s.end - s.start, s.hits))
+                                     s.end - s.start, s.hits, s.cheer ?? 0, s.score ?? 0))
                     }
                 }
             }

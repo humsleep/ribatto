@@ -152,6 +152,10 @@ struct ReelItem {
     let caption: CaptionSettings?
     let smartCrop: Bool
     let targetPlayer: TargetPlayer?
+    /// The word after the number in the burned-in shot counter; nil = no counter.
+    var counterLabel: String? = nil
+    /// Running score to burn top-left; nil or empty = none.
+    var scoreboard: String? = nil
 }
 
 /// What actually made it in, so the UI can be honest about a cap that bit.
@@ -221,7 +225,8 @@ enum ReelBuilder {
             await progress(i, planned.count)
             let seg = RallySegment(start: entry.segment.start,
                                    end: entry.segment.start + entry.seconds,
-                                   hits: entry.segment.hits)
+                                   hits: entry.segment.hits,
+                                   hitTimes: entry.item.segment.hitTimes)
             let part = work.appendingPathComponent(String(format: "part_%03d.mp4", i))
             try await ClipExporter.export(source: entry.item.asset,
                                           segment: seg,
@@ -231,7 +236,10 @@ enum ReelBuilder {
                                           smartCrop: entry.item.smartCrop,
                                           clipURL: part,
                                           thumbURL: nil,
-                                          targetPlayer: entry.item.targetPlayer)
+                                          targetPlayer: entry.item.targetPlayer,
+                                          counter: entry.item.counterLabel.flatMap {
+                                              ShotCounter.make(for: seg, label: $0) },
+                                          scoreboard: entry.item.scoreboard)
             parts.append(part)
         }
         await progress(planned.count, planned.count)

@@ -33,12 +33,15 @@ struct VollioApp: App {
             .environmentObject(purchases)
             .task {
                 store.isPro = purchases.isPro
+                store.onSessionRegistered = { purchases.noteSessionCreated() }
+                purchases.unavailableMessage = L.s("store_unavailable", lang)
                 store.missingSourceMessage = L.s("source_missing", lang)
                 store.placeLocale = L.locale(lang)
                 store.resolveMissingPlaceNames()
                 store.backfillCaptureDates()
             }
             .onChange(of: lang) { _, l in
+                purchases.unavailableMessage = L.s("store_unavailable", l)
                 store.missingSourceMessage = L.s("source_missing", l)
                 store.placeLocale = L.locale(l)
             }

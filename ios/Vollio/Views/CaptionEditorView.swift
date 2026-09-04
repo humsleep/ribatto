@@ -27,6 +27,7 @@ struct CaptionEditorView: View {
                         .font(.caption).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                     textField
+                    autoText
                     fontPicker
                     stylePicker
                     colorPicker
@@ -96,10 +97,20 @@ struct CaptionEditorView: View {
         }
     }
 
+    /// What the caption will say on the session's best rally, so a token
+    /// caption previews as words rather than braces.
+    private var previewText: String {
+        let segs = session.segments ?? []
+        guard !segs.isEmpty else { return draft.text }
+        let best = segs.indices.max { (segs[$0].score ?? -1) < (segs[$1].score ?? -1) } ?? 0
+        return CaptionText.resolve(draft, session: session, segments: segs,
+                                   index: best, lang: lang)?.text ?? draft.text
+    }
+
     /// Mirrors what ClipExporter burns in: 4.5% of frame height × multiplier.
     private func captionText(scaledTo height: CGFloat) -> some View {
         let size = max(9, height * 0.045 * draft.size)
-        let text = Text(draft.text)
+        let text = Text(previewText)
             .font(draft.font.font(size: size))
             .lineLimit(1)
         let tint = draft.color.swiftUI
@@ -168,6 +179,41 @@ struct CaptionEditorView: View {
                 .font(.caption.bold())
                 .rcSecondary()
             }
+        }
+    }
+
+    /// Placeholders filled per clip at render time. A chip toggles its token
+    /// in and out of the text; the preview above shows the filled-in result.
+    private var autoText: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(L.s("auto_text", lang)).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button(L.s("auto_example", lang)) {
+                    draft.text = CaptionText.example
+                    draft.enabled = true
+                }
+                .font(.caption.bold())
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(CaptionText.tokens, id: \.self) { token in
+                        let on = draft.text.contains(token)
+                        Button {
+                            draft.text = on ? CaptionText.removing(token, from: draft.text)
+                                            : CaptionText.adding(token, to: draft.text)
+                            draft.enabled = true
+                        } label: {
+                            Text(L.s(CaptionText.labelKey(token), lang)).chip(active: on)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+            Text(L.s("auto_text_d", lang))
+                .font(.caption2).foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

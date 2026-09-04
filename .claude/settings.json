@@ -17,7 +17,7 @@
       "Bash(head:*)",
       "Bash(tail:*)",
       "Bash(swiftc:*)",
-      "Bash(xcodebuild:* build)",
+      "Bash(xcodebuild:*)",
       "Bash(xcrun simctl list:*)"
     ]
   }

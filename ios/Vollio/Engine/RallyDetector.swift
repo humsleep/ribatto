@@ -130,7 +130,9 @@ enum RallyDetector {
             return RallySegment(start: max(0, g[0].t - padStartS),
                                 end: min(duration, g[g.count - 1].t + padEndS),
                                 hits: g.count,
-                                score: min(max(score, 0), 1))
+                                score: min(max(score, 0), 1),
+                                hitTimes: g.map { $0.t },
+                                cheer: cheers[i])
         }
     }
 
