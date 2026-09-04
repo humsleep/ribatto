@@ -521,7 +521,12 @@ final class SessionStore: ObservableObject {
         // counter to draw; a re-detect fills them in (trims are preserved).
         let lacksHitTimes = isPro && s.shotCounterEnabled
             && (s.segments ?? []).contains { $0.hitTimes == nil }
-        if s.segments == nil || s.needsRedetect || lacksHitTimes {
+        // An empty result is not a finished job. Without the isEmpty case,
+        // pressing Detect again on a session that found nothing did nothing at
+        // all — the settings were unchanged, so neither branch fired and the
+        // button looked dead exactly where the user most needs it to work.
+        let foundNothing = s.segments?.isEmpty ?? false
+        if s.segments == nil || foundNothing || s.needsRedetect || lacksHitTimes {
             await process(sessionID: sessionID)
         } else if s.needsRerender {
             await render(sessionID: sessionID)

@@ -3,8 +3,13 @@
 <plist version="1.0">
 <dict>
 	<!-- Vollio does not track. Every frame and every sample is analysed on
-	     the device; nothing is uploaded, there is no analytics SDK, no
-	     network call, and no account. -->
+	     the device: the video and its audio are never uploaded, there is no
+	     analytics SDK, no advertising, and no account.
+	     The app does make two network calls, neither of which is tracking and
+	     neither of which reaches a server of ours: StoreKit for the one-time
+	     purchase, and CLGeocoder in PlaceLookup, which sends a video's own GPS
+	     coordinate to Apple once to name the court. Keep this in step with the
+	     in-app Privacy screen (Views/PrivacyView.swift). -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>

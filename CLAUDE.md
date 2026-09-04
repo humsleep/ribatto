@@ -53,6 +53,7 @@ ios/Vollio/
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더) · TargetPlayerSheet(추적 대상 선택)
                            LibraryView · StatsView · CaptionEditorView · PaywallView 등
                            SortMenu.swift: ClipSort(6종 정렬) + 정렬 메뉴 — 세션 화면·모든클립 탭 공용
+                           AddRallySheet(놓친 랠리 수동 추가) · PrivacyView(앱 내 개인정보 설명 — 코드 동작과 항상 일치시킬 것)
 ```
 
 ## Pro 티어 경계 (isPro 로 게이팅)
@@ -78,3 +79,6 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - 긴 렌더는 `beginBackgroundTask`로 보호된다. `.failed`는 진행 중이 아니라 메시지이므로 busy 판정은 `isBusy`를 쓴다.
 - 재렌더는 원본을 먼저 확보한 뒤 기존 클립을 지운다. 순서를 되돌리면 원본이 사라진 세션의 클립이 전부 날아간다.
 - 렌더는 `awaitEntitlement`로 소유권 판정을 기다린 뒤 tier를 확정한다. 먼저 시작하면 결제한 사용자 클립에 워터마크가 박힌다.
+- 감지 결과가 0개인 것은 "완료"가 아니다. `apply`는 빈 배열도 재감지 대상으로 본다. 빼면 재감지 버튼이 죽는다.
+- 접근성 큰 글씨에서는 설정 행이 세로로 쌓인다(`settingRows`). 가로 배치를 강제하면 AX5에서 종목명이 한 글자로 잘린다.
+- "업로드 없음"이라고 쓰지 말 것. PlaceLookup이 좌표를 애플 지오코더로 보낸다. 문구는 "영상은 기기 밖으로 나가지 않는다"로.

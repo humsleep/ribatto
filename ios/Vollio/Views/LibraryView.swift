@@ -21,6 +21,7 @@ struct LibraryView: View {
     @EnvironmentObject var purchases: PurchaseManager
     @AppStorage("rc_lang") private var lang = "en"
     @State private var showLicenses = false
+    @State private var showPrivacy = false
     @State private var pickerItem: PhotosPickerItem?
     @State private var importing = false
     @State private var showPaywall = false
@@ -121,6 +122,7 @@ struct LibraryView: View {
             .sheet(isPresented: $showPaywall) { PaywallView(feature: paywallFeature) }
             .sheet(isPresented: $showOwner) { OwnerSheet() }
             .sheet(isPresented: $showLicenses) { LicensesView() }
+            .sheet(isPresented: $showPrivacy) { PrivacyView() }
             .fullScreenCover(isPresented: $recording) {
                 VideoRecorder { url in
                     importing = true
@@ -372,6 +374,13 @@ struct LibraryView: View {
                 }
             }
             Divider()
+            // "No account, nothing uploaded" is the app's main promise, so the
+            // detail behind it should be readable without leaving the app.
+            Button {
+                showPrivacy = true
+            } label: {
+                Label(L.s("privacy", lang), systemImage: "hand.raised")
+            }
             // The bundled fonts ship under the OFL, which requires their
             // licence to be included with them. This is where it lives.
             Button {

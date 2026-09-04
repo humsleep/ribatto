@@ -6,6 +6,7 @@ struct SessionDetailView: View {
     @EnvironmentObject var purchases: PurchaseManager
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.horizontalSizeClass) private var hSize
+    @Environment(\.dynamicTypeSize) private var typeSize
     let sessionID: UUID
 
     @State private var sort: ClipSort = .time
@@ -88,15 +89,7 @@ struct SessionDetailView: View {
                     // clear the floating tab bar
                     Color.clear.frame(height: 62)
                 } else if !busy {
-                    VStack(spacing: 10) {
-                        Image(systemName: "film")
-                            .font(.system(size: 40, weight: .light))
-                            .foregroundStyle(.secondary)
-                        Text(L.s("empty_clips", lang))
-                            .font(.subheadline).foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 40)
+                    emptyClips(session)
                 }
             }
             .padding()
@@ -171,6 +164,39 @@ struct SessionDetailView: View {
         }
     }
 
+    /// Two different situations used to share one message. After a detection
+    /// that found nothing — a quiet indoor court, or a video that isn't a match
+    /// at all — "press Detect and clips will appear" tells the user to do the
+    /// thing they just did, and reads as a broken app. Say which case it is and
+    /// give the two ways out.
+    @ViewBuilder
+    private func emptyClips(_ session: Session) -> some View {
+        let detectedNothing = session.segments?.isEmpty == true
+        VStack(spacing: 10) {
+            Image(systemName: detectedNothing ? "waveform.badge.exclamationmark" : "film")
+                .font(.system(size: 40, weight: .light))
+                .foregroundStyle(.secondary)
+            Text(L.s(detectedNothing ? "no_rallies" : "empty_clips", lang))
+                .font(.subheadline).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            if detectedNothing {
+                Text(L.s("no_rallies_hint", lang))
+                    .font(.caption).foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    destination = .addRally
+                } label: {
+                    Label(L.s("add_rally", lang), systemImage: "plus")
+                        .font(.subheadline.bold())
+                }
+                .rcSecondary()
+                .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 40).padding(.horizontal, 8)
+    }
+
     // MARK: - Settings
     // Grid sizes the label column to the widest label, so the controls stay
     // aligned in every language and at every Dynamic Type size.
@@ -233,50 +259,16 @@ struct SessionDetailView: View {
             }
 
             section("sec_detect") {
-                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 12) {
-                    GridRow {
-                        label(L.s("sport", lang))
-                        Picker("", selection: Binding(
-                            get: { session.sport },
-                            set: { v in store.setSport(session, v) })) {
-                            ForEach(Sport.allCases) { sp in
-                                Text("\(sp.emoji) \(L.s(sp.rawValue, lang))").tag(sp)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    GridRow {
-                        label(L.s("sensitivity", lang))
-                        Picker("", selection: Binding(
-                            get: { session.sensitivity },
-                            set: { v in store.setSensitivity(session, v) })) {
-                            Text(L.s("strict", lang)).tag(Sensitivity.low)
-                            Text(L.s("normal", lang)).tag(Sensitivity.normal)
-                            Text(L.s("loose", lang)).tag(Sensitivity.high)
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                }
+                settingRows([
+                    (L.s("sport", lang), AnyView(sportPicker(session))),
+                    (L.s("sensitivity", lang), AnyView(sensitivityPicker(session))),
+                ])
             }
 
             Divider()
 
             section("sec_crop") {
-                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 12) {
-                    GridRow {
-                        label(L.s("aspect", lang))
-                        Picker("", selection: Binding(
-                            get: { session.aspect },
-                            set: { v in store.setAspect(session, v) })) {
-                            Text(L.s("auto", lang)).tag(AspectSetting.auto)
-                            Text(L.s("wide", lang)).tag(AspectSetting.landscape)
-                            Text("9:16").tag(AspectSetting.vertical)
-                            Text("4:5").tag(AspectSetting.portrait45)
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                }
+                settingRows([(L.s("aspect", lang), AnyView(aspectPicker(session)))])
 
                 // The crop controls stay visible on a wide session — hiding
                 // them made tracking look like it didn't exist — with one line
@@ -445,6 +437,67 @@ struct SessionDetailView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func sportPicker(_ session: Session) -> some View {
+        Picker("", selection: Binding(
+            get: { session.sport },
+            set: { v in store.setSport(session, v) })) {
+            ForEach(Sport.allCases) { sp in
+                Text("\(sp.emoji) \(L.s(sp.rawValue, lang))").tag(sp)
+            }
+        }
+        .pickerStyle(.menu)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sensitivityPicker(_ session: Session) -> some View {
+        Picker("", selection: Binding(
+            get: { session.sensitivity },
+            set: { v in store.setSensitivity(session, v) })) {
+            Text(L.s("strict", lang)).tag(Sensitivity.low)
+            Text(L.s("normal", lang)).tag(Sensitivity.normal)
+            Text(L.s("loose", lang)).tag(Sensitivity.high)
+        }
+        .pickerStyle(.segmented)
+    }
+
+    private func aspectPicker(_ session: Session) -> some View {
+        Picker("", selection: Binding(
+            get: { session.aspect },
+            set: { v in store.setAspect(session, v) })) {
+            Text(L.s("auto", lang)).tag(AspectSetting.auto)
+            Text(L.s("wide", lang)).tag(AspectSetting.landscape)
+            Text("9:16").tag(AspectSetting.vertical)
+            Text("4:5").tag(AspectSetting.portrait45)
+        }
+        .pickerStyle(.segmented)
+    }
+
+    /// Label beside control, until the text gets big enough that the control
+    /// has no room left — at AX5 the sport menu was squeezed down to a single
+    /// letter. Past the accessibility threshold the label moves above instead.
+    @ViewBuilder
+    private func settingRows(_ rows: [(String, AnyView)]) -> some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    VStack(alignment: .leading, spacing: 6) {
+                        label(row.0)
+                        row.1.frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        } else {
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 12) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    GridRow {
+                        label(row.0)
+                        row.1
+                    }
+                }
+            }
+        }
     }
 
     /// A titled group inside the settings card. Three of them split what used
