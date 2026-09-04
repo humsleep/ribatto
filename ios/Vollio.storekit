@@ -21,6 +21,36 @@
           "description": "読み込み無制限、ウォーターマークなしの高画質書き出し、スマート縦クロップ、特定の選手を追跡、打球カウンターとスコアの焼き込み。買い切りです。サブスクもアカウントもアップロードもありません。",
           "displayName": "Vollio Pro",
           "locale": "ja_JP"
+        },
+        {
+          "description": "Importaciones ilimitadas, exportación en calidad original sin marca de agua, recorte vertical inteligente, seguimiento de un jugador, contador de golpes y marcador grabados. Pago único: sin suscripción y sin cuenta.",
+          "displayName": "Vollio Pro",
+          "locale": "es_ES"
+        },
+        {
+          "description": "Importações ilimitadas, exportação em qualidade original sem marca d'água, corte vertical inteligente, rastreamento de um jogador, contador de batidas e placar gravados. Compra única: sem assinatura e sem conta.",
+          "displayName": "Vollio Pro",
+          "locale": "pt_BR"
+        },
+        {
+          "description": "Unbegrenzte Importe, Export in voller Qualität ohne Wasserzeichen, intelligenter Hochformat-Zuschnitt, Verfolgung eines Spielers, eingebrannter Schlagzähler und Punktestand. Einmalkauf – kein Abo, kein Konto.",
+          "displayName": "Vollio Pro",
+          "locale": "de_DE"
+        },
+        {
+          "description": "Imports illimités, export en pleine qualité sans filigrane, recadrage vertical intelligent, suivi d'un joueur, compteur de frappes et score incrustés. Achat unique : sans abonnement ni compte.",
+          "displayName": "Vollio Pro",
+          "locale": "fr_FR"
+        },
+        {
+          "description": "Importazioni illimitate, esportazione alla massima qualità senza filigrana, ritaglio verticale intelligente, tracciamento di un giocatore, contatore dei colpi e punteggio impressi. Acquisto unico: nessun abbonamento e nessun account.",
+          "displayName": "Vollio Pro",
+          "locale": "it_IT"
+        },
+        {
+          "description": "无限导入、无水印原画质导出、智能竖版裁剪、锁定一位球员、烧录击球计数与比分。一次性购买：无订阅、无账号。",
+          "displayName": "Vollio Pro",
+          "locale": "zh_CN"
         }
       ],
       "productID": "com.vollio.pro",

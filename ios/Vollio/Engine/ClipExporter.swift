@@ -604,11 +604,19 @@ enum ClipExporter {
     }
 
     /// "Vollio" drawn once into a small bitmap, placed bottom-right.
+    /// The free tier's mark, and the only advertising this app has: every clip
+    /// a free user posts carries it. Plain white at 92% used to disappear into
+    /// a bright sky, which is the half of the job that matters — so it is drawn
+    /// in the bundled condensed face with a thin dark outline, which holds on
+    /// both a white cloud and a dark court.
     private static func watermarkImage(for size: CGSize) -> CIImage? {
-        let fontSize = max(18, size.height * 0.036)
-        guard let image = textImage("Vollio", font: .system, fontSize: fontSize,
-                                    color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.92),
-                                    bar: nil) else { return nil }
+        let fontSize = max(20, size.height * 0.040)
+        guard let image = textImage("VOLLIO", font: .bebas, fontSize: fontSize,
+                                    color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
+                                    bar: nil,
+                                    edge: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55),
+                                    edgeWidth: -3.5,
+                                    tracking: fontSize * 0.06) else { return nil }
         return place(image, in: size)
     }
 
@@ -671,7 +679,9 @@ enum ClipExporter {
     private static func textImage(_ text: String, font style: CaptionFont,
                                   fontSize: CGFloat,
                                   color: CGColor, bar: CGColor?,
-                                  edge: CGColor? = nil) -> CGImage? {
+                                  edge: CGColor? = nil,
+                                  edgeWidth: Double = -7.0,
+                                  tracking: CGFloat = 0) -> CGImage? {
         let font = resolveFont(style, size: fontSize)
         var attrs: [CFString: Any] = [
             kCTFontAttributeName: font,
@@ -679,10 +689,12 @@ enum ClipExporter {
         ]
         if let edge {
             // Negative width fills AND strokes. A positive one would stroke
-            // only, leaving hollow glyphs.
-            attrs[kCTStrokeWidthAttributeName] = -7.0
+            // only, leaving hollow glyphs. The width is a percentage of the
+            // font size, so a small mark needs a thinner one than a caption.
+            attrs[kCTStrokeWidthAttributeName] = edgeWidth
             attrs[kCTStrokeColorAttributeName] = edge
         }
+        if tracking != 0 { attrs[kCTKernAttributeName] = tracking }
         guard let attributed = CFAttributedStringCreate(
                 nil, text as CFString, attrs as CFDictionary) else { return nil }
         let line = CTLineCreateWithAttributedString(attributed)

@@ -21,7 +21,8 @@
 ios/Vollio/
   VollioApp.swift        진입점 · 온보딩 분기 · 3탭(라이브러리/모든 클립/시즌)
   Models.swift             Sport·Sensitivity·AspectSetting·Session·RallySegment·CaptionSettings
-  L10n.swift               인앱 다국어 (en 기본 / ko / ja) — 문자열은 여기 3곳 모두 추가
+  L10n.swift               인앱 다국어 9종 (en 기본 / ko ja es pt de fr it zh-Hans) — 문자열은 9곳 모두 추가
+                           s()는 없는 키를 영어로 폴백한다. 키 누락 검사는 세션 기록의 파서 스크립트 참고
   CaptionText.swift        캡션 토큰 {score} {rank} {shots} {tempo} {duration} {rally} {opponent} {place} {date} {sport} → 렌더 직전 클립별 문구로 치환(SessionStore)
   TennisScore.swift        태그된 승자 → 스코어라인. 테니스·파델은 15/30/40 + 게임/세트, 배드민턴·피클볼은 랠리포인트(21/11)
   Engine/                  ★ 핵심 로직, 실측 검증됨
@@ -36,6 +37,7 @@ ios/Vollio/
     ClipExporter.swift     클립 컷 · 화면비 · 페이드 · 워터마크/캡션 번인
                            + 타구 카운터(ShotCounter, Pro): 프레임 시각별로 타구 수 픽셀 번인. 타구 시각은 RallySegment.hitTimes
                            + 스코어보드 번인(좌상단). 카운터와 겹치면 카운터가 아랫줄로 내려간다
+                           워터마크(무료)는 Bebas 대문자 + 얇은 검정 외곽선. 흰 글자만으로는 밝은 하늘에서 사라진다
                            크롭은 `transform(window:)` 하나로 통일 — 소스의 사각 영역을 출력 프레임에 매핑
                            `reframed(...)`: 추적 박스가 있으면 피사체에 맞춰 축소·이동(최대 2배 줌), 없으면 기존 전체높이 창
     ReelBuilder.swift      여러 랠리를 하나의 세로 릴스로 (길이캡: reels 90s/shorts 60s/tiktok 180s)
@@ -74,7 +76,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 
 - 코드 삭제·수정 전에 **반드시 사용자에게 확인**받는다.
 - git 저장소다(main). 커밋은 사용자가 요청할 때만 한다.
-- 문자열 추가 시 L10n.swift의 en/ko/ja 3곳 모두.
+- 문자열 추가 시 L10n.swift의 9개 언어 모두. %d·%@ 자리표시자는 원문과 개수·순서가 같아야 한다.
 - 오너 패널(OwnerSheet) 진입은 `#if DEBUG`. 릴리스에 숨은 기능이 있으면 심사 2.3.1 거절 사유다.
 - 긴 렌더는 `beginBackgroundTask`로 보호된다. `.failed`는 진행 중이 아니라 메시지이므로 busy 판정은 `isBusy`를 쓴다.
 - 재렌더는 원본을 먼저 확보한 뒤 기존 클립을 지운다. 순서를 되돌리면 원본이 사라진 세션의 클립이 전부 날아간다.
