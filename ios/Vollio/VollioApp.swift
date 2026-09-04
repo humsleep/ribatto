@@ -20,6 +20,14 @@ struct VollioApp: App {
                             .tabItem {
                                 Label(L.s("all_clips", lang), systemImage: "film.stack")
                             }
+                        // The reels the user built. Sits between the raw
+                        // material and the numbers because it is the thing the
+                        // app is for.
+                        ReelsView()
+                            .tabItem {
+                                Label(L.s("reels", lang),
+                                      systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
+                            }
                         StatsView()
                             .tabItem {
                                 Label(L.s("season", lang), systemImage: "chart.bar.fill")

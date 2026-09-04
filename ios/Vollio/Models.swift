@@ -460,3 +460,35 @@ enum ProcessingStage: Equatable {
     case reel(done: Int, total: Int)
     case failed(String)
 }
+
+// MARK: - Finished reels
+
+/// A reel the user built and the app kept.
+///
+/// Reels are the app's headline output, so they get a record of their own
+/// rather than living as anonymous files: the Reels tab needs to show what a
+/// reel is without decoding the video, and the user needs to be able to delete
+/// one when storage fills.
+struct ReelInfo: Codable, Identifiable, Equatable {
+    let id: String
+    let createdAt: Date
+    /// `ReelTarget` / `OutputFrame` / `ReelPace` raw values, kept as strings so
+    /// a future case can't fail to decode an old sidecar.
+    let target: String
+    let frame: String
+    let pace: String
+    let preset: String?
+    let rallies: Int
+    let duration: Double
+    /// Court of the first session that went in, when it had one.
+    let place: String?
+
+    // Filled in when listed; never written to the sidecar.
+    var url: URL = URL(fileURLWithPath: "/")
+    var thumbURL: URL = URL(fileURLWithPath: "/")
+    var bytes: Int64 = 0
+
+    enum CodingKeys: String, CodingKey {
+        case id, createdAt, target, frame, pace, preset, rallies, duration, place
+    }
+}

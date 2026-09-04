@@ -823,6 +823,42 @@ final class SessionStore: ObservableObject {
 
     var reelsDir: URL { root.appendingPathComponent("reels", isDirectory: true) }
 
+    /// Finished reels, newest first.
+    ///
+    /// They used to be written under a name made from the settings, so building
+    /// a second reel with the same platform and pace silently overwrote the
+    /// first, and nothing in the app ever listed them: the one thing the app
+    /// exists to make had no way back to it. Each reel now gets its own id and
+    /// a small sidecar describing it.
+    func reels() -> [ReelInfo] {
+        guard let names = try? fm.contentsOfDirectory(atPath: reelsDir.path) else { return [] }
+        return names.filter { $0.hasSuffix(".json") }
+            .compactMap { name -> ReelInfo? in
+                let url = reelsDir.appendingPathComponent(name)
+                guard let data = try? Data(contentsOf: url),
+                      var info = try? JSONDecoder().decode(ReelInfo.self, from: data)
+                else { return nil }
+                info.url = reelsDir.appendingPathComponent(info.id + ".mp4")
+                info.thumbURL = reelsDir.appendingPathComponent(info.id + ".jpg")
+                guard fm.fileExists(atPath: info.url.path) else { return nil }
+                info.bytes = (try? fm.attributesOfItem(atPath: info.url.path)[.size] as? Int64)
+                    .flatMap { $0 } ?? 0
+                return info
+            }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    /// Bytes the finished reels take up, for the line that tells the user why
+    /// their storage is filling.
+    func reelsBytes() -> Int64 { reels().reduce(0) { $0 + $1.bytes } }
+
+    func deleteReel(_ reel: ReelInfo) {
+        for ext in ["mp4", "jpg", "json"] {
+            try? fm.removeItem(at: reelsDir.appendingPathComponent(reel.id + "." + ext))
+        }
+        objectWillChange.send()
+    }
+
     /// Builds one vertical reel out of the given clips, which may come from
     /// different sessions. Each rally is re-rendered from its own original so
     /// the vertical framing is chosen with the whole frame available.
@@ -879,14 +915,28 @@ final class SessionStore: ObservableObject {
 
         do {
             try? fm.createDirectory(at: reelsDir, withIntermediateDirectories: true)
-            let out = reelsDir.appendingPathComponent(
-                "reel_\(target.rawValue)_\(frame.rawValue)_\(pace.rawValue)"
-                + "_\(preset?.rawValue ?? "own").mp4")
+            // A fresh id per reel: the old settings-derived name meant a second
+            // reel with the same platform and pace replaced the first.
+            let id = "reel_" + UUID().uuidString.prefix(8).lowercased()
+            let out = reelsDir.appendingPathComponent(id + ".mp4")
             let plan = try await ReelBuilder.build(
                 items: items, target: target, frame: frame, pace: pace,
                 pro: isPro, to: out) { [weak self] done, total in
                     self?.progress[key] = .reel(done: done, total: total)
                 }
+            // Poster and sidecar, so the Reels tab can show it without opening
+            // every file.
+            try? ClipExporter.writeThumbnail(
+                of: out, at: min(1.0, max(0, plan.duration - 0.2)),
+                to: reelsDir.appendingPathComponent(id + ".jpg"))
+            let info = ReelInfo(id: id, createdAt: Date(), target: target.rawValue,
+                                frame: frame.rawValue, pace: pace.rawValue,
+                                preset: preset?.rawValue,
+                                rallies: plan.used, duration: plan.duration,
+                                place: ordered.first?.session.placeName)
+            try? JSONEncoder().encode(info)
+                .write(to: reelsDir.appendingPathComponent(id + ".json"))
+            objectWillChange.send()
             return (out, plan)
         } catch {
             progress[key] = .failed(error.localizedDescription)

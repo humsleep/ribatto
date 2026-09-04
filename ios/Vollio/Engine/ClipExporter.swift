@@ -546,7 +546,7 @@ enum ClipExporter {
     }
 
     private static func captionImage(_ c: CaptionSettings, in size: CGSize) -> CIImage? {
-        let fontSize = max(14, size.height * 0.045 * c.size)
+        let asked = max(14, size.height * 0.045 * c.size)
         let v = c.color.rgb
         let fill = CGColor(srgbRed: v.r, green: v.g, blue: v.b, alpha: 0.98)
         let bar = CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55)
@@ -558,19 +558,31 @@ enum ClipExporter {
         let edge = c.color.isLight
             ? CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.95)
             : CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.95)
-        let image: CGImage?
-        switch c.style {
-        case .plain:
-            image = textImage(c.text, font: c.font, fontSize: fontSize, color: fill, bar: nil)
-        case .bar:
-            image = textImage(c.text, font: c.font, fontSize: fontSize, color: fill, bar: bar)
-        case .accent:
-            image = textImage(c.text, font: c.font, fontSize: fontSize, color: onFill, bar: fill)
-        case .outline:
-            image = textImage(c.text, font: c.font, fontSize: fontSize, color: fill,
-                              bar: nil, edge: edge)
+        func render(_ fontSize: CGFloat) -> CGImage? {
+            switch c.style {
+            case .plain:
+                return textImage(c.text, font: c.font, fontSize: fontSize, color: fill, bar: nil)
+            case .bar:
+                return textImage(c.text, font: c.font, fontSize: fontSize, color: fill, bar: bar)
+            case .accent:
+                return textImage(c.text, font: c.font, fontSize: fontSize, color: onFill, bar: fill)
+            case .outline:
+                return textImage(c.text, font: c.font, fontSize: fontSize, color: fill,
+                                 bar: nil, edge: edge)
+            }
         }
-        guard let image else { return nil }
+
+        // Fit the caption to the frame. The size is a share of the frame HEIGHT,
+        // which says nothing about how wide the words come out — and a 9:16 crop
+        // is narrow. A German or French caption at the same setting as an
+        // English one ran off the edge and collided with the watermark, so if
+        // the first render is too wide it is redrawn proportionally smaller.
+        let usable = size.width - size.height * 0.030
+        guard var image = render(asked) else { return nil }
+        if CGFloat(image.width) > usable {
+            let shrunk = max(10, asked * usable / CGFloat(image.width))
+            if let smaller = render(shrunk) { image = smaller }
+        }
 
         // the caption is centred on (x, y) with y measured from the top, and
         // nudged so it never hangs off the edge
