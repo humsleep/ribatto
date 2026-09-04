@@ -47,6 +47,8 @@ ios/Vollio/
   Store/
     SessionStore.swift     세션 영속화 + 처리 파이프라인 (process → render). 모든 상태의 소유자
     PurchaseManager.swift  StoreKit 2. isPro 판정. OwnerSheet용 passphrase 게이트
+                           소유권은 Apple ID에 있다(비소모성·가족공유). 기기변경·재설치는 자동 복원된다
+                           rc_entitled에 마지막 응답을 캐시 — 스토어에 못 닿았을 때만 폴백하고, 닿았으면 그 답으로 덮는다
   Views/                   SessionDetailView(설정) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더) · TargetPlayerSheet(추적 대상 선택)
                            LibraryView · StatsView · CaptionEditorView · PaywallView 등
@@ -75,3 +77,4 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - 오너 패널(OwnerSheet) 진입은 `#if DEBUG`. 릴리스에 숨은 기능이 있으면 심사 2.3.1 거절 사유다.
 - 긴 렌더는 `beginBackgroundTask`로 보호된다. `.failed`는 진행 중이 아니라 메시지이므로 busy 판정은 `isBusy`를 쓴다.
 - 재렌더는 원본을 먼저 확보한 뒤 기존 클립을 지운다. 순서를 되돌리면 원본이 사라진 세션의 클립이 전부 날아간다.
+- 렌더는 `awaitEntitlement`로 소유권 판정을 기다린 뒤 tier를 확정한다. 먼저 시작하면 결제한 사용자 클립에 워터마크가 박힌다.

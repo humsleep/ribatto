@@ -35,6 +35,8 @@ struct VollioApp: App {
                 store.isPro = purchases.isPro
                 store.onSessionRegistered = { purchases.noteSessionCreated() }
                 purchases.unavailableMessage = L.s("store_unavailable", lang)
+                purchases.nothingToRestoreMessage = L.s("restore_none", lang)
+                store.awaitEntitlement = { await purchases.waitForEntitlement() }
                 store.missingSourceMessage = L.s("source_missing", lang)
                 store.placeLocale = L.locale(lang)
                 store.resolveMissingPlaceNames()
@@ -42,6 +44,7 @@ struct VollioApp: App {
             }
             .onChange(of: lang) { _, l in
                 purchases.unavailableMessage = L.s("store_unavailable", l)
+                purchases.nothingToRestoreMessage = L.s("restore_none", l)
                 store.missingSourceMessage = L.s("source_missing", l)
                 store.placeLocale = L.locale(l)
             }

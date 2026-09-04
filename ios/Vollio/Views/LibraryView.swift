@@ -206,10 +206,29 @@ struct LibraryView: View {
                         .font(.subheadline.bold())
                 }
                 .rcSecondary()
+                if !purchases.isPro {
+                    Button {
+                        Task { await purchases.restore() }
+                    } label: {
+                        Text(L.s("restore_hint", lang))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .underline()
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 4)
+                }
             }
             .padding(.top, 8)
         }
         .padding(32)
+        // Restore reports failure through the same channel the paywall uses;
+        // here there is no paywall on screen to show it.
+        .alert(purchases.errorMessage ?? "", isPresented: Binding(
+            get: { purchases.errorMessage != nil },
+            set: { if !$0 { purchases.errorMessage = nil } })) {
+            Button("OK", role: .cancel) { purchases.errorMessage = nil }
+        }
     }
 
     private var sportFilterBar: some View {

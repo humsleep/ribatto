@@ -15,6 +15,15 @@ final class PurchaseManager: ObservableObject {
 #endif
     static let freeLimit = 3
     private static let counterKey = "rc_sessions_created"
+    /// The last answer the App Store gave about this purchase.
+    ///
+    /// Ownership lives on the Apple ID, not the device, so `currentEntitlements`
+    /// restores a purchase on a new phone with no action from the user. What it
+    /// cannot do is answer while StoreKit is unreachable — and an empty result
+    /// reads exactly like "never bought". Caching the last real answer is what
+    /// stops a first launch in airplane mode from quietly demoting someone who
+    /// paid.
+    private static let entitlementKey = "rc_entitled"
 
     // MARK: Owner override
     //
@@ -33,7 +42,13 @@ final class PurchaseManager: ObservableObject {
     private static let ownerModeKey = "rc_owner_mode"
     private static let ownerProKey = "rc_owner_pro"
 
-    @Published private(set) var isPro = false
+    /// Starts from the cached answer so a paying customer is Pro from the first
+    /// frame, then is confirmed or corrected once the App Store replies.
+    @Published private(set) var isPro =
+        UserDefaults.standard.bool(forKey: PurchaseManager.entitlementKey)
+    /// False until the App Store has answered once this launch. Anything that
+    /// bakes the tier into a file — a render — waits for this.
+    @Published private(set) var entitlementResolved = false
     @Published private(set) var product: Product?
     @Published private(set) var sessionsCreated =
         UserDefaults.standard.integer(forKey: PurchaseManager.counterKey)
@@ -42,6 +57,9 @@ final class PurchaseManager: ObservableObject {
     /// Set by the app so this type stays free of the L10n table; shown when the
     /// App Store has no product to sell (offline, or a store outage).
     var unavailableMessage = "Product unavailable"
+    /// Shown when Restore completes and finds nothing. Without it the button
+    /// spins and then looks broken, which is a common review complaint.
+    var nothingToRestoreMessage = "No purchase found on this Apple ID"
     /// True once the owner passphrase has been accepted on this device.
     @Published private(set) var ownerMode =
         UserDefaults.standard.bool(forKey: PurchaseManager.ownerModeKey)
@@ -115,7 +133,20 @@ final class PurchaseManager: ObservableObject {
         if product == nil {
             product = try? await Product.products(for: [Self.productID]).first
         }
-        await updateEntitlement()
+        // A successful product lookup is the evidence that StoreKit could be
+        // reached, which is what makes an empty entitlement set trustworthy.
+        await updateEntitlement(storeReachable: product != nil)
+    }
+
+    /// Suspends until the App Store has answered once, so a render started
+    /// seconds after launch cannot bake a watermark into a paying customer's
+    /// clips. Gives up after a few seconds: a dead network must not block the
+    /// pipeline, and the cached answer is already in `isPro`.
+    func waitForEntitlement() async {
+        let deadline = Date().addingTimeInterval(5)
+        while !entitlementResolved && Date() < deadline {
+            try? await Task.sleep(nanoseconds: 150_000_000)
+        }
     }
 
     func purchase() async {
@@ -166,7 +197,8 @@ final class PurchaseManager: ObservableObject {
         }
 #endif
         try? await AppStore.sync()
-        await updateEntitlement()
+        await refresh()
+        if !isPro { errorMessage = nothingToRestoreMessage }
     }
 
     private func redeem(_ result: VerificationResult<Transaction>) async {
@@ -175,7 +207,7 @@ final class PurchaseManager: ObservableObject {
         await updateEntitlement()
     }
 
-    private func updateEntitlement() async {
+    private func updateEntitlement(storeReachable: Bool = true) async {
         var owned = false
         for await result in Transaction.currentEntitlements {
             if case .verified(let t) = result,
@@ -183,6 +215,19 @@ final class PurchaseManager: ObservableObject {
                 owned = true
             }
         }
+
+        // An empty result means both "you never bought this" and "I couldn't
+        // ask". Only the first is worth remembering; the second falls back to
+        // what the App Store last said, so a flight or a store outage doesn't
+        // hand a paying customer a watermark.
+        if owned || storeReachable {
+            UserDefaults.standard.set(owned, forKey: Self.entitlementKey)
+        } else {
+            owned = UserDefaults.standard.bool(forKey: Self.entitlementKey)
+        }
+        entitlementResolved = true
+
+        // The overrides below are for testing and must never reach the cache.
 #if DEBUG
         if UserDefaults.standard.bool(forKey: Self.testProKey) { owned = true }
 #endif

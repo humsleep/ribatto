@@ -28,6 +28,11 @@ final class SessionStore: ObservableObject {
     /// Called once a new session exists on disk, so the free allowance is spent
     /// even if processing is interrupted.
     var onSessionRegistered: (() -> Void)?
+    /// Set by the app: suspends until the App Store has said whether this user
+    /// owns Pro. A render bakes the tier into the file, so starting one before
+    /// the answer lands is how a paying customer gets watermarked 720p clips on
+    /// a phone they just restored.
+    var awaitEntitlement: (() async -> Void)?
 
     private let fm = FileManager.default
     /// Shown when the original has been deleted from Photos.
@@ -595,6 +600,8 @@ final class SessionStore: ObservableObject {
             progress[sessionID] = .failed(missingSourceMessage)
             return
         }
+        await awaitEntitlement?()
+
         do {
             let cdir = clipsDir(s)
             try? fm.removeItem(at: cdir)

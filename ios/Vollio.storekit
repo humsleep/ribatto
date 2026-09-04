@@ -8,14 +8,19 @@
       "internalID": "RC000001",
       "localizations": [
         {
-          "description": "Unlimited video imports, all racket sports, highlight reels. One-time purchase, no subscription.",
+          "description": "Unlimited imports, full-quality export with no watermark, smart vertical crop, follow one player, shot counter and scoreboard burned in. One-time purchase — no subscription, no account, nothing uploaded.",
           "displayName": "Vollio Pro",
           "locale": "en_US"
         },
         {
-          "description": "영상 무제한 가져오기, 모든 종목, 하이라이트 합본. 구독 없이 한 번만 결제합니다.",
+          "description": "영상 무제한 가져오기, 워터마크 없는 원본 화질 저장, 스마트 세로 크롭, 특정 선수 추적, 타구 카운터·점수판 번인. 1회 결제입니다. 구독도, 계정도, 업로드도 없습니다.",
           "displayName": "Vollio Pro",
           "locale": "ko_KR"
+        },
+        {
+          "description": "読み込み無制限、ウォーターマークなしの高画質書き出し、スマート縦クロップ、特定の選手を追跡、打球カウンターとスコアの焼き込み。買い切りです。サブスクもアカウントもアップロードもありません。",
+          "displayName": "Vollio Pro",
+          "locale": "ja_JP"
         }
       ],
       "productID": "com.vollio.pro",
