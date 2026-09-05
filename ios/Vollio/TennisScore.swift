@@ -17,7 +17,7 @@ enum TennisScore {
     static func line(for segments: [RallySegment],
                      sport: Sport = .tennis, lang: String = "en") -> [String] {
         sport.usesGameScoring ? classic(segments, lang)
-                              : race(segments, to: sport.raceTo, lang)
+                              : race(segments, to: sport.raceTo, cap: sport.raceCap, lang)
     }
 
     // MARK: - 15/30/40
@@ -33,18 +33,25 @@ enum TennisScore {
         for seg in segments {
             guard let w = seg.winner else { out.append(""); continue }
             let i = w == .me ? 0 : 1, j = 1 - i
+            let tiebreak = games == [6, 6]
             pts[i] += 1
-            // deuce/advantage, then the game
-            if pts[i] >= 4 && pts[i] - pts[j] >= 2 {
+            // At 6–6 the game is a tiebreak: a race to 7, win by two, counted
+            // in plain numbers. Scoring it as an ordinary game handed the set
+            // over after four points and showed "40–0" where a tiebreak reads
+            // "6–6 · 4–0".
+            let won = tiebreak ? (pts[i] >= 7 && pts[i] - pts[j] >= 2)
+                               : (pts[i] >= 4 && pts[i] - pts[j] >= 2)
+            if won {
                 games[i] += 1
                 pts = [0, 0]
-                // 6 games with two clear, or 7 either way after a tiebreak
+                // six games with two clear, or the 7–6 a tiebreak produces
                 if (games[i] >= 6 && games[i] - games[j] >= 2) || games[i] == 7 {
                     sets[i] += 1
                     games = [0, 0]
                 }
             }
-            out.append(text(pts: pts, games: games, sets: sets, lang))
+            out.append(text(pts: pts, games: games, sets: sets,
+                            tiebreak: tiebreak && games == [6, 6], lang))
         }
         return out
     }
@@ -52,12 +59,14 @@ enum TennisScore {
     /// Reads the way a player would say it: "15–0" at the start of a match,
     /// not "0–0 · 15–0". A 0–0 component is dropped unless it is the only
     /// thing there is to say.
-    private static func text(pts: [Int], games: [Int], sets: [Int], _ lang: String) -> String {
+    private static func text(pts: [Int], games: [Int], sets: [Int],
+                             tiebreak: Bool, _ lang: String) -> String {
         var parts: [String] = []
         if sets[0] > 0 || sets[1] > 0 {
             parts.append("\(sets[0])–\(sets[1]) " + L.s("sc_sets", lang))
         }
-        let point = gameText(pts, lang)
+        let point = tiebreak ? (pts == [0, 0] ? nil : "\(pts[0])–\(pts[1])")
+                             : gameText(pts, lang)
         if games != [0, 0] || (parts.isEmpty && point == nil) {
             parts.append("\(games[0])–\(games[1])")
         }
@@ -78,7 +87,7 @@ enum TennisScore {
     // MARK: - Rally point
 
     private static func race(_ segments: [RallySegment], to target: Int,
-                             _ lang: String) -> [String] {
+                             cap: Int, _ lang: String) -> [String] {
         var pts = [0, 0]
         var games = [0, 0]
         var out: [String] = []
@@ -86,7 +95,9 @@ enum TennisScore {
             guard let w = seg.winner else { out.append(""); continue }
             let i = w == .me ? 0 : 1, j = 1 - i
             pts[i] += 1
-            if pts[i] >= target && pts[i] - pts[j] >= 2 {
+            // Win by two, but a badminton game is capped: at 29–29 the next
+            // point takes it, so 30 always ends the game.
+            if pts[i] >= target && (pts[i] - pts[j] >= 2 || pts[i] >= cap) {
                 games[i] += 1
                 pts = [0, 0]
             }
@@ -123,4 +134,7 @@ extension Sport {
     var usesGameScoring: Bool { self == .tennis || self == .padel }
     /// Points that take a game in the rally-point sports.
     var raceTo: Int { self == .badminton ? 21 : 11 }
+    /// The point that ends a game no matter the margin. Badminton caps at 30;
+    /// pickleball has no cap in the common rulebook, so it is set out of reach.
+    var raceCap: Int { self == .badminton ? 30 : .max }
 }

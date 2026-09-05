@@ -145,7 +145,8 @@ struct LibraryView: View {
                 Button("OK", role: .cancel) { importError = nil }
             }
             .confirmationDialog(
-                String(format: L.s("delete_n_sessions", lang), selection.count),
+                String(format: L.s(selection.count == 1 ? "delete_one_session"
+                                        : "delete_n_sessions", lang), selection.count),
                 isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button(L.s("delete", lang), role: .destructive) {
                     for id in selection {
@@ -239,7 +240,8 @@ struct LibraryView: View {
                 Label(L.s("filter", lang), systemImage: "line.3.horizontal.decrease")
                     .font(.subheadline.bold())
                 Spacer()
-                Text(String(format: L.s("n_sessions", lang), visibleSessions.count))
+                Text(String(format: L.s(visibleSessions.count == 1 ? "n_one_session"
+                                                   : "n_sessions", lang), visibleSessions.count))
                     .font(.caption).foregroundStyle(.secondary)
             }
             ScrollView(.horizontal, showsIndicators: false) {
@@ -350,6 +352,9 @@ struct LibraryView: View {
         // Plain gestures rather than a Button: a Button consumes the touch on
         // press, so the long press never got a chance to fire.
         .contentShape(Capsule())
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(purchases.isPro ? L.s("pro", lang)
+                                            : L.s("paywall_title", lang))
         // Debug-only: a passphrase-gated switch that grants the paid
         // entitlement is undocumented functionality in a shipped build, which
         // App Review rejects under 2.3.1.

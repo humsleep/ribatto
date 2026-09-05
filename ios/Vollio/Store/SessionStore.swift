@@ -100,12 +100,17 @@ final class SessionStore: ObservableObject {
         var out: [ClipInfo] = []
         for (i, seg) in segments.enumerated() {
             let cid = String(format: "clip_%02d", i + 1)
+            // Qualified by session: "clip_01" repeats in every session, and the
+            // All Clips tab keys its multi-select on this across all of them —
+            // selecting one match's first rally selected every match's first
+            // rally, and Delete removed them all.
+            let gid = s.id.uuidString + "/" + cid
             let url = cdir.appendingPathComponent("\(cid).mp4")
             let thumb = cdir.appendingPathComponent("\(cid).jpg")
             let ready = fm.fileExists(atPath: url.path)
             // a rally with only its poster drawn is still worth showing
             guard ready || fm.fileExists(atPath: thumb.path) else { continue }
-            out.append(ClipInfo(id: cid, index: i, url: url, thumbURL: thumb,
+            out.append(ClipInfo(id: gid, index: i, url: url, thumbURL: thumb,
                                 segment: seg,
                                 orientation: s.renderedOrientation ?? "landscape",
                                 sessionID: s.id, isReady: ready))
@@ -374,8 +379,12 @@ final class SessionStore: ObservableObject {
     /// clip files are rebuilt rather than patched.
     @discardableResult
     func addRally(to session: Session, start: Double, end: Double) async -> Bool {
-        guard !isBusy(session.id), end - start >= minClipSeconds else { return false }
-        var segments = session.segments ?? []
+        guard !isBusy(session.id), end - start >= minClipSeconds,
+              let live = sessions.first(where: { $0.id == session.id })
+        else { return false }
+        // The sheet was handed a snapshot; anything written while it was open
+        // would be lost if we edited that copy.
+        var segments = live.segments ?? []
         let seg = RallySegment(start: max(0, start),
                                end: min(session.duration, end),
                                hits: 0, score: nil, trimmed: true)
@@ -417,7 +426,11 @@ final class SessionStore: ObservableObject {
                                   score: nil, trimmed: true,
                                   hitTimes: seg.hitTimes == nil ? nil : secondHits,
                                   cheer: seg.cheer)
-        first.winner = seg.winner
+        // Both tags describe the point the user was looking at, and that point
+        // is the one that ends where the original ended — the second half.
+        // Splitting them across the two halves put the winner on a point the
+        // user never judged.
+        second.winner = seg.winner
         second.favourite = seg.favourite
         segments.replaceSubrange(clip.index...clip.index, with: [first, second])
         mutate(session.id) {
@@ -443,6 +456,28 @@ final class SessionStore: ObservableObject {
         }
         return out
     }
+    /// The burned-in score for one clip, matching what the last full render
+    /// used. Every path that re-encodes a single clip has to pass this or the
+    /// clip silently comes back without the scoreboard.
+    private func scoreboardLine(_ s: Session, segments: [RallySegment], at index: Int) -> String? {
+        guard s.renderedScoreboard ?? false else { return nil }
+        return TennisScore.line(for: segments, sport: s.sport, lang: lang)[safe: index]
+    }
+
+    /// Rebuilds per-clip overrides after a delete: `survivors` lists the old
+    /// indices that remain, in order, so each override moves to the position
+    /// its rally now holds. Without this an override kept its old key and
+    /// silently started following the wrong person on a different rally.
+    private func remap(_ targets: [String: TargetPlayer]?,
+                       survivors: [Int]) -> [String: TargetPlayer]? {
+        guard let targets, !targets.isEmpty else { return targets }
+        var out: [String: TargetPlayer] = [:]
+        for (newIndex, oldIndex) in survivors.enumerated() {
+            if let v = targets[String(oldIndex)] { out[String(newIndex)] = v }
+        }
+        return out
+    }
+
     /// The in-app language, for strings burned into video (the counter's
     /// label, a caption's "Best #1").
     var lang: String { UserDefaults.standard.string(forKey: "rc_lang") ?? "en" }
@@ -478,7 +513,7 @@ final class SessionStore: ObservableObject {
               updated.renderedSmartCrop == true else { return }
 
         progress[session.id] = .render(done: clip.index, total: segments.count)
-        defer { progress[session.id] = nil }
+        defer { clearProgressUnlessFailed(session.id) }
         guard let source = await loadAsset(updated) else {
             progress[session.id] = .failed(missingSourceMessage)
             return
@@ -498,7 +533,10 @@ final class SessionStore: ObservableObject {
                 targetPlayer: updated.target(forClip: clip.index),
                 counter: (updated.renderedShotCounter ?? false)
                     ? ShotCounter.make(for: segments[clip.index],
-                                       label: L.s("counter_label", lang)) : nil)
+                                       label: L.s("counter_label", lang)) : nil,
+                // Without this the re-cut clip comes back with no score while
+                // every other clip in the session still carries one.
+                scoreboard: scoreboardLine(updated, segments: segments, at: clip.index))
             // Only this clip was re-cut, so only this clip's record moves —
             // leaving the rest of `renderedClipTargets` alone keeps the
             // "settings changed" hint honest about the clips still stale.
@@ -581,6 +619,15 @@ final class SessionStore: ObservableObject {
 
     /// Keeps a multi-minute export alive when the user leaves the app. Without
     /// it the export is killed mid-file and the session lands in `.failed`.
+    /// Clears the progress entry unless it holds a failure. A plain
+    /// `defer { progress[id] = nil }` wiped the message the same scope had just
+    /// set, so every error from trim, re-target, merge and reel-build vanished
+    /// before it could be drawn and the button looked like it did nothing.
+    private func clearProgressUnlessFailed(_ id: UUID) {
+        if case .failed = progress[id] { return }
+        progress[id] = nil
+    }
+
     private func beginBackgroundTask() -> UIBackgroundTaskIdentifier {
         UIApplication.shared.beginBackgroundTask(withName: "VollioRender") {}
     }
@@ -625,10 +672,11 @@ final class SessionStore: ObservableObject {
             let winners = s.winnerTags
             let target = useSmartCrop ? s.targetPlayer : nil
             let perClip = useSmartCrop ? (s.clipTargets ?? [:]) : [:]
-            mutate(sessionID) {
-                $0.hasHighlight = false
-                $0.renderedOrientation = orient
-            }
+            // `renderedOrientation` is the record of a finished render, so it
+            // is written only on the success path below. Setting it here made a
+            // render that threw halfway look complete: needsRerender went false
+            // and Apply then had nothing to do, stranding the session.
+            mutate(sessionID) { $0.hasHighlight = false }
             // 1) posters for every rally (no encoding — takes a moment, not minutes)
             for (i, seg) in segments.enumerated() {
                 let base = String(format: "clip_%02d", i + 1)
@@ -698,7 +746,7 @@ final class SessionStore: ObservableObject {
         try? fm.removeItem(at: highlightURL(session))
 
         progress[session.id] = .render(done: clip.index, total: segments.count)
-        defer { progress[session.id] = nil }
+        defer { clearProgressUnlessFailed(session.id) }
         guard let source = await loadAsset(session) else {
             progress[session.id] = .failed(missingSourceMessage)
             return
@@ -718,7 +766,8 @@ final class SessionStore: ObservableObject {
                 targetPlayer: (session.renderedSmartCrop ?? false)
                     ? session.target(forClip: clip.index) : nil,
                 counter: (session.renderedShotCounter ?? false)
-                    ? ShotCounter.make(for: segment, label: L.s("counter_label", lang)) : nil)
+                    ? ShotCounter.make(for: segment, label: L.s("counter_label", lang)) : nil,
+                scoreboard: scoreboardLine(session, segments: segments, at: clip.index))
             objectWillChange.send()
         } catch {
             progress[session.id] = .failed(error.localizedDescription)
@@ -731,7 +780,8 @@ final class SessionStore: ObservableObject {
 
     func makeHighlight(sessionID: UUID) async {
         guard let s = sessions.first(where: { $0.id == sessionID }),
-              progress[sessionID] == nil else { return }
+              !isBusy(sessionID) else { return }
+        progress[sessionID] = nil       // clear a leftover .failed
         let urls = clips(of: s).filter(\.isReady).map(\.url)
         guard !urls.isEmpty else { return }
         do {
@@ -749,7 +799,10 @@ final class SessionStore: ObservableObject {
     /// Deletes the given clips and renumbers what remains so clip_NN stays
     /// aligned with the segment list.
     func deleteClips(_ ids: Set<String>, from session: Session) {
-        guard var s = sessions.first(where: { $0.id == session.id }),
+        // A render renumbers the same files; deleting under it leaves clips
+        // holding the wrong rally.
+        guard !isBusy(session.id),
+              var s = sessions.first(where: { $0.id == session.id }),
               let segments = s.segments else { return }
         let cdir = clipsDir(s)
         let doomed = Set(clips(of: s).filter { ids.contains($0.id) }.map(\.index))
@@ -777,6 +830,8 @@ final class SessionStore: ObservableObject {
         }
 
         s.segments = survivors.map { segments[$0] }
+        s.clipTargets = remap(s.clipTargets, survivors: survivors)
+        s.renderedClipTargets = remap(s.renderedClipTargets, survivors: survivors)
         // the reel was built from the old set
         try? fm.removeItem(at: highlightURL(s))
         s.hasHighlight = false
@@ -809,7 +864,7 @@ final class SessionStore: ObservableObject {
         guard chosen.count >= 2 else { return nil }
         let out = dir(session).appendingPathComponent("merged.mp4")
         progress[session.id] = .merge
-        defer { progress[session.id] = nil }
+        defer { clearProgressUnlessFailed(session.id) }
         do {
             try await HighlightMerger.merge(clips: chosen.map(\.url), to: out)
             return out
@@ -877,7 +932,14 @@ final class SessionStore: ObservableObject {
         let key = ordered[0].session.id
         guard !isBusy(key) else { return nil }
         progress[key] = .reel(done: 0, total: ordered.count)
-        defer { progress[key] = nil }
+        // A reel re-renders every rally from its original, so it is the longest
+        // job the app runs — and the one a user is most likely to walk away
+        // from. Without this, switching to Instagram to wait killed it.
+        let task = beginBackgroundTask()
+        defer {
+            clearProgressUnlessFailed(key)
+            UIApplication.shared.endBackgroundTask(task)
+        }
 
         // one asset load per session, however many clips it contributes
         var assets: [UUID: AVAsset] = [:]
@@ -919,6 +981,16 @@ final class SessionStore: ObservableObject {
             // reel with the same platform and pace replaced the first.
             let id = "reel_" + UUID().uuidString.prefix(8).lowercased()
             let out = reelsDir.appendingPathComponent(id + ".mp4")
+            // The sidecar is what makes the reel visible and deletable, so it
+            // is written first: a crash between the two used to leave a
+            // several-hundred-megabyte file the app could neither show nor
+            // remove. `reels()` drops entries whose mp4 never arrived.
+            let placeholder = ReelInfo(id: id, createdAt: Date(), target: target.rawValue,
+                                       frame: frame.rawValue, pace: pace.rawValue,
+                                       preset: preset?.rawValue, rallies: 0, duration: 0,
+                                       place: ordered.first?.session.placeName)
+            try? JSONEncoder().encode(placeholder)
+                .write(to: reelsDir.appendingPathComponent(id + ".json"))
             let plan = try await ReelBuilder.build(
                 items: items, target: target, frame: frame, pace: pace,
                 pro: isPro, to: out) { [weak self] done, total in
@@ -958,11 +1030,18 @@ final class SessionStore: ObservableObject {
     }
 
     func deleteClip(_ clip: ClipInfo) {
-        guard var s = sessions.first(where: { $0.id == clip.sessionID }),
+        guard !isBusy(clip.sessionID),
+              var s = sessions.first(where: { $0.id == clip.sessionID }),
               var segments = s.segments,
               clip.index < segments.count else { return }
         segments.remove(at: clip.index)
         s.segments = segments
+        let kept = Array(0..<(segments.count + 1)).filter { $0 != clip.index }
+        s.clipTargets = remap(s.clipTargets, survivors: kept)
+        s.renderedClipTargets = remap(s.renderedClipTargets, survivors: kept)
+        // the reel was built from the old set
+        try? fm.removeItem(at: highlightURL(s))
+        s.hasHighlight = false
         let cdir = clipsDir(s)
         try? fm.removeItem(at: clip.url)
         try? fm.removeItem(at: clip.thumbURL)

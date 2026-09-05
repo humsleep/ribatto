@@ -353,15 +353,28 @@ enum ClipExporter {
             asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
             throw NSError(domain: "Vollio", code: 11)
         }
-        try? FileManager.default.removeItem(at: clipURL)
+        // Encode beside the clip and move it into place at the end. Deleting
+        // the old file first meant a trim that failed halfway — a disk that
+        // filled, a source evicted to iCloud — left the card with a poster and
+        // no video, and nothing to fall back to.
+        let staging = clipURL.deletingLastPathComponent()
+            .appendingPathComponent("tmp_" + clipURL.lastPathComponent)
+        try? FileManager.default.removeItem(at: staging)
         session.videoComposition = comp
         session.audioMix = audioMix
         session.timeRange = CMTimeRange(
             start: segStart,
             duration: CMTime(seconds: dur, preferredTimescale: 600))
-        try await export(session: session, to: clipURL)
-        try await burnOverlays(into: clipURL, watermark: !pro, caption: caption,
-                               counter: counter, scoreboard: scoreboard)
+        do {
+            try await export(session: session, to: staging)
+            try await burnOverlays(into: staging, watermark: !pro, caption: caption,
+                                   counter: counter, scoreboard: scoreboard)
+        } catch {
+            try? FileManager.default.removeItem(at: staging)
+            throw error
+        }
+        try? FileManager.default.removeItem(at: clipURL)
+        try FileManager.default.moveItem(at: staging, to: clipURL)
 
         if let thumbURL {
             try? writeThumbnail(of: clipURL, at: min(1.0, dur / 2), to: thumbURL)

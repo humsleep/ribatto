@@ -114,7 +114,7 @@ struct StatsView: View {
                                 Text(String(format: L.s("record_fmt", lang), o.won, o.lost))
                                     .font(.subheadline.bold())
                                     .foregroundStyle(o.won >= o.lost ? Theme.accent : .primary)
-                                Text(String(format: L.s("visits_fmt", lang), o.matches))
+                                Text(String(format: L.s(o.matches == 1 ? "matches_one" : "matches_n", lang), o.matches))
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
@@ -130,7 +130,7 @@ struct StatsView: View {
                                     .foregroundStyle(Theme.accent).frame(width: 22)
                                 Text(place.name).font(.subheadline).lineLimit(1)
                                 Spacer(minLength: 8)
-                                Text(String(format: L.s("visits_fmt", lang), place.visits))
+                                Text(String(format: L.s(place.visits == 1 ? "visits_one" : "visits_fmt", lang), place.visits))
                                     .font(.subheadline.bold())
                                 Text(String(format: L.s("rallies_n", lang), place.rallies))
                                     .font(.caption).foregroundStyle(.secondary)

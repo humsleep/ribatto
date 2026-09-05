@@ -259,9 +259,12 @@ struct ReelSheet: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .scrollDisabled(true)
+            // Tall enough for the whole reel where it fits, scrollable where
+            // it doesn't. Capping at 320pt with scrolling off meant a 20-rally
+            // reel showed six rows and silently hid the rest — they were in the
+            // reel, but could not be seen, reordered or deselected.
             .environment(\.editMode, .constant(.active))
-            .frame(height: min(CGFloat(entries.count) * 52 + 8, 320))
+            .frame(height: min(CGFloat(entries.count) * 52 + 8, 520))
         }
         .padding(14)
         .rcCard()
@@ -456,11 +459,19 @@ struct ReelSheet: View {
         building = true
         defer { building = false }
         let pairs = chosen.map { (session: $0.session, clip: $0.clip) }
-        guard !pairs.isEmpty,
-              let out = await store.buildReel(from: pairs, target: target,
+        guard !pairs.isEmpty else { return }
+        // A busy session used to report that the user's original video was
+        // gone from Photos, which is the most alarming thing the app can say
+        // and was untrue.
+        if store.isBusy(pairs[0].session.id) {
+            message = L.s("busy_wait", lang)
+            return
+        }
+        guard let out = await store.buildReel(from: pairs, target: target,
                                               frame: frame, pace: pace,
                                               preset: preset) else {
-            message = L.s("source_missing", lang)
+            message = store.sourceMissing(pairs[0].session)
+                ? L.s("source_missing", lang) : L.s("render_failed", lang)
             return
         }
         player = AVPlayer(url: out.url)

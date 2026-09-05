@@ -135,6 +135,10 @@ struct SessionDetailView: View {
         } message: {
             Text(L.s("target_switch_msg", lang))
         }
+        .alert(saveMessage ?? "", isPresented: Binding(
+            get: { saveMessage != nil }, set: { if !$0 { saveMessage = nil } })) {
+            Button("OK", role: .cancel) { saveMessage = nil }
+        }
         .confirmationDialog(L.s("delete_session", lang),
                             isPresented: $confirmDeleteSession) {
             Button(L.s("delete", lang), role: .destructive) {
@@ -321,7 +325,12 @@ struct SessionDetailView: View {
                         guard !purchases.isPro else { return }
                         destination = .paywall(feature: L.s("feat_quality", lang))
                     } label: {
-                        Text(purchases.isPro ? L.s("quality_source", lang)
+                        // 4K is the wide path only: a portrait export is
+                        // capped at a 1080 short side, and 9:16 is the app's
+                        // main output — promising 4K there was simply false.
+                        Text(purchases.isPro
+                             ? L.s(OutputFrame(session.effectiveOrientation).isPortrait
+                                   ? "quality_1080" : "quality_source", lang)
                                              : L.s("quality_720", lang))
                             .font(.caption.bold())
                             .foregroundStyle(purchases.isPro ? Theme.accent : .secondary)
@@ -406,14 +415,23 @@ struct SessionDetailView: View {
             // thing that must not happen. Disabling the whole card instead used
             // to swallow taps on the aspect picker for the first minute after
             // an import, with nothing on screen saying it was locked.
+            // The label follows what pressing it will actually do. It used to
+            // read "Re-detect" even when the pending change was a caption edit
+            // — which only re-renders — and in the common case where nothing
+            // had changed it was enabled and did nothing at all.
+            let needsDetect = session.segments == nil
+                || session.segments?.isEmpty == true || session.needsRedetect
             Button {
                 Task { await store.apply(sessionID: sessionID) }
             } label: {
-                Text(session.segments == nil ? L.s("detect", lang) : L.s("redetect", lang))
+                Text(needsDetect ? (session.segments == nil ? L.s("detect", lang)
+                                                            : L.s("redetect", lang))
+                                 : L.s("apply_changes", lang))
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 26)
             }
             .rcPrimary()
+            .disabled(!needsDetect && !session.needsRerender)
             .disabled(busy || store.sourceMissing(session))
         }
         .padding(14)
@@ -672,7 +690,7 @@ struct SessionDetailView: View {
             }
             Task {
                 if let n = await store.saveClipsToPhotos(session) {
-                    saveMessage = String(format: L.s("saved_n_fmt", lang), n)
+                    saveMessage = String(format: L.s(n == 1 ? "saved_one_fmt" : "saved_n_fmt", lang), n)
                 } else {
                     saveMessage = L.s("photos_denied", lang)
                 }
@@ -743,7 +761,7 @@ struct SessionDetailView: View {
             }
             Task {
                 if let saved = await store.saveClipsToPhotos(session, ids: selection) {
-                    saveMessage = String(format: L.s("saved_n_fmt", lang), saved)
+                    saveMessage = String(format: L.s(saved == 1 ? "saved_one_fmt" : "saved_n_fmt", lang), saved)
                 } else {
                     saveMessage = L.s("photos_denied", lang)
                 }

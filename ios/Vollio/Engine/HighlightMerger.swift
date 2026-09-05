@@ -29,16 +29,23 @@ enum HighlightMerger {
             cursor = cursor + duration
         }
 
-        try? FileManager.default.removeItem(at: output)
+        // Build beside the old file, not over it: rebuilding a highlight on a
+        // nearly-full device used to delete the working one and then fail,
+        // leaving the card offering play and save on a file that was gone.
+        let staging = output.deletingLastPathComponent()
+            .appendingPathComponent("tmp_" + output.lastPathComponent)
+        try? FileManager.default.removeItem(at: staging)
         for preset in [AVAssetExportPresetPassthrough, AVAssetExportPresetHighestQuality] {
             guard let session = AVAssetExportSession(asset: comp, presetName: preset) else {
                 continue
             }
             do {
-                try await ClipExporter.export(session: session, to: output)
+                try await ClipExporter.export(session: session, to: staging)
+                try? FileManager.default.removeItem(at: output)
+                try FileManager.default.moveItem(at: staging, to: output)
                 return
             } catch {
-                try? FileManager.default.removeItem(at: output)
+                try? FileManager.default.removeItem(at: staging)
                 continue
             }
         }

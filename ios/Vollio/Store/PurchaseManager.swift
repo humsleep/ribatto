@@ -62,10 +62,24 @@ final class PurchaseManager: ObservableObject {
     var nothingToRestoreMessage = "No purchase found on this Apple ID"
     /// True once the owner passphrase has been accepted on this device.
     @Published private(set) var ownerMode =
-        UserDefaults.standard.bool(forKey: PurchaseManager.ownerModeKey)
+        PurchaseManager.storedOwnerFlag(PurchaseManager.ownerModeKey)
     /// The owner's chosen tier while `ownerMode` is on.
     @Published private(set) var ownerPro =
-        UserDefaults.standard.bool(forKey: PurchaseManager.ownerProKey)
+        PurchaseManager.storedOwnerFlag(PurchaseManager.ownerProKey)
+
+    /// Always false outside DEBUG, and it clears the stored value on the way
+    /// past so a flag set in a development build cannot survive into the
+    /// Release build installed over it.
+    private static func storedOwnerFlag(_ key: String) -> Bool {
+#if DEBUG
+        return UserDefaults.standard.bool(forKey: key)
+#else
+        if UserDefaults.standard.object(forKey: key) != nil {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        return false
+#endif
+    }
 
     private var updateTask: Task<Void, Never>?
 
@@ -233,7 +247,15 @@ final class PurchaseManager: ObservableObject {
 #endif
         // The owner's switch wins in both directions, so the free tier can be
         // re-tested on a device that has genuinely bought Pro.
+        //
+        // DEBUG only, and not merely because of App Review: the switch that
+        // turns it off lives behind a DEBUG-gated long press, so a device that
+        // carried `rc_owner_mode = true` with the free tier selected into a
+        // Release build had no way out — a real purchase would succeed and
+        // still leave the user on the free tier for good.
+#if DEBUG
         if ownerMode { owned = ownerPro }
+#endif
         isPro = owned
     }
 }

@@ -238,22 +238,26 @@ struct ClipPlayerSheet: View {
                     Button(role: .destructive) { confirmDelete = true } label: {
                         Image(systemName: "trash")
                     }
+                    .accessibilityLabel(L.s("delete_clip", lang))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { store.toggleFavourite(clip) } label: {
                         Image(systemName: isFavourite ? "star.fill" : "star")
                             .foregroundStyle(isFavourite ? Theme.accent : .secondary)
                     }
+                    .accessibilityLabel(L.s("favourite", lang))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { destination = .trim } label: {
                         Image(systemName: "timeline.selection")
                     }
+                    .accessibilityLabel(L.s("trim_title", lang))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     ShareLink(item: clip.url) {
                         Image(systemName: "square.and.arrow.up")
                     }
+                    .accessibilityLabel(L.s("share", lang))
                 }
             }
             .confirmationDialog(L.s("delete_clip", lang), isPresented: $confirmDelete) {
@@ -452,7 +456,9 @@ struct AllClipsView: View {
                     }
                 }
             }
-            .confirmationDialog(String(format: L.s("delete_n_clips", lang), selection.count),
+            .confirmationDialog(String(format: L.s(selection.count == 1 ? "delete_one_clip"
+                                                                     : "delete_n_clips", lang),
+                                    selection.count),
                                 isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button(L.s("delete", lang), role: .destructive) { deleteSelected() }
             }

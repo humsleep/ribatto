@@ -30,8 +30,13 @@ enum CaptionText {
     /// drawn as an empty pill.
     static func resolve(_ caption: CaptionSettings?, session: Session,
                         segments: [RallySegment], index: Int, lang: String) -> CaptionSettings? {
-        guard var c = caption, c.enabled, hasTokens(c.text), index < segments.count else {
-            return caption
+        guard var c = caption, c.enabled, hasTokens(c.text) else { return caption }
+        // A clip index can outrun a freshly re-detected session. Returning the
+        // caption unresolved would burn the literal "{rank} · {shots}" into the
+        // video, so the caption is dropped instead.
+        guard index < segments.count else {
+            c.enabled = false
+            return c
         }
         let seg = segments[index]
         var out = c.text

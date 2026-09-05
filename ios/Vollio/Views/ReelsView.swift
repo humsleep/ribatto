@@ -96,7 +96,8 @@ struct ReelsView: View {
                         .padding(6)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(String(format: L.s("rallies_n", lang), reel.rallies))
+                    Text(String(format: L.s(reel.rallies == 1 ? "rallies_one" : "rallies_n", lang),
+                                reel.rallies))
                         .font(.caption2.bold())
                     Text(reel.place ?? L.dateOnly(reel.createdAt, lang))
                         .font(.caption2).foregroundStyle(.secondary)
