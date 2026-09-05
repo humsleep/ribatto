@@ -283,8 +283,30 @@ enum ClipExporter {
         let fps = fpsRaw > 0 ? fpsRaw : 30
         comp.frameDuration = CMTime(value: 1, timescale: CMTimeScale(max(1, Int(fps.rounded()))))
 
-        let start = segment.start
-        let dur = segment.end - segment.start
+        // Clamped to what the asset actually contains. A segment that runs past
+        // the end — a session whose original was replaced by a shorter video,
+        // or metadata that outlived its file — made AVAssetExportSession hang
+        // rather than fail, leaving the render spinning forever with no way out
+        // but force-quitting.
+        let total = assetDuration.seconds
+        guard total.isFinite, total > 0 else {
+            throw NSError(domain: "Vollio", code: 16, userInfo:
+                            [NSLocalizedDescriptionKey: "The video has no readable duration"])
+        }
+        // The END may legitimately overrun by a little — metadata rounding, or a
+        // source re-encoded slightly shorter — so it is clamped. A START past
+        // the end is not a rounding error: the rally is not in this video, and
+        // clamping it would quietly produce a fraction-of-a-second clip.
+        guard segment.start < total - 0.05 else {
+            throw NSError(domain: "Vollio", code: 17, userInfo:
+                            [NSLocalizedDescriptionKey: "That rally is outside the video"])
+        }
+        let start = max(0, segment.start)
+        let dur = min(segment.end, total) - start
+        guard dur > 0.05 else {
+            throw NSError(domain: "Vollio", code: 17, userInfo:
+                            [NSLocalizedDescriptionKey: "That rally is outside the video"])
+        }
         let segStart = CMTime(seconds: start, preferredTimescale: 600)
         let segEnd = CMTime(seconds: start + dur, preferredTimescale: 600)
         let declickT = CMTime(seconds: audioDeclick, preferredTimescale: 600)
