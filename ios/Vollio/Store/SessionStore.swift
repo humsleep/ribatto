@@ -28,6 +28,9 @@ final class SessionStore: ObservableObject {
     /// Called once a new session exists on disk, so the free allowance is spent
     /// even if processing is interrupted.
     var onSessionRegistered: (() -> Void)?
+    /// Called when a detection produced no rallies, so the free import that
+    /// paid for it can be returned.
+    var onDetectionFoundNothing: (() -> Void)?
     /// Set by the app: suspends until the App Store has said whether this user
     /// owns Pro. A render bakes the tier into the file, so starting one before
     /// the answer lands is how a paying customer gets watermarked 720p clips on
@@ -305,6 +308,9 @@ final class SessionStore: ObservableObject {
             try? JSONEncoder().encode(s).write(to: metaURL(id))
             // Counted here, not after processing: a force-quit mid-detect used
             // to leave the session on disk with the free allowance untouched.
+            // `process` hands it back if the video turned out to have no
+            // rallies in it — charging for a failed detection is how a new user
+            // burns the free tier without ever seeing a clip.
             onSessionRegistered?()
             resolvePlaceName(for: id)             // needs the network; don't block
             await process(sessionID: id)          // auto-detect on import
@@ -603,6 +609,10 @@ final class SessionStore: ObservableObject {
                 $0.detectedSport = sport
                 $0.detectedSensitivity = sens
             }
+            // Nothing found means nothing to show, so the import is handed
+            // back. Otherwise two unusable videos cost a new user two thirds of
+            // the free tier before they have ever seen a clip.
+            if segments.isEmpty { onDetectionFoundNothing?() }
             await render(sessionID: sessionID, alreadyRunning: true)
         } catch {
             progress[sessionID] = .failed(error.localizedDescription)
@@ -931,6 +941,10 @@ final class SessionStore: ObservableObject {
         guard !ordered.isEmpty else { return nil }
         let key = ordered[0].session.id
         guard !isBusy(key) else { return nil }
+        // Same reason `render` waits: a reel started in the first seconds after
+        // launch on a new device would otherwise bake a watermark into the best
+        // thing a paying customer owns.
+        await awaitEntitlement?()
         progress[key] = .reel(done: 0, total: ordered.count)
         // A reel re-renders every rally from its original, so it is the longest
         // job the app runs — and the one a user is most likely to walk away

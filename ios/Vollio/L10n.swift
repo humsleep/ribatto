@@ -11,6 +11,31 @@ enum L {
         ("fr", "Français"), ("it", "Italiano"), ("zh-Hans", "简体中文"),
     ]
 
+    /// Picks the in-app language from the device on first launch only.
+    ///
+    /// The table has nine languages but `@AppStorage("rc_lang")` defaulted to
+    /// English for everyone, so a Korean or Japanese user — the first markets
+    /// for this app — met an English onboarding and had to find the globe
+    /// before anything read naturally. Runs once: after that the stored value
+    /// is the user's own choice and must not be overwritten.
+    static func seedLanguageFromDevice() {
+        let key = "rc_lang"
+        guard UserDefaults.standard.string(forKey: key) == nil else { return }
+        let codes = languages.map(\.code)
+        for preferred in Locale.preferredLanguages {
+            // "zh-Hans-CN" -> "zh-Hans", "pt-BR" -> "pt", "de-DE" -> "de"
+            if let exact = codes.first(where: { preferred.hasPrefix($0) }) {
+                UserDefaults.standard.set(exact, forKey: key)
+                return
+            }
+            let base = preferred.split(separator: "-").first.map(String.init) ?? preferred
+            if let match = codes.first(where: { $0 == base }) {
+                UserDefaults.standard.set(match, forKey: key)
+                return
+            }
+        }
+    }
+
     static func locale(_ lang: String) -> Locale {
         Locale(identifier: ["en": "en_US", "ko": "ko_KR", "ja": "ja_JP",
                             "es": "es_ES", "pt": "pt_BR", "de": "de_DE",
@@ -142,6 +167,7 @@ enum L {
             "feat_quality_d": "Source quality instead of 720p — 4K wide, 1080p vertical.",
             "feat_saveall": "One-tap camera roll",
             "feat_saveall_d": "Send every clip of a session to Photos at once.",
+            "feat_merge_d": "Join chosen rallies into one video you can post as a single clip.",
             "season": "Season", "this_month": "This month", "all_time": "All time",
             "matches": "Matches", "records": "Personal records",
             "rec_longest": "Longest rally", "rec_busiest": "Most rallies in a match",
@@ -412,6 +438,7 @@ enum L {
             "feat_quality_d": "720p 대신 원본 화질로 — 가로 4K, 세로 1080p.",
             "feat_saveall": "한 번에 카메라 롤로",
             "feat_saveall_d": "세션의 모든 클립을 사진 앱에 한 번에 저장.",
+            "feat_merge_d": "고른 랠리를 하나의 영상으로 합쳐 한 번에 올릴 수 있습니다.",
             "season": "기록", "this_month": "이번 달", "all_time": "전체 기간",
             "matches": "경기", "records": "개인 기록",
             "rec_longest": "최장 랠리", "rec_busiest": "한 경기 최다 랠리",
@@ -682,6 +709,7 @@ enum L {
             "feat_quality_d": "720pではなく元の画質で — 最大4Kまで書き出せます。",
             "feat_saveall": "ワンタップでカメラロール",
             "feat_saveall_d": "セッションの全クリップを写真に一括保存。",
+            "feat_merge_d": "選んだラリーを1本の動画にまとめて投稿できます。",
             "season": "記録", "this_month": "今月", "all_time": "通算",
             "matches": "試合", "records": "自己記録",
             "rec_longest": "最長ラリー", "rec_busiest": "1試合の最多ラリー",
@@ -986,6 +1014,7 @@ enum L {
             "feat_quality_d": "Exporta en la calidad de origen: hasta 4K en vez de 720p.",
             "feat_saveall": "Al carrete de una vez",
             "feat_saveall_d": "Envía todos los clips de un partido a Fotos a la vez.",
+            "feat_merge_d": "Une los puntos que elijas en un solo vídeo para publicarlo de una vez.",
             "season": "Temporada",
             "this_month": "Este mes",
             "all_time": "Histórico",
@@ -1353,6 +1382,7 @@ enum L {
             "feat_quality_d": "Exporte na qualidade da fonte: até 4K em vez de 720p.",
             "feat_saveall": "Tudo para o rolo da câmera",
             "feat_saveall_d": "Envie todos os clipes de um jogo para Fotos de uma vez.",
+            "feat_merge_d": "Junte os pontos escolhidos em um único vídeo para postar de uma vez.",
             "season": "Temporada",
             "this_month": "Este mês",
             "all_time": "Desde sempre",
@@ -1720,6 +1750,7 @@ enum L {
             "feat_quality_d": "Export in Originalqualität – bis 4K statt 720p.",
             "feat_saveall": "Alles auf einmal ins Fotoalbum",
             "feat_saveall_d": "Alle Clips eines Matches auf einmal in Fotos sichern.",
+            "feat_merge_d": "Verbindet ausgewählte Ballwechsel zu einem Video, das du am Stück posten kannst.",
             "season": "Saison",
             "this_month": "Diesen Monat",
             "all_time": "Insgesamt",
@@ -2087,6 +2118,7 @@ enum L {
             "feat_quality_d": "Export à la qualité d'origine — jusqu'à la 4K au lieu du 720p.",
             "feat_saveall": "Pellicule en une fois",
             "feat_saveall_d": "Envoyez tous les clips d'un match dans Photos d'un coup.",
+            "feat_merge_d": "Réunit les échanges choisis en une seule vidéo à publier d’un coup.",
             "season": "Saison",
             "this_month": "Ce mois-ci",
             "all_time": "Depuis le début",
@@ -2454,6 +2486,7 @@ enum L {
             "feat_quality_d": "Esporta alla qualità originale — fino al 4K invece del 720p.",
             "feat_saveall": "Rullino in un tocco",
             "feat_saveall_d": "Manda tutti i clip di una partita in Foto in una volta.",
+            "feat_merge_d": "Unisce gli scambi scelti in un solo video da pubblicare in una volta.",
             "season": "Stagione",
             "this_month": "Questo mese",
             "all_time": "Da sempre",
@@ -2821,6 +2854,7 @@ enum L {
             "feat_quality_d": "按源画质导出 — 最高 4K，而不是 720p。",
             "feat_saveall": "一键存入相册",
             "feat_saveall_d": "把一场比赛的所有片段一次性存到照片。",
+            "feat_merge_d": "把选中的回合合成一条视频，一次就能发出去。",
             "season": "赛季",
             "this_month": "本月",
             "all_time": "累计",

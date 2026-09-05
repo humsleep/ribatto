@@ -107,6 +107,14 @@ final class PurchaseManager: ObservableObject {
         UserDefaults.standard.set(sessionsCreated, forKey: Self.counterKey)
     }
 
+    /// Gives an import back. Detection that finds nothing produced no clips, so
+    /// charging for it spends the free tier on a video the app could not use.
+    func refundSessionCreated() {
+        guard sessionsCreated > 0 else { return }
+        sessionsCreated -= 1
+        UserDefaults.standard.set(sessionsCreated, forKey: Self.counterKey)
+    }
+
     // MARK: - Owner override
 
     /// Returns false on a wrong passphrase; the caller shows nothing either way

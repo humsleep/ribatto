@@ -108,7 +108,9 @@ struct PaywallView: View {
             row("person.fill.viewfinder",
                 L.s("feat_target", lang), L.s("feat_target_d", lang))
             row("number.circle.fill", L.s("shot_counter", lang), L.s("feat_counter_d", lang))
+            row("checkerboard.rectangle", L.s("scoreboard", lang), L.s("scoreboard_d", lang))
             row("photo.on.rectangle.angled", L.s("feat_saveall", lang), L.s("feat_saveall_d", lang))
+            row("arrow.triangle.merge", L.s("merge", lang), L.s("feat_merge_d", lang))
         }
         .padding(16)
         .background(Theme.surface,

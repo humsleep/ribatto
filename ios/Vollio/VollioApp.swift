@@ -7,6 +7,11 @@ struct VollioApp: App {
     @AppStorage("rc_lang") private var lang = "en"
     @AppStorage("rc_onboarded") private var onboarded = false
 
+    /// Before any view reads `rc_lang`: seeding it from a `.task` would let the
+    /// first screen render in English and then switch, which is worse than
+    /// either language on its own.
+    init() { L.seedLanguageFromDevice() }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -45,6 +50,7 @@ struct VollioApp: App {
                 purchases.unavailableMessage = L.s("store_unavailable", lang)
                 purchases.nothingToRestoreMessage = L.s("restore_none", lang)
                 store.awaitEntitlement = { await purchases.waitForEntitlement() }
+                store.onDetectionFoundNothing = { purchases.refundSessionCreated() }
                 store.missingSourceMessage = L.s("source_missing", lang)
                 store.placeLocale = L.locale(lang)
                 store.resolveMissingPlaceNames()
