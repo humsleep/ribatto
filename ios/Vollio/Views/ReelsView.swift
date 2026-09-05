@@ -19,7 +19,10 @@ struct ReelsView: View {
     var body: some View {
         NavigationStack {
             Group {
+                // One scan per pass: `reelsBytes()` used to run the whole
+                // listing a second time just to total the sizes.
                 let reels = store.reels()
+                let bytes = reels.reduce(Int64(0)) { $0 + $1.bytes }
                 if reels.isEmpty {
                     VStack(spacing: 10) {
                         Image(systemName: "rectangle.portrait.on.rectangle.portrait.angled")
@@ -41,7 +44,7 @@ struct ReelsView: View {
                                         reels.count))
                                 .font(.headline)
                             Spacer()
-                            Text(ByteCountFormatter.string(fromByteCount: store.reelsBytes(),
+                            Text(ByteCountFormatter.string(fromByteCount: bytes,
                                                            countStyle: .file))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
@@ -118,11 +121,7 @@ struct ReelsView: View {
     }
 
     @ViewBuilder private func thumb(_ reel: ReelInfo) -> some View {
-        if let img = UIImage(contentsOfFile: reel.thumbURL.path) {
-            Image(uiImage: img).resizable().scaledToFill()
-        } else {
-            Theme.surfaceHigh
-        }
+        PosterImage(url: reel.thumbURL)
     }
 }
 

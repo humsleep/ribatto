@@ -52,6 +52,7 @@ struct VollioApp: App {
                 store.awaitEntitlement = { await purchases.waitForEntitlement() }
                 store.onDetectionFoundNothing = { purchases.refundSessionCreated() }
                 store.missingSourceMessage = L.s("source_missing", lang)
+                store.interruptedMessage = L.s("interrupted", lang)
                 store.placeLocale = L.locale(lang)
                 store.resolveMissingPlaceNames()
                 store.backfillCaptureDates()
@@ -60,12 +61,17 @@ struct VollioApp: App {
                 purchases.unavailableMessage = L.s("store_unavailable", l)
                 purchases.nothingToRestoreMessage = L.s("restore_none", l)
                 store.missingSourceMessage = L.s("source_missing", l)
+                store.interruptedMessage = L.s("interrupted", l)
                 store.placeLocale = L.locale(l)
             }
             // exports stop when iOS suspends the app, so hold the screen on
             // for as long as something is rendering
-            .onChange(of: store.progress.isEmpty) { _, idle in
-                UIApplication.shared.isIdleTimerDisabled = !idle
+            // `.failed` is a message that stays on screen, not work in flight,
+            // so `progress` being non-empty is not the same as being busy. Using
+            // it here meant one failed detect stopped the display from ever
+            // auto-locking again.
+            .onChange(of: store.busyCount) { _, busy in
+                UIApplication.shared.isIdleTimerDisabled = busy > 0
             }
             .onChange(of: purchases.isPro) { _, pro in store.isPro = pro }
             .preferredColorScheme(.dark)

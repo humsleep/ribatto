@@ -90,7 +90,7 @@ struct CaptionEditorView: View {
     }
 
     @ViewBuilder private var poster: some View {
-        if let img = UIImage(contentsOfFile: store.posterURL(session).path) {
+        if let img = PosterCache.load(store.posterURL(session)) {
             Image(uiImage: img).resizable().scaledToFill()
         } else {
             Theme.surfaceHigh

@@ -162,17 +162,20 @@ struct LibraryView: View {
                 guard let item else { return }
                 importing = true
                 Task {
-                    let copy = try? await item.loadTransferable(type: MovieFile.self)
-                    let created: Bool
+                    // Referencing the library asset is tried FIRST, without a
+                    // copy. Loading the transferable up front duplicated the
+                    // whole file — 6.5 GB for a 26-minute 4K match — behind a
+                    // bare spinner, and then deleted it unused on the happy
+                    // path. The copy is now made only when referencing fails.
+                    var created = false
+                    let name = importName()
                     if let id = item.itemIdentifier {
-                        // reference the library original instead of duplicating it
                         created = await store.importFromPhotos(identifier: id,
-                                                               fallback: copy?.url,
-                                                               name: importName())
-                    } else if let copy {
-                        created = await store.importVideo(from: copy.url, name: importName())
-                    } else {
-                        created = false
+                                                               fallback: nil, name: name)
+                    }
+                    if !created,
+                       let copy = try? await item.loadTransferable(type: MovieFile.self) {
+                        created = await store.importVideo(from: copy.url, name: name)
                     }
                     if !created { importError = L.s("import_failed", lang) }
                     importing = false
@@ -470,7 +473,7 @@ struct SessionCard: View {
     }
 
     @ViewBuilder private var poster: some View {
-        if let img = UIImage(contentsOfFile: store.posterURL(session).path) {
+        if let img = PosterCache.load(store.posterURL(session)) {
             Image(uiImage: img).resizable().scaledToFill()
         } else {
             ZStack {

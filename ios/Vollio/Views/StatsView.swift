@@ -250,7 +250,7 @@ struct StatsView: View {
         // the newest match's poster becomes the backdrop — the card is about
         // the user's own season, so it should look like it
         let poster = store.sessions.first.flatMap {
-            UIImage(contentsOfFile: store.posterURL($0).path)
+            PosterCache.load(store.posterURL($0))
         }
         let renderer = ImageRenderer(
             content: ShareCard(stats: s, lang: lang, poster: poster))

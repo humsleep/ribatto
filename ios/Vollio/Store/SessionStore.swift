@@ -38,6 +38,9 @@ final class SessionStore: ObservableObject {
     var awaitEntitlement: (() async -> Void)?
 
     private let fm = FileManager.default
+    /// Shown when iOS stopped a render because the app was in the background
+    /// for too long.
+    var interruptedMessage = "Processing stopped when the app went to the background. Tap to try again."
     /// Shown when the original has been deleted from Photos.
     var missingSourceMessage = "Original video is no longer available"
     /// Locale used when turning coordinates into a place name.
@@ -119,6 +122,23 @@ final class SessionStore: ObservableObject {
                                 sessionID: s.id, isReady: ready))
         }
         return out
+    }
+
+    /// Whether any session has a clip on disk, without building the whole
+    /// list — it stops at the first one it finds.
+    var hasAnyClips: Bool {
+        sessions.contains { s in
+            guard let segments = s.segments, !segments.isEmpty else { return false }
+            let cdir = clipsDir(s)
+            for i in segments.indices {
+                let cid = String(format: "clip_%02d", i + 1)
+                if fm.fileExists(atPath: cdir.appendingPathComponent("\(cid).mp4").path)
+                    || fm.fileExists(atPath: cdir.appendingPathComponent("\(cid).jpg").path) {
+                    return true
+                }
+            }
+            return false
+        }
     }
 
     func allClips() -> [(session: Session, clip: ClipInfo)] {
@@ -638,8 +658,25 @@ final class SessionStore: ObservableObject {
         progress[id] = nil
     }
 
+    /// How many sessions are actually working, as opposed to holding a failure
+    /// message. Drives the idle timer.
+    var busyCount: Int { progress.keys.filter { isBusy($0) }.count }
+
     private func beginBackgroundTask() -> UIBackgroundTaskIdentifier {
-        UIApplication.shared.beginBackgroundTask(withName: "VollioRender") {}
+        // An empty expiration handler is a termination: iOS kills an app that
+        // still holds a background task when the window closes, and `render`
+        // has already deleted the session's old clips by then. Ending the task
+        // in the handler lets the app be suspended normally instead.
+        var id: UIBackgroundTaskIdentifier = .invalid
+        id = UIApplication.shared.beginBackgroundTask(withName: "VollioRender") {
+            [weak self] in
+            guard let self else { return }
+            for key in self.progress.keys where self.isBusy(key) {
+                self.progress[key] = .failed(self.interruptedMessage)
+            }
+            self.endBackgroundTask(id)
+        }
+        return id
     }
     private func endBackgroundTask(_ id: UIBackgroundTaskIdentifier) {
         guard id != .invalid else { return }

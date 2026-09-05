@@ -554,8 +554,16 @@ enum ClipExporter {
         let tmp = url.deletingLastPathComponent()
             .appendingPathComponent("ov_" + url.lastPathComponent)
         try? FileManager.default.removeItem(at: tmp)
-        try await export(session: session, to: tmp)
+        do {
+            try await export(session: session, to: tmp)
+        } catch {
+            // Otherwise the half-written overlay file stays in the clips
+            // directory until the next full render, which a trim never does.
+            try? FileManager.default.removeItem(at: tmp)
+            throw error
+        }
         _ = try? FileManager.default.replaceItemAt(url, withItemAt: tmp)
+        try? FileManager.default.removeItem(at: tmp)
     }
 
     private static func captionImage(_ c: CaptionSettings, in size: CGSize) -> CIImage? {

@@ -104,11 +104,7 @@ struct ClipCard: View {
     }
 
     @ViewBuilder private var thumb: some View {
-        if let img = UIImage(contentsOfFile: clip.thumbURL.path) {
-            Image(uiImage: img).resizable().scaledToFill()
-        } else {
-            Theme.surfaceHigh
-        }
+        PosterImage(url: clip.thumbURL)
     }
 }
 
@@ -446,7 +442,9 @@ struct AllClipsView: View {
             .navigationTitle(L.s("all_clips", lang))
             .searchable(text: $search, prompt: L.s("search_clips", lang))
             .toolbar {
-                if !store.allClips().isEmpty {
+                // Cheap check: `allClips()` here meant a second full scan of
+                // every session's clip directory on every body pass.
+                if store.hasAnyClips {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(selecting ? L.s("done", lang) : L.s("select", lang)) {
                             selecting.toggle()
