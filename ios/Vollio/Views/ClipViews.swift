@@ -119,6 +119,7 @@ struct ClipPlayerSheet: View {
     @State private var player: AVPlayer?
     @State private var confirmDelete = false
     @State private var destination: Destination?
+    @Environment(\.verticalSizeClass) private var vSize
 
     /// One sheet drives every modal, as on `SessionDetailView`. Stacking
     /// several `.sheet` modifiers on one view collides — a second one added
@@ -160,6 +161,45 @@ struct ClipPlayerSheet: View {
     }
 
     var body: some View {
+        // On an iPhone in landscape the vertical size class is compact. That is
+        // the cue to give the whole screen to the video: the tagging and reel
+        // controls are portrait work, and shrinking the rally to make room for
+        // them is exactly what made rotating pointless.
+        Group {
+            if vSize == .compact {
+                landscapePlayer
+            } else {
+                portraitPlayer
+            }
+        }
+        // Applied out here, not inside the two variants: rotating swaps them,
+        // and the departing variant's `onDisappear` would revoke the permission
+        // the instant it was used, snapping the phone straight back to portrait.
+        // Only a wide clip gains anything from turning the phone; a 9:16 rally
+        // would just be letterboxed on its side.
+        .allowsLandscape(!OutputFrame(clip.orientation).isPortrait)
+    }
+
+    private var landscapePlayer: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+            if let player { ZoomableVideo(player: player) }
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.headline)
+                    .padding(10)
+                    .background(.black.opacity(0.5), in: Circle())
+                    .foregroundStyle(.white)
+            }
+            .accessibilityLabel(L.s("done", lang))
+            .padding(16)
+        }
+        .statusBarHidden()
+        .onAppear { if player == nil { player = AVPlayer(url: clip.url) } }
+        .preferredColorScheme(.dark)
+    }
+
+    private var portraitPlayer: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 if let player {
@@ -227,7 +267,9 @@ struct ClipPlayerSheet: View {
             }
             .background(Color.black.ignoresSafeArea())
             .onAppear { if player == nil { player = AVPlayer(url: clip.url) } }
-            .navigationTitle("#" + String(clip.index + 1) + " · \(fmtTs(clip.segment.start))–\(fmtTs(clip.segment.end))")
+            // Only a wide clip gains anything from turning the phone; a 9:16
+            // rally would just be letterboxed on its side.
+                .navigationTitle("#" + String(clip.index + 1) + " · \(fmtTs(clip.segment.start))–\(fmtTs(clip.segment.end))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -289,6 +331,7 @@ struct HighlightPlayerSheet: View {
             }
                 .background(Color.black.ignoresSafeArea())
                 .onAppear { if player == nil { player = AVPlayer(url: url) } }
+                .allowsLandscape()
                 .navigationTitle("✨ \(name)")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

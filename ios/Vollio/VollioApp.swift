@@ -2,6 +2,10 @@ import SwiftUI
 
 @main
 struct VollioApp: App {
+    // Supplies the orientation callback. SwiftUI has no per-screen orientation
+    // control, so the app delegate answers UIKit's question and the player
+    // screens flip the switch it reads.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = SessionStore()
     @StateObject private var purchases = PurchaseManager()
     @AppStorage("rc_lang") private var lang = "en"

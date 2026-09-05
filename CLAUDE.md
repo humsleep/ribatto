@@ -57,6 +57,7 @@ ios/Vollio/
                            SortMenu.swift: ClipSort(6종 정렬) + 정렬 메뉴 — 세션 화면·모든클립 탭 공용
                            AddRallySheet(놓친 랠리 수동 추가) · PrivacyView(앱 내 개인정보 설명 — 코드 동작과 항상 일치시킬 것)
                            ReelsView: 완성된 릴스 보관함. 파일은 sessions/reels/ 에 id.mp4 + id.jpg + id.json(ReelInfo)
+                           OrientationGate.swift: 세로 고정 + 재생 화면만 가로 허용
 ```
 
 ## Pro 티어 경계 (isPro 로 게이팅)
@@ -101,6 +102,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - 무료 횟수 환불은 세션당 1회(`importRefunded`). `process`는 재감지에서도 실행되므로 조건 없이 돌려주면 무료가 무제한이 된다.
 - 지원 언어는 Info.plist(`INFOPLIST_KEY_CFBundleLocalizations`)에 선언한다. 선언이 없으면 iOS가 한국어 기기에도 영어만 넘겨 기기 언어 시드가 무력화된다.
 - 오버레이 번인 결과를 원본 자리로 옮기는 데 실패하면 던진다. 삼키면 워터마크 없는 무료 클립이 나간다.
-- 가로 방향은 선언만 되어 있고 설계된 적이 없다. 클립 재생 화면에서 영상이 작아지고 탭바가 콘텐츠를 가린다.
+- 세로 고정이다(OrientationGate + AppDelegate). 가로는 클립·하이라이트 재생 화면만, 그것도 가로 영상일 때만 허용한다.
+  `.allowsLandscape()`는 시트 최상위에 붙인다. 세로/가로 레이아웃 분기 안쪽에 붙이면 전환 순간 사라지는 쪽의 onDisappear가 권한을 도로 거둔다.
+  시트가 떠 있을 때는 최상위 presented VC에 setNeedsUpdateOfSupportedInterfaceOrientations를 보내야 한다. 루트만 갱신하면 반영되지 않는다.
 - 접근성 큰 글씨에서는 설정 행이 세로로 쌓인다(`settingRows`). 가로 배치를 강제하면 AX5에서 종목명이 한 글자로 잘린다.
 - "업로드 없음"이라고 쓰지 말 것. PlaceLookup이 좌표를 애플 지오코더로 보낸다. 문구는 "영상은 기기 밖으로 나가지 않는다"로.
