@@ -132,7 +132,8 @@ struct StatsView: View {
                                 Spacer(minLength: 8)
                                 Text(String(format: L.s(place.visits == 1 ? "visits_one" : "visits_fmt", lang), place.visits))
                                     .font(.subheadline.bold())
-                                Text(String(format: L.s("rallies_n", lang), place.rallies))
+                                Text(String(format: L.s(place.rallies == 1 ? "rallies_one" : "rallies_n", lang),
+                                              place.rallies))
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }

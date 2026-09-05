@@ -12,6 +12,7 @@ struct SessionDetailView: View {
     @State private var sort: ClipSort = .time
     @State private var destination: Destination?
     @State private var confirmDeleteSession = false
+    @State private var confirmDeleteClips = false
     @State private var confirmSwitchVertical = false
     @State private var editingOpponent = false
     @State private var opponentDraft = ""
@@ -139,8 +140,18 @@ struct SessionDetailView: View {
             get: { saveMessage != nil }, set: { if !$0 { saveMessage = nil } })) {
             Button("OK", role: .cancel) { saveMessage = nil }
         }
+        .confirmationDialog(String(format: L.s(selection.count == 1 ? "delete_one_clip"
+                                                                     : "delete_n_clips", lang),
+                                   selection.count),
+                            isPresented: $confirmDeleteClips, titleVisibility: .visible) {
+            Button(L.s("delete", lang), role: .destructive) {
+                store.deleteClips(selection, from: session)
+                selection.removeAll()
+            }
+            Button(L.s("cancel", lang), role: .cancel) {}
+        }
         .confirmationDialog(L.s("delete_session", lang),
-                            isPresented: $confirmDeleteSession) {
+                            isPresented: $confirmDeleteSession, titleVisibility: .visible) {
             Button(L.s("delete", lang), role: .destructive) {
                 store.deleteSession(session)
             }
@@ -175,7 +186,10 @@ struct SessionDetailView: View {
     /// give the two ways out.
     @ViewBuilder
     private func emptyClips(_ session: Session) -> some View {
+        // Detection finding nothing and the user deleting everything look the
+        // same on disk; only the first deserves detection advice.
         let detectedNothing = session.segments?.isEmpty == true
+            && session.detectionFoundNothing == true
         VStack(spacing: 10) {
             Image(systemName: detectedNothing ? "waveform.badge.exclamationmark" : "film")
                 .font(.system(size: 40, weight: .light))
@@ -796,10 +810,8 @@ struct SessionDetailView: View {
     }
 
     private func deleteBtn(_ session: Session, _ n: Int) -> some View {
-        Button(role: .destructive) {
-            store.deleteClips(selection, from: session)
-            selection.removeAll()
-        } label: {
+        // The same action in All Clips confirms; here the clips just vanished.
+        Button(role: .destructive) { confirmDeleteClips = true } label: {
             Label(L.s("delete", lang), systemImage: "trash")
                 .font(.subheadline.bold()).frame(maxWidth: .infinity, minHeight: 24)
         }

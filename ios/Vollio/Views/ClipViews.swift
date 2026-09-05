@@ -383,7 +383,7 @@ struct AllClipsView: View {
                 if all.isEmpty {
                     VStack(spacing: 10) {
                         Text("🎬").font(.system(size: 44))
-                        Text(L.s("empty_clips", lang))
+                        Text(L.s("all_clips_empty", lang))
                             .font(.subheadline).foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }

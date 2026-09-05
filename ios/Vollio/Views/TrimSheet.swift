@@ -21,6 +21,7 @@ struct TrimSheet: View {
     @State private var end: Double
     @State private var player: AVPlayer?
     @State private var working = false
+    @State private var message: String?
     @State private var splitAt: Double
 
     init(clip: ClipInfo) {
@@ -39,6 +40,18 @@ struct TrimSheet: View {
         abs(start - clip.segment.start) > 0.05 || abs(end - clip.segment.end) > 0.05
     }
 
+    /// A range that can never be inverted. The handles are interdependent, so
+    /// a drag can momentarily ask for a lower bound above the upper one, and
+    /// `a...b` traps rather than clamping.
+    private func safe(_ a: Double, _ b: Double) -> ClosedRange<Double> {
+        a < b ? a...b : a...(a + 0.1)
+    }
+
+    private func clampSplit() {
+        let lo = start + store.minClipSeconds, hi = end - store.minClipSeconds
+        splitAt = lo < hi ? min(max(splitAt, lo), hi) : lo
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -50,11 +63,15 @@ struct TrimSheet: View {
                 }
 
                 VStack(spacing: 14) {
+                    // Ranges are built with `safe`, never `a...b` directly.
+                    // Dragging End below Start made the lower bound exceed the
+                    // upper one, and Swift traps on that — the app disappeared
+                    // mid-drag.
                     handle(L.s("trim_start", lang), value: $start,
-                           range: lower...(end - store.minClipSeconds),
+                           range: safe(lower, end - store.minClipSeconds),
                            preview: start)
                     handle(L.s("trim_end", lang), value: $end,
-                           range: (start + store.minClipSeconds)...upper,
+                           range: safe(start + store.minClipSeconds, upper),
                            preview: max(start, end - 0.15))
 
                     HStack {
@@ -72,16 +89,24 @@ struct TrimSheet: View {
                 // nobody wants to post; cutting it is the other half of trimming.
                 VStack(alignment: .leading, spacing: 10) {
                     handle(L.s("split_rally", lang), value: $splitAt,
-                           range: (start + store.minClipSeconds)...(end - store.minClipSeconds),
+                           range: safe(start + store.minClipSeconds,
+                                       end - store.minClipSeconds),
                            preview: splitAt)
                     Text(L.s("split_hint", lang))
                         .font(.caption2).foregroundStyle(.tertiary)
                     Button {
                         working = true
                         Task {
-                            await store.splitRally(clip, at: splitAt)
+                            // Apply the trim first when the handles have moved:
+                            // `splitRally` reads the stored segment, so a split
+                            // taken while a trim was pending cut at a point
+                            // outside the range the user could see.
+                            if start != clip.segment.start || end != clip.segment.end {
+                                await store.trimClip(clip, start: start, end: end)
+                            }
+                            let ok = await store.splitRally(clip, at: splitAt)
                             working = false
-                            dismiss()
+                            if ok { dismiss() } else { message = L.s("split_failed", lang) }
                         }
                     } label: {
                         Label(L.s("split_rally", lang), systemImage: "scissors")
@@ -117,7 +142,15 @@ struct TrimSheet: View {
             }
             .padding(16)
             .background(Theme.background.ignoresSafeArea())
+            // The split point is only meaningful inside the trimmed range;
+            // left alone it kept displaying a time outside it.
+            .onChange(of: start) { _, _ in clampSplit() }
+            .onChange(of: end) { _, _ in clampSplit() }
             .navigationTitle(L.s("trim_title", lang))
+            .alert(message ?? "", isPresented: Binding(
+                get: { message != nil }, set: { if !$0 { message = nil } })) {
+                Button("OK", role: .cancel) { message = nil }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

@@ -628,6 +628,7 @@ final class SessionStore: ObservableObject {
                 $0.segments = segments
                 $0.detectedSport = sport
                 $0.detectedSensitivity = sens
+                $0.detectionFoundNothing = segments.isEmpty
             }
             // Nothing found means nothing to show, so the import is handed
             // back. Otherwise two unusable videos cost a new user two thirds of

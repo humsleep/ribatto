@@ -373,6 +373,12 @@ struct Session: Identifiable, Codable, Equatable {
         clipTargets?[String(index)] ?? targetPlayer
     }
 
+    /// True when the last detection returned no rallies at all. On disk that
+    /// is indistinguishable from the user having deleted every clip, and the
+    /// two need different empty states — one is advice about detection, the
+    /// other is not.
+    var detectionFoundNothing: Bool? = nil
+
     var smartCropEnabled: Bool { smartCrop ?? true }
     var shotCounterEnabled: Bool { shotCounter ?? false }
     var scoreboardEnabled: Bool { scoreboard ?? false }
@@ -418,14 +424,23 @@ struct Session: Identifiable, Codable, Equatable {
         guard segments != nil, !needsRedetect else { return false }
         return renderedOrientation != effectiveOrientation
             || (renderedCaption ?? CaptionSettings()) != (caption ?? CaptionSettings())
-            || (renderedSmartCrop ?? false) != effectiveSmartCrop
-            || (renderedShotCounter ?? false) != shotCounterEnabled
-            || (renderedScoreboard ?? false) != scoreboardEnabled
-            || (scoreboardEnabled && renderedWinners != winnerTags)
-            || (effectiveSmartCrop && renderedTargetPlayer != targetPlayer)
-            || (effectiveSmartCrop
+            // Compared against what the last render was ALLOWED to do. A free
+            // render can never satisfy a Pro flag, so comparing the raw setting
+            // left every free session permanently claiming unapplied changes
+            // and re-encoding on every press.
+            || (proRendered && (renderedSmartCrop ?? false) != effectiveSmartCrop)
+            || (proRendered && (renderedShotCounter ?? false) != shotCounterEnabled)
+            || (proRendered && (renderedScoreboard ?? false) != scoreboardEnabled)
+            || (proRendered && scoreboardEnabled && renderedWinners != winnerTags)
+            || (proRendered && effectiveSmartCrop && renderedTargetPlayer != targetPlayer)
+            || (proRendered && effectiveSmartCrop
                 && (renderedClipTargets ?? [:]) != (clipTargets ?? [:]))
     }
+
+    /// Whether the last render ran with Pro. The Pro-only settings are compared
+    /// only when it did: a free render legitimately ignores them, so treating
+    /// the difference as "unapplied" made the banner permanent.
+    private var proRendered: Bool { renderedPro ?? false }
 
     /// Smart crop only does something on a portrait crop of a wider source —
     /// 4:5 crops horizontally too, so it counts.
@@ -441,7 +456,7 @@ struct Session: Identifiable, Codable, Equatable {
              renderedPro, detectedSport, detectedSensitivity,
              assetIdentifier, latitude, longitude, placeName,
              caption, renderedCaption,
-             smartCrop, renderedSmartCrop,
+             smartCrop, renderedSmartCrop, detectionFoundNothing,
              shotCounter, renderedShotCounter,
              opponent, scoreboard, renderedScoreboard, renderedWinners,
              targetPlayer, renderedTargetPlayer,

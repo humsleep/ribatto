@@ -475,6 +475,14 @@ struct ReelSheet: View {
             return
         }
         player = AVPlayer(url: out.url)
+        // Without this the transport button claims to play at the end of the
+        // reel and nothing moves — the user cannot rewatch what they just made.
+        player?.actionAtItemEnd = .pause
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player?.currentItem, queue: .main) { [weak player] _ in
+                player?.seek(to: .zero)
+            }
         done = out
     }
 
