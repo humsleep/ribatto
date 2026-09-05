@@ -378,6 +378,9 @@ struct Session: Identifiable, Codable, Equatable {
     /// two need different empty states — one is advice about detection, the
     /// other is not.
     var detectionFoundNothing: Bool? = nil
+    /// True once a failed detection has handed its free import back, so a
+    /// re-detect on the same session cannot claim another one.
+    var importRefunded: Bool? = nil
 
     var smartCropEnabled: Bool { smartCrop ?? true }
     var shotCounterEnabled: Bool { shotCounter ?? false }
@@ -456,7 +459,7 @@ struct Session: Identifiable, Codable, Equatable {
              renderedPro, detectedSport, detectedSensitivity,
              assetIdentifier, latitude, longitude, placeName,
              caption, renderedCaption,
-             smartCrop, renderedSmartCrop, detectionFoundNothing,
+             smartCrop, renderedSmartCrop, detectionFoundNothing, importRefunded,
              shotCounter, renderedShotCounter,
              opponent, scoreboard, renderedScoreboard, renderedWinners,
              targetPlayer, renderedTargetPlayer,

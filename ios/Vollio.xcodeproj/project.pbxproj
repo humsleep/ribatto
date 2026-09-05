@@ -195,6 +195,7 @@
 				DEVELOPMENT_TEAM = 68BP5NY48R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleLocalizations = "en ko ja es pt de fr it zh-Hans";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Vollio records your match with the camera.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Vollio listens to racket impacts to find rallies.";
@@ -228,6 +229,7 @@
 				DEVELOPMENT_TEAM = 68BP5NY48R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleLocalizations = "en ko ja es pt de fr it zh-Hans";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Vollio records your match with the camera.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Vollio listens to racket impacts to find rallies.";

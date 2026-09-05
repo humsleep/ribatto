@@ -685,10 +685,13 @@ struct SessionDetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
+            // `render` returns silently when the session is already working,
+            // so without this the button looks dead mid-render.
             Button(L.s("rerender", lang)) {
                 Task { await store.render(sessionID: sessionID) }
             }
             .rcSecondary()
+            .disabled(store.isBusy(sessionID))
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

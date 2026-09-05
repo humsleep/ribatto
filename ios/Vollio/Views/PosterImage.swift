@@ -40,8 +40,10 @@ enum PosterCache {
 struct PosterImage: View {
     let url: URL
     var body: some View {
+        // Keyed on the cache key, not the path: a trim rewrites clip_NN.jpg in
+        // place, so identity by path kept the pre-trim frame on screen until
+        // the whole screen was torn down.
         _PosterImage(url: url)
-            .id(url.path)
     }
 }
 
@@ -57,7 +59,7 @@ private struct _PosterImage: View {
                 Theme.surfaceHigh
             }
         }
-        .task(id: url.path) {
+        .task(id: PosterCache.key(for: url) as String) {
             if let hit = PosterCache.cached(url) { image = hit; return }
             let loaded = await Task.detached(priority: .userInitiated) {
                 PosterCache.load(url)

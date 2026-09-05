@@ -549,7 +549,10 @@ enum ClipExporter {
         comp.renderSize = size
 
         guard let session = AVAssetExportSession(
-            asset: asset, presetName: AVAssetExportPresetHighestQuality) else { return }
+            asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
+            // Returning success here burned nothing into the clip.
+            throw NSError(domain: "Vollio", code: 15)
+        }
         session.videoComposition = comp
         let tmp = url.deletingLastPathComponent()
             .appendingPathComponent("ov_" + url.lastPathComponent)
@@ -562,7 +565,14 @@ enum ClipExporter {
             try? FileManager.default.removeItem(at: tmp)
             throw error
         }
-        _ = try? FileManager.default.replaceItemAt(url, withItemAt: tmp)
+        // Not `try?`: if the promotion fails, the overlaid file is the only one
+        // carrying the watermark, caption, scoreboard and counter. Swallowing
+        // the error and then deleting it shipped a free clip with no watermark.
+        guard (try? FileManager.default.replaceItemAt(url, withItemAt: tmp)) != nil else {
+            try? FileManager.default.removeItem(at: tmp)
+            throw NSError(domain: "Vollio", code: 14, userInfo:
+                            [NSLocalizedDescriptionKey: "Could not write the finished clip"])
+        }
         try? FileManager.default.removeItem(at: tmp)
     }
 

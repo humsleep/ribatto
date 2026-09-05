@@ -443,7 +443,7 @@ final class SessionStore: ObservableObject {
         // the score is no longer meaningful for either, so both are unscored.
         let firstHits = (seg.hitTimes ?? []).filter { $0 < time }
         let secondHits = (seg.hitTimes ?? []).filter { $0 >= time }
-        var first = RallySegment(start: seg.start, end: time,
+        let first = RallySegment(start: seg.start, end: time,
                                  hits: firstHits.isEmpty ? seg.hits / 2 : firstHits.count,
                                  score: nil, trimmed: true,
                                  hitTimes: seg.hitTimes == nil ? nil : firstHits)
@@ -633,9 +633,22 @@ final class SessionStore: ObservableObject {
             // Nothing found means nothing to show, so the import is handed
             // back. Otherwise two unusable videos cost a new user two thirds of
             // the free tier before they have ever seen a clip.
-            if segments.isEmpty { onDetectionFoundNothing?() }
+            // Once per import, not once per detect: `process` also runs from
+            // Apply, so refunding here unconditionally handed back an import
+            // every time the user pressed Re-detect on a quiet video.
+            if segments.isEmpty,
+               sessions.first(where: { $0.id == sessionID })?.importRefunded != true {
+                mutate(sessionID) { $0.importRefunded = true }
+                onDetectionFoundNothing?()
+            }
             await render(sessionID: sessionID, alreadyRunning: true)
         } catch {
+            // The clips written before the throw are in the new shape while the
+            // session still records the old one, which would make one session
+            // hold two orientations. The source is in hand, so dropping them is
+            // recoverable; leaving them is not.
+            try? fm.removeItem(at: clipsDir(s))
+            mutate(sessionID) { $0.renderedOrientation = nil }
             progress[sessionID] = .failed(error.localizedDescription)
         }
     }
@@ -672,10 +685,11 @@ final class SessionStore: ObservableObject {
         id = UIApplication.shared.beginBackgroundTask(withName: "VollioRender") {
             [weak self] in
             guard let self else { return }
-            for key in self.progress.keys where self.isBusy(key) {
-                self.progress[key] = .failed(self.interruptedMessage)
-            }
+            // No `.failed` here: the work usually finishes anyway, and the
+            // paths that end through `clearProgressUnlessFailed` would then
+            // preserve a failure message for a job that succeeded.
             self.endBackgroundTask(id)
+            id = .invalid
         }
         return id
     }
@@ -846,15 +860,16 @@ final class SessionStore: ObservableObject {
 
     /// Deletes the given clips and renumbers what remains so clip_NN stays
     /// aligned with the segment list.
-    func deleteClips(_ ids: Set<String>, from session: Session) {
+    @discardableResult
+    func deleteClips(_ ids: Set<String>, from session: Session) -> Bool {
         // A render renumbers the same files; deleting under it leaves clips
         // holding the wrong rally.
         guard !isBusy(session.id),
               var s = sessions.first(where: { $0.id == session.id }),
-              let segments = s.segments else { return }
+              let segments = s.segments else { return false }
         let cdir = clipsDir(s)
         let doomed = Set(clips(of: s).filter { ids.contains($0.id) }.map(\.index))
-        guard !doomed.isEmpty else { return }
+        guard !doomed.isEmpty else { return false }
 
         for i in doomed {
             let base = String(format: "clip_%02d", i + 1)
@@ -883,7 +898,10 @@ final class SessionStore: ObservableObject {
         // the reel was built from the old set
         try? fm.removeItem(at: highlightURL(s))
         s.hasHighlight = false
+        // The user removed these; a later empty screen must not blame detection.
+        s.detectionFoundNothing = false
         save(s)
+        return true
     }
 
     /// Saves the given clips (or all of them when `ids` is nil) to Photos.
@@ -990,7 +1008,7 @@ final class SessionStore: ObservableObject {
         let task = beginBackgroundTask()
         defer {
             clearProgressUnlessFailed(key)
-            UIApplication.shared.endBackgroundTask(task)
+            endBackgroundTask(task)
         }
 
         // one asset load per session, however many clips it contributes
@@ -1027,11 +1045,12 @@ final class SessionStore: ObservableObject {
             return nil
         }
 
+        // A fresh id per reel: the old settings-derived name meant a second
+        // reel with the same platform and pace replaced the first. Declared out
+        // here so the catch can remove the sidecar it wrote.
+        let id = "reel_" + UUID().uuidString.prefix(8).lowercased()
         do {
             try? fm.createDirectory(at: reelsDir, withIntermediateDirectories: true)
-            // A fresh id per reel: the old settings-derived name meant a second
-            // reel with the same platform and pace replaced the first.
-            let id = "reel_" + UUID().uuidString.prefix(8).lowercased()
             let out = reelsDir.appendingPathComponent(id + ".mp4")
             // The sidecar is what makes the reel visible and deletable, so it
             // is written first: a crash between the two used to leave a
@@ -1063,6 +1082,9 @@ final class SessionStore: ObservableObject {
             objectWillChange.send()
             return (out, plan)
         } catch {
+            // The sidecar is written before the video so a crash can't orphan
+            // the file; a build that simply failed must take it with it.
+            try? fm.removeItem(at: reelsDir.appendingPathComponent(id + ".json"))
             progress[key] = .failed(error.localizedDescription)
             return nil
         }

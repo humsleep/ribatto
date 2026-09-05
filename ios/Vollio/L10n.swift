@@ -22,7 +22,12 @@ enum L {
         let key = "rc_lang"
         guard UserDefaults.standard.string(forKey: key) == nil else { return }
         let codes = languages.map(\.code)
-        for preferred in Locale.preferredLanguages {
+        // The raw device order, not `Locale.preferredLanguages`, which resolves
+        // against the bundle's declared localizations and would collapse to the
+        // development language on a build that declared none.
+        let device = UserDefaults.standard.stringArray(forKey: "AppleLanguages")
+            ?? Locale.preferredLanguages
+        for preferred in device {
             // "zh-Hans-CN" -> "zh-Hans", "pt-BR" -> "pt", "de-DE" -> "de"
             if let exact = codes.first(where: { preferred.hasPrefix($0) }) {
                 UserDefaults.standard.set(exact, forKey: key)
