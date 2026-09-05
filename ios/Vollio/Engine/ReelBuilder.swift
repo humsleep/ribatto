@@ -168,6 +168,9 @@ struct ReelPlan: Equatable {
 
 enum ReelBuilder {
 
+    /// The least of a rally that still counts as having made the reel.
+    static let minPlacedSeconds = 1.0
+
     /// Renders each rally vertically from its original source, then joins them.
     ///
     /// Re-rendering rather than concatenating the existing clips costs time but
@@ -194,23 +197,33 @@ enum ReelBuilder {
         var plan = ReelPlan()
         var remaining = target.maxDuration ?? .greatestFiniteMagnitude
         for item in items {
-            var placedAny = false
+            let before = planned.count
+            var placed = 0.0
             for piece in pace.pieces(of: item.segment) {
                 let length = piece.duration
                 if remaining <= 0.5 { break }
                 if length > remaining {
                     planned.append((item, piece, remaining))
                     plan.trimmed = true
+                    placed += remaining
                     remaining = 0
                 } else {
                     planned.append((item, piece, length))
+                    placed += length
                     remaining -= length
                 }
-                placedAny = true
             }
-            // count source rallies, not pieces — a hook splits one rally into
-            // two, and the user picked rallies
-            if placedAny { plan.used += 1 } else { plan.dropped += 1 }
+            // A sliver is not a rally. Under `hook` the first piece is a 0.8s
+            // lead, so a cap that ran out mid-lead used to leave a
+            // sub-second flash on the end of the reel and still count it in
+            // "3 rallies". Below a second it is dropped instead.
+            if placed >= minPlacedSeconds {
+                plan.used += 1
+            } else {
+                planned.removeSubrange(before...)
+                remaining += placed
+                plan.dropped += 1
+            }
         }
         plan.duration = planned.reduce(0) { $0 + $1.seconds }
 
