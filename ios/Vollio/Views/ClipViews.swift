@@ -95,16 +95,20 @@ struct ClipCard: View {
         .buttonStyle(.plain)
     }
 
+    // The grid fixes the cell width, so these two cannot grow with the type
+    // size — unbounded they clipped to "00:02–0…", which is not a timestamp.
     private var timeLabel: some View {
         Text("\(fmtTs(clip.segment.start))–\(fmtTs(clip.segment.end))")
             .font(.caption2.monospacedDigit().bold())
-            .lineLimit(1).minimumScaleFactor(0.8)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            .lineLimit(1).minimumScaleFactor(0.7)
     }
 
     private var subLabel: some View {
         Text(showSession ?? (String(clip.segment.hits) + " " + L.s("shots_n", lang)))
             .font(.caption2).foregroundStyle(.secondary)
-            .lineLimit(1).minimumScaleFactor(0.8)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            .lineLimit(1).minimumScaleFactor(0.7)
     }
 
     @ViewBuilder private var thumb: some View {
@@ -124,6 +128,7 @@ struct ClipPlayerSheet: View {
     @State private var confirmDelete = false
     @State private var destination: Destination?
     @Environment(\.verticalSizeClass) private var vSize
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// One sheet drives every modal, as on `SessionDetailView`. Stacking
     /// several `.sheet` modifiers on one view collides — a second one added
@@ -242,12 +247,13 @@ struct ClipPlayerSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L.s("who_won", lang))
                         .font(.caption).foregroundStyle(.secondary)
-                    HStack(spacing: 8) {
+                    AdaptiveButtonRow {
                         ForEach(PointWinner.allCases) { side in
                             Button {
                                 store.setWinner(clip, winner == side ? nil : side)
                             } label: {
                                 Text(L.s(side.key, lang))
+                                    .multilineTextAlignment(.center)
                                     .frame(maxWidth: .infinity)
                                     .chip(active: winner == side)
                             }
@@ -276,9 +282,20 @@ struct ClipPlayerSheet: View {
             .onAppear { if player == nil { player = AVPlayer(url: clip.url) } }
             // Only a wide clip gains anything from turning the phone; a 9:16
             // rally would just be letterboxed on its side.
-                .navigationTitle("#" + String(clip.index + 1) + " · \(fmtTs(clip.segment.start))–\(fmtTs(clip.segment.end))")
-            .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // Two lines, because "#1 · 00:02–00:20" on one does not fit
+                // between a delete button and three trailing buttons — it
+                // clipped to "00:0…" at every text size, not only large ones.
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 0) {
+                        Text("#" + String(clip.index + 1)).font(.headline)
+                        Text(fmtTs(clip.segment.start) + "–" + fmtTs(clip.segment.end))
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .lineLimit(1)
+                    .dynamicTypeSize(...DynamicTypeSize.large)
+                }
                 ToolbarItem(placement: .topBarLeading) {
                     Button(role: .destructive) { confirmDelete = true } label: {
                         Image(systemName: "trash")

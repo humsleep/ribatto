@@ -219,6 +219,21 @@ struct SessionDetailView: View {
     // Grid sizes the label column to the widest label, so the controls stay
     // aligned in every language and at every Dynamic Type size.
 
+    /// Icon, value and the edit affordance as one run of text. Laid out as an
+    /// HStack the two glyphs hold fixed columns, and what is left at
+    /// accessibility sizes is narrower than a single word — "Wednesday group"
+    /// came out as "Wednes / day / group". Inline, the value owns the width.
+    private func editableRow(icon: String, value: String, dim: Bool) -> some View {
+        (Text(Image(systemName: icon))
+         + Text("  ")
+         + Text(value).foregroundColor(dim ? .secondary : .primary)
+         + Text("  ")
+         + Text(Image(systemName: "pencil")).font(.caption2).foregroundColor(.secondary))
+            .font(.subheadline.weight(.medium))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+    }
+
     private func settingsCard(_ session: Session, busy: Bool) -> some View {
         VStack(spacing: 14) {
             // the place comes from the video's metadata, but reverse geocoding
@@ -227,38 +242,36 @@ struct SessionDetailView: View {
                 placeDraft = session.placeName ?? ""
                 editingPlace = true
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "mappin.and.ellipse")
-                    Text(session.placeName ?? L.s("add_place", lang))
-                        .foregroundStyle(session.placeName == nil ? .secondary : .primary)
-                    Image(systemName: "pencil")
-                        .font(.caption2).foregroundStyle(.tertiary)
-                    Spacer()
-                }
-                .font(.subheadline.weight(.medium))
-                .contentShape(Rectangle())
+                editableRow(icon: "mappin.and.ellipse",
+                            value: session.placeName ?? L.s("add_place", lang),
+                            dim: session.placeName == nil)
             }
             .buttonStyle(.plain)
             Button {
                 opponentDraft = session.opponent ?? ""
                 editingOpponent = true
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "person.2")
-                    Text(session.opponent ?? L.s("opponent", lang))
-                        .foregroundStyle(session.opponent == nil ? .secondary : .primary)
-                    Image(systemName: "pencil")
-                        .font(.caption2).foregroundStyle(.tertiary)
-                    Spacer()
-                    if let score = TennisScore.summary(for: session.segments ?? [],
-                                                       sport: session.sport, lang: lang) {
+                let score = TennisScore.summary(for: session.segments ?? [],
+                                                sport: session.sport, lang: lang)
+                // The score is short but at accessibility sizes it still claims
+                // more than half the row, so there it drops to its own line.
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        editableRow(icon: "person.2",
+                                    value: session.opponent ?? L.s("opponent", lang),
+                                    dim: session.opponent == nil)
+                        if let score, !typeSize.isAccessibilitySize {
+                            Text(score)
+                                .font(.caption.bold())
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                    if let score, typeSize.isAccessibilitySize {
                         Text(score)
                             .font(.caption.bold())
                             .foregroundStyle(Theme.accent)
                     }
                 }
-                .font(.subheadline.weight(.medium))
-                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             // The card title already shows when the match was filmed; this only
@@ -393,18 +406,37 @@ struct SessionDetailView: View {
                 }
 
                 Button { destination = .caption } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "textformat")
-                        Text(L.s("edit_caption", lang))
-                        Spacer()
-                        Text(session.caption?.isVisible == true
-                             ? session.caption!.text : L.s("off", lang))
-                            .font(.caption).foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                    let current = session.caption?.isVisible == true
+                        ? session.caption!.text : L.s("off", lang)
+                    // Label, current text and chevron in one row leave the
+                    // label about two characters wide at accessibility sizes:
+                    // "Caption" came out as "Ca / pti / on".
+                    if typeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Image(systemName: "textformat")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                            }
+                            Text(L.s("edit_caption", lang))
+                            Text(current)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        HStack(spacing: 8) {
+                            Image(systemName: "textformat")
+                            Text(L.s("edit_caption", lang))
+                            Spacer()
+                            Text(current)
+                                .font(.caption).foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
                 }
                 .rcSecondary()
             }
@@ -859,29 +891,42 @@ struct SessionDetailView: View {
     private func toolbar(_ session: Session, busy: Bool) -> some View {
         let tagged = session.taggedPoints
         let total = session.segments?.count ?? 0
-        let picker = VStack(spacing: 10) {
-            HStack {
+        // Everything on this row is short, and every one of them still breaks
+        // mid-word at accessibility sizes once it has to share the width:
+        // the sort pill read "Timeli…" and the tally read "4 of 4 / tagge / d".
+        let stacked = typeSize.isAccessibilitySize
+        let taggedLabel = Label(String(format: L.s("tagged_fmt", lang), tagged, total),
+                                systemImage: tagged == total && total > 0
+                                    ? "checkmark.circle.fill" : "flag.checkered")
+            .font(.caption)
+            .foregroundStyle(tagged > 0 ? Theme.accent : .secondary)
+        let addRally = Button { destination = .addRally } label: {
+            Label(L.s("add_rally", lang), systemImage: "plus")
+                .font(.caption.bold())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Theme.accent)
+
+        let picker = VStack(alignment: .leading, spacing: 10) {
+            if stacked {
                 Text(L.s("clips_title", lang)).font(.headline)
-                Spacer()
                 SortMenu(sort: $sort)
-            }
-            HStack(spacing: 8) {
-                // How much of the match has a winner tagged — the one number
-                // that says whether the scoreboard can say anything yet.
-                Label(String(format: L.s("tagged_fmt", lang), tagged, total),
-                      systemImage: tagged == total && total > 0
-                          ? "checkmark.circle.fill" : "flag.checkered")
-                    .font(.caption)
-                    .foregroundStyle(tagged > 0 ? Theme.accent : .secondary)
-                Spacer()
-                Button { destination = .addRally } label: {
-                    Label(L.s("add_rally", lang), systemImage: "plus")
-                        .font(.caption.bold())
+                taggedLabel
+                addRally
+            } else {
+                HStack {
+                    Text(L.s("clips_title", lang)).font(.headline)
+                    Spacer()
+                    SortMenu(sort: $sort)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(Theme.accent)
+                HStack(spacing: 8) {
+                    taggedLabel
+                    Spacer()
+                    addRally
+                }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
 
         let reelButton = Button {
             let all = store.clips(of: session).filter(\.isReady).map { (session, $0) }
@@ -890,7 +935,8 @@ struct SessionDetailView: View {
         } label: {
             Label(L.s("reel_make", lang), systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
                 .font(.subheadline.bold())
-                .lineLimit(1)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
         }
         .rcPrimary()
@@ -901,7 +947,8 @@ struct SessionDetailView: View {
         } label: {
             Label(L.s("make_highlight", lang), systemImage: "sparkles")
                 .font(.subheadline.bold())
-                .lineLimit(1)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
         }
         .rcSecondary()
@@ -909,7 +956,9 @@ struct SessionDetailView: View {
 
         // Stacked, not side by side: at half width "하이라이트 합본" and its
         // Japanese equivalent truncate, and ViewThatFits can't catch it because
-        // a maxWidth:.infinity button reports that it fits any width.
+        // a maxWidth:.infinity button reports that it fits any width. Full width
+        // is still not enough on a 4.7" screen at accessibility sizes, so the
+        // labels wrap rather than clip to "Make a R…".
         return VStack(spacing: 10) {
             picker
             reelButton

@@ -53,6 +53,24 @@ extension View {
 }
 
 
+/// A row of equal-width controls that turns into a column at accessibility text
+/// sizes. Held horizontal, each control keeps only 1/n of the width and short
+/// labels like "Bottom" break in the middle of the word.
+struct AdaptiveButtonRow<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    var spacing: CGFloat = 8
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(spacing: spacing) { content() }
+        } else {
+            HStack(spacing: spacing) { content() }
+        }
+    }
+}
+
+
 /// Marks a control that free users can see but not use yet.
 struct ProBadge: View {
     var body: some View {

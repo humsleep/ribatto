@@ -14,6 +14,10 @@ struct ReelSheet: View {
     @EnvironmentObject var store: SessionStore
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// A row is two lines of text; held at 52pt the list showed one rally of
+    /// four at accessibility sizes and hid the rest behind a scroll.
+    @ScaledMetric(relativeTo: .subheadline) private var reelRowHeight: CGFloat = 52
     let request: ReelRequest
 
     @State private var target: ReelTarget = .reels
@@ -214,22 +218,41 @@ struct ReelSheet: View {
     /// The running order, with a switch per rally and a shortcut that keeps
     /// only the best-scoring ones. Picking which fifteen seconds to post is the
     /// actual work in a 26-minute match, so the shortcut leads.
-    private var runningOrderCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(L.s("reel_reorder", lang))
-                    .font(.subheadline.bold())
-                Spacer()
-                if entries.count > 3, entries.contains(where: { $0.clip.segment.score != nil }) {
-                    ForEach([3, 5], id: \.self) { n in
-                        Button(String(format: L.s("reel_pick_top", lang), n)) { keepTop(n) }
-                            .font(.caption.bold())
-                            .buttonStyle(.plain)
-                            .foregroundStyle(Theme.accent)
-                            .padding(.leading, 8)
-                    }
+    /// Title and the keep-the-best shortcuts. Side by side the shortcuts claim
+    /// the width at accessibility sizes and squeeze the title into a one-word
+    /// column, so there they sit on their own line.
+    @ViewBuilder private var reorderHeader: some View {
+        let hasShortcuts = entries.count > 3
+            && entries.contains(where: { $0.clip.segment.score != nil })
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L.s("reel_reorder", lang)).font(.subheadline.bold())
+                if hasShortcuts {
+                    HStack(spacing: 16) { topShortcuts }
                 }
             }
+        } else {
+            HStack {
+                Text(L.s("reel_reorder", lang)).font(.subheadline.bold())
+                Spacer()
+                if hasShortcuts { topShortcuts }
+            }
+        }
+    }
+
+    private var topShortcuts: some View {
+        ForEach([3, 5], id: \.self) { n in
+            Button(String(format: L.s("reel_pick_top", lang), n)) { keepTop(n) }
+                .font(.caption.bold())
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.accent)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var runningOrderCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            reorderHeader
             List {
                 ForEach($entries) { $entry in
                     HStack(spacing: 10) {
@@ -264,7 +287,7 @@ struct ReelSheet: View {
             // reel showed six rows and silently hid the rest — they were in the
             // reel, but could not be seen, reordered or deselected.
             .environment(\.editMode, .constant(.active))
-            .frame(height: min(CGFloat(entries.count) * 52 + 8, 520))
+            .frame(height: min(CGFloat(entries.count) * reelRowHeight + 8, 520))
         }
         .padding(14)
         .rcCard()
@@ -286,23 +309,15 @@ struct ReelSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             ForEach(ReelPace.allCases) { p in
                 Button { pace = p } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: p.symbol)
+                    selectableRow(
+                        badge: Image(systemName: p.symbol)
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(pace == p ? Theme.onAccent : Theme.accent)
                             .frame(width: 26, height: 26)
-                            .background(pace == p ? Theme.accent : Theme.surfaceHigh, in: Circle())
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(L.s("pace_" + p.rawValue, lang)).font(.subheadline.bold())
-                            Text(L.s("pace_" + p.rawValue + "_d", lang))
-                                .font(.caption2).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 6)
-                        Image(systemName: pace == p ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(pace == p ? Theme.accent
-                                             : Color.secondary.opacity(0.5))
-                    }
-                    .contentShape(Rectangle())
+                            .background(pace == p ? Theme.accent : Theme.surfaceHigh, in: Circle()),
+                        title: L.s("pace_" + p.rawValue, lang),
+                        detail: L.s("pace_" + p.rawValue + "_d", lang),
+                        selected: pace == p)
                 }
                 .buttonStyle(.plain)
             }
@@ -352,25 +367,43 @@ struct ReelSheet: View {
         .disabled(building)
     }
 
+    /// A pick-one row. The badge and the selection mark hold fixed columns, and
+    /// at accessibility sizes what is left is narrower than the longest word —
+    /// "Instagram Reels" broke as "Instagra / m Reels". There the two glyphs
+    /// share a line and the text owns the width below them.
+    @ViewBuilder
+    private func selectableRow<Badge: View>(badge: Badge, title: String,
+                                            detail: String, selected: Bool) -> some View {
+        let mark = Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+            .foregroundStyle(selected ? Theme.accent : Color.secondary.opacity(0.5))
+        let text = VStack(alignment: .leading, spacing: 1) {
+            Text(title).font(.subheadline.bold())
+            Text(detail).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack { badge; Spacer(minLength: 6); mark }
+                text
+            }
+            .contentShape(Rectangle())
+        } else {
+            HStack(spacing: 12) { badge; text; Spacer(minLength: 6); mark }
+                .contentShape(Rectangle())
+        }
+    }
+
     private func targetRow(_ t: ReelTarget) -> some View {
         Button { target = t } label: {
-            HStack(spacing: 12) {
-                Image(systemName: t.symbol)
+            selectableRow(
+                badge: Image(systemName: t.symbol)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(target == t ? Theme.onAccent : Theme.accent)
                     .frame(width: 28, height: 28)
-                    .background(target == t ? Theme.accent : Theme.surfaceHigh, in: Circle())
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(L.s("reel_" + t.rawValue, lang))
-                        .font(.subheadline.bold())
-                    Text(capLabel(t))
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 6)
-                Image(systemName: target == t ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(target == t ? Theme.accent : Color.secondary.opacity(0.5))
-            }
-            .contentShape(Rectangle())
+                    .background(target == t ? Theme.accent : Theme.surfaceHigh, in: Circle()),
+                title: L.s("reel_" + t.rawValue, lang),
+                detail: capLabel(t),
+                selected: target == t)
         }
         .buttonStyle(.plain)
         .disabled(building)

@@ -42,7 +42,11 @@ struct ZoomableVideo: View {
     @State private var duration: Double = 1
     @State private var scrubbing = false
     @State private var observer: Any?
-    @State private var showHint = true
+    /// Shown once per install, not once per view. Rotating the phone tears
+    /// down the landscape player and builds the portrait one, so a per-view
+    /// flag put the hint back on screen after every turn.
+    @AppStorage("rc_zoom_hint_seen") private var hintSeen = false
+    @State private var showHint = false
 
     private let maxZoom: CGFloat = 5
 
@@ -61,7 +65,10 @@ struct ZoomableVideo: View {
             controls
         }
         .background(Color.black)
-        .onAppear { attach() }
+        .onAppear {
+            attach()
+            if !hintSeen { showHint = true; hintSeen = true }
+        }
         .onDisappear { detach() }
     }
 
@@ -124,6 +131,8 @@ struct ZoomableVideo: View {
     private func pill(_ text: String) -> some View {
         Text(text)
             .font(.caption2.bold())
+            // It floats over the picture; unbounded it covered half the rally.
+            .dynamicTypeSize(...DynamicTypeSize.large)
             .foregroundStyle(.white)
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(.black.opacity(0.55), in: Capsule())

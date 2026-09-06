@@ -20,6 +20,7 @@ struct LibraryView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var purchases: PurchaseManager
     @AppStorage("rc_lang") private var lang = "en"
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showLicenses = false
     @State private var showPrivacy = false
     @State private var pickerItem: PhotosPickerItem?
@@ -239,13 +240,24 @@ struct LibraryView: View {
 
     private var sportFilterBar: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Label(L.s("filter", lang), systemImage: "line.3.horizontal.decrease")
-                    .font(.subheadline.bold())
-                Spacer()
-                Text(String(format: L.s(visibleSessions.count == 1 ? "n_one_session"
-                                                   : "n_sessions", lang), visibleSessions.count))
-                    .font(.caption).foregroundStyle(.secondary)
+            // Side by side the count claims half the row and "Filter" breaks
+            // as "Filte / r" on a 4.7" screen at accessibility sizes.
+            let count = Text(String(format: L.s(visibleSessions.count == 1 ? "n_one_session"
+                                                : "n_sessions", lang), visibleSessions.count))
+                .font(.caption).foregroundStyle(.secondary)
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(L.s("filter", lang), systemImage: "line.3.horizontal.decrease")
+                        .font(.subheadline.bold())
+                    count
+                }
+            } else {
+                HStack {
+                    Label(L.s("filter", lang), systemImage: "line.3.horizontal.decrease")
+                        .font(.subheadline.bold())
+                    Spacer()
+                    count
+                }
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {

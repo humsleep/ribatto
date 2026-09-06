@@ -204,7 +204,9 @@ struct CaptionEditorView: View {
                                             : CaptionText.adding(token, to: draft.text)
                             draft.enabled = true
                         } label: {
-                            Text(L.s(CaptionText.labelKey(token), lang)).chip(active: on)
+                            Text(L.s(CaptionText.labelKey(token), lang))
+                                .lineLimit(1)
+                                .chip(active: on)
                         }
                         .buttonStyle(.plain)
                     }
@@ -272,7 +274,7 @@ struct CaptionEditorView: View {
     private var quickPositions: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L.s("position", lang)).font(.caption).foregroundStyle(.secondary)
-            HStack(spacing: 8) {
+            AdaptiveButtonRow {
                 ForEach(Self.presets, id: \.key) { preset in
                     Button {
                         draft.x = preset.x
@@ -281,6 +283,7 @@ struct CaptionEditorView: View {
                     } label: {
                         Text(L.s(preset.key, lang))
                             .font(.caption.bold())
+                            .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity, minHeight: 30)
                     }
                     .rcSecondary()
