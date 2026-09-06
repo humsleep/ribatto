@@ -346,16 +346,29 @@ struct ClipPlayerSheet: View {
 struct HighlightPlayerSheet: View {
     let url: URL
     let name: String
-    @State private var player: AVPlayer?
+    /// The frame the session was rendered to. A vertical highlight gains
+    /// nothing from turning the phone — it would just lie on its side inside
+    /// black bars — so the same rule as the clip player applies here.
+    var orientation: String? = nil
+    /// Built up front rather than in `onAppear`. The video is this screen's
+    /// only content, so a nil player left the navigation stack with nothing to
+    /// lay out: the sheet came up empty, title bar and all, and stayed empty
+    /// even once the player arrived.
+    @State private var player: AVPlayer
+
+    init(url: URL, name: String, orientation: String? = nil) {
+        self.url = url
+        self.name = name
+        self.orientation = orientation
+        _player = State(initialValue: AVPlayer(url: url))
+    }
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let player { ZoomableVideo(player: player) }
-            }
+            ZoomableVideo(player: player)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.black.ignoresSafeArea())
-                .onAppear { if player == nil { player = AVPlayer(url: url) } }
-                .allowsLandscape()
+                .allowsLandscape(!OutputFrame(orientation).isPortrait)
                 .navigationTitle("✨ \(name)")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

@@ -162,9 +162,11 @@ struct SessionDetailView: View {
                 ClipPlayerSheet(clip: clip)
             case .highlight:
                 HighlightPlayerSheet(url: store.highlightURL(session),
-                                     name: L.dateTime(session.playedAt, lang))
+                                     name: L.dateTime(session.playedAt, lang),
+                                     orientation: session.renderedOrientation)
             case .merged(let url):
-                HighlightPlayerSheet(url: url, name: L.s("merged", lang))
+                HighlightPlayerSheet(url: url, name: L.s("merged", lang),
+                                     orientation: session.renderedOrientation)
             case .paywall(let feature):
                 PaywallView(feature: feature)
             case .caption:
