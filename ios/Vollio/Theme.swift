@@ -53,6 +53,63 @@ extension View {
 }
 
 
+/// A tab's title and its actions on one row, drawn in the content rather than
+/// by the navigation bar. A large title bar spends one row on the buttons and
+/// a second on the title; on a tab with no buttons the first row is pure gap.
+struct TabHeader<Trailing: View>: View {
+    let title: String
+    @ViewBuilder var trailing: () -> Trailing
+
+    init(title: String, @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }) {
+        self.title = title
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(title)
+                .font(.largeTitle.bold())
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Spacer(minLength: 4)
+            trailing()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
+    }
+}
+
+/// The search field the tabs draw themselves. `.searchable` lives in the
+/// navigation bar, and these tabs no longer have one.
+struct SearchField: View {
+    let prompt: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField(prompt, text: $text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Clear")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(Theme.surface, in: Capsule())
+    }
+}
+
+
 /// A row of equal-width controls that turns into a column at accessibility text
 /// sizes. Held horizontal, each control keeps only 1/n of the width and short
 /// labels like "Bottom" break in the middle of the word.

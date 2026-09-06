@@ -455,6 +455,18 @@ struct AllClipsView: View {
 
     var body: some View {
         NavigationStack {
+            VStack(spacing: 0) {
+            TabHeader(title: L.s("all_clips", lang)) {
+                // Cheap check: `allClips()` here meant a second full scan of
+                // every session's clip directory on every body pass.
+                if store.hasAnyClips {
+                    Button(selecting ? L.s("done", lang) : L.s("select", lang)) {
+                        selecting.toggle()
+                        selection.removeAll()
+                    }
+                    .font(.subheadline.bold())
+                }
+            }
             Group {
                 let all = store.allClips()
                 let items = sorted(matching(all))
@@ -470,6 +482,9 @@ struct AllClipsView: View {
                     .padding(32)
                 } else {
                     ScrollView {
+                        SearchField(prompt: L.s("search_clips", lang), text: $search)
+                            .padding(.horizontal)
+                            .padding(.bottom, 10)
                         HStack {
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 Text(L.s("clips_title", lang)).font(.headline)
@@ -526,21 +541,9 @@ struct AllClipsView: View {
                     }
                 }
             }
-            .navigationTitle(L.s("all_clips", lang))
-            .searchable(text: $search, prompt: L.s("search_clips", lang))
-            .toolbar {
-                // Cheap check: `allClips()` here meant a second full scan of
-                // every session's clip directory on every body pass.
-                if store.hasAnyClips {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button(selecting ? L.s("done", lang) : L.s("select", lang)) {
-                            selecting.toggle()
-                            selection.removeAll()
-                        }
-                        .font(.subheadline.bold())
-                    }
-                }
             }
+            .background(Theme.background.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
             .confirmationDialog(String(format: L.s(selection.count == 1 ? "delete_one_clip"
                                                                      : "delete_n_clips", lang),
                                     selection.count),

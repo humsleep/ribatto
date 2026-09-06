@@ -18,6 +18,8 @@ struct ReelsView: View {
 
     var body: some View {
         NavigationStack {
+            VStack(spacing: 0) {
+            TabHeader(title: L.s("reels", lang))
             Group {
                 // One scan per pass: `reelsBytes()` used to run the whole
                 // listing a second time just to total the sizes.
@@ -60,7 +62,8 @@ struct ReelsView: View {
                     }
                 }
             }
-            .navigationTitle(L.s("reels", lang))
+            }
+            .toolbar(.hidden, for: .navigationBar)
             .background(Theme.background.ignoresSafeArea())
             .sheet(item: $playing) { reel in
                 ReelPlayerSheet(reel: reel)
@@ -135,6 +138,20 @@ struct ReelPlayerSheet: View {
     @State private var player: AVPlayer?
     @State private var saved = false
     @State private var confirmDelete = false
+    /// The reel on screen. A recaption re-renders into a new file, so this
+    /// moves off the one the sheet was opened with.
+    @State private var current: ReelInfo?
+    @State private var editingCaption = false
+    @State private var rebuilding = false
+    @State private var message: String?
+
+    private var shown: ReelInfo { current ?? reel }
+    /// The session the caption editor previews against — the one the reel's
+    /// first rally came from.
+    private var captionSession: Session? {
+        guard let first = shown.sources?.first else { return nil }
+        return store.sessions.first { $0.id == first.sessionID }
+    }
 
     var body: some View {
         NavigationStack {
@@ -145,8 +162,31 @@ struct ReelPlayerSheet: View {
                 }
                 Spacer(minLength: 0)
                 VStack(spacing: 10) {
+                    // A reel's caption is burned in, so changing it means
+                    // rendering the reel again — which is only possible for a
+                    // reel that recorded where its rallies came from.
+                    if let session = captionSession {
+                        Button {
+                            editingCaption = true
+                        } label: {
+                            Label(rebuilding ? L.s("reel_recaptioning", lang)
+                                             : L.s("edit_caption", lang),
+                                  systemImage: "textformat")
+                                .font(.subheadline.bold())
+                                .frame(maxWidth: .infinity, minHeight: 24)
+                        }
+                        .rcSecondary()
+                        .disabled(rebuilding)
+                        .sheet(isPresented: $editingCaption) {
+                            CaptionEditorView(session: session,
+                                              caption: shown.caption,
+                                              frame: OutputFrame(shown.frame)) { edited in
+                                recaption(edited)
+                            }
+                        }
+                    }
                     Button {
-                        Task { saved = await store.saveToPhotos(reel.url) }
+                        Task { saved = await store.saveToPhotos(shown.url) }
                     } label: {
                         Label(saved ? L.s("reel_saved", lang) : L.s("reel_save", lang),
                               systemImage: saved ? "checkmark" : "square.and.arrow.down")
@@ -154,7 +194,8 @@ struct ReelPlayerSheet: View {
                             .frame(maxWidth: .infinity, minHeight: 24)
                     }
                     .rcPrimary()
-                    ShareLink(item: reel.url) {
+                    .disabled(rebuilding)
+                    ShareLink(item: shown.url) {
                         Label(L.s("share", lang), systemImage: "square.and.arrow.up")
                             .font(.subheadline.bold())
                             .frame(maxWidth: .infinity, minHeight: 24)
@@ -164,7 +205,7 @@ struct ReelPlayerSheet: View {
                 .padding(16)
             }
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle(L.s("reel_" + reel.target, lang))
+            .navigationTitle(L.s("reel_" + shown.target, lang))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -179,11 +220,33 @@ struct ReelPlayerSheet: View {
             }
             .confirmationDialog(L.s("reel_delete", lang), isPresented: $confirmDelete) {
                 Button(L.s("delete", lang), role: .destructive) {
-                    store.deleteReel(reel); dismiss()
+                    store.deleteReel(shown); dismiss()
                 }
             }
-            .onAppear { if player == nil { player = AVPlayer(url: reel.url) } }
+            .alert(message ?? "", isPresented: Binding(
+                get: { message != nil }, set: { if !$0 { message = nil } })) {
+                Button("OK", role: .cancel) { message = nil }
+            }
+            .onAppear { if player == nil { player = AVPlayer(url: shown.url) } }
         }
         .preferredColorScheme(.dark)
+    }
+
+    /// Renders the reel again with a new caption and swaps the player over to
+    /// the new file.
+    private func recaption(_ caption: CaptionSettings) {
+        rebuilding = true
+        Task {
+            let rebuilt = await store.rebuildReel(shown, caption: caption)
+            rebuilding = false
+            guard let rebuilt else {
+                message = L.s("reel_recaption_failed", lang)
+                return
+            }
+            current = rebuilt
+            saved = false
+            player = AVPlayer(url: rebuilt.url)
+            player?.play()
+        }
     }
 }

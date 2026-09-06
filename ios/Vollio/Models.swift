@@ -500,13 +500,32 @@ struct ReelInfo: Codable, Identifiable, Equatable {
     let duration: Double
     /// Court of the first session that went in, when it had one.
     let place: String?
+    /// The rallies this reel was built from, so it can be built again with a
+    /// different caption instead of asking the user to pick the clips twice.
+    /// Optional: reels made before this existed have no record of their source.
+    var sources: [ReelSource]? = nil
+    /// The caption burned into this reel, when it was given one here rather
+    /// than inherited from each session.
+    var caption: CaptionSettings? = nil
 
     // Filled in when listed; never written to the sidecar.
     var url: URL = URL(fileURLWithPath: "/")
     var thumbURL: URL = URL(fileURLWithPath: "/")
     var bytes: Int64 = 0
 
+    /// True when this reel remembers where its rallies came from, which is what
+    /// re-rendering it needs.
+    var canRebuild: Bool { !(sources ?? []).isEmpty }
+
     enum CodingKeys: String, CodingKey {
         case id, createdAt, target, frame, pace, preset, rallies, duration, place
+        case sources, caption
     }
+}
+
+/// One rally inside a reel, addressed the way it can still be found later: by
+/// its session and its index in that session's segments.
+struct ReelSource: Codable, Equatable {
+    let sessionID: UUID
+    let clipIndex: Int
 }

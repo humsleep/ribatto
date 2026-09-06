@@ -55,12 +55,41 @@ struct LibraryView: View {
 
     var body: some View {
         NavigationStack {
+            VStack(spacing: 0) {
+            TabHeader(title: L.s("my_sessions", lang)) {
+                if !store.sessions.isEmpty {
+                    Button(selecting ? L.s("done", lang) : L.s("select", lang)) {
+                        selecting.toggle()
+                        selection.removeAll()
+                    }
+                    .font(.subheadline.bold())
+                }
+                // A toolbar collapses a Label to its icon; in the content it
+                // would spell out "Import video" and "Record" and push the
+                // title out of the row.
+                importButton
+                    .labelStyle(.iconOnly)
+                    .font(.title3)
+                recordButton
+                    .labelStyle(.iconOnly)
+                    .font(.title3)
+            }
+            // Language and the free-import count are secondary to the actions,
+            // so they sit under the title rather than competing with it.
+            HStack(spacing: 10) {
+                languageMenu
+                entitlementPill
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 10)
             Group {
                 if store.sessions.isEmpty && !importing {
                     emptyState
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 14) {
+                            SearchField(prompt: L.s("search_sessions", lang), text: $search)
                             if importing { ProgressView().padding() }
                             // one session doesn't need filtering — chips would be noise
                             if store.sessions.count > 1 { sportFilterBar }
@@ -94,31 +123,13 @@ struct LibraryView: View {
                         }
                         .padding()
                     }
-                    .searchable(text: $search, prompt: L.s("search_sessions", lang))
                 }
             }
-            .navigationTitle(L.s("my_sessions", lang))
+            }
+            .background(Theme.background.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { id in
                 SessionDetailView(sessionID: id)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 10) {
-                        languageMenu
-                        entitlementPill
-                    }
-                }
-                if !store.sessions.isEmpty {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button(selecting ? L.s("done", lang) : L.s("select", lang)) {
-                            selecting.toggle()
-                            selection.removeAll()
-                        }
-                        .font(.subheadline.bold())
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) { importButton }
-                ToolbarItem(placement: .topBarTrailing) { recordButton }
             }
             .sheet(isPresented: $showPaywall) { PaywallView(feature: paywallFeature) }
             .sheet(isPresented: $showOwner) { OwnerSheet() }

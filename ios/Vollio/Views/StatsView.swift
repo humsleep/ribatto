@@ -47,6 +47,8 @@ struct StatsView: View {
 
     var body: some View {
         NavigationStack {
+            VStack(spacing: 0) {
+            TabHeader(title: L.s("season", lang))
             Group {
                 if store.sessions.isEmpty {
                     VStack(spacing: 10) {
@@ -62,7 +64,8 @@ struct StatsView: View {
                     content
                 }
             }
-            .navigationTitle(L.s("season", lang))
+            }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 

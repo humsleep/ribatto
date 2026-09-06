@@ -1032,11 +1032,16 @@ final class SessionStore: ObservableObject {
     /// the vertical framing is chosen with the whole frame available.
     ///
     /// Returns the finished file and a report of what the platform cap cut.
+    /// - Parameters:
+    ///   - caption: when set, replaces every session's own caption for this
+    ///     reel. Nil keeps each session's, which is what building from the
+    ///     session screen does.
     func buildReel(from pairs: [(session: Session, clip: ClipInfo)],
                    target: ReelTarget,
                    frame: OutputFrame = .vertical,
                    pace: ReelPace = .full,
-                   preset: ReelPreset? = nil) async -> (url: URL, plan: ReelPlan)? {
+                   preset: ReelPreset? = nil,
+                   caption: CaptionSettings? = nil) async -> (url: URL, plan: ReelPlan)? {
         let ordered = pairs.sorted {
             ($0.session.playedAt, $0.clip.segment.start)
                 < ($1.session.playedAt, $1.clip.segment.start)
@@ -1069,7 +1074,8 @@ final class SessionStore: ObservableObject {
             }
             guard let asset = assets[sid] else { continue }
             let useSmartCrop = isPro && pair.session.smartCropEnabled
-            let styled = preset?.applied(to: pair.session.caption) ?? pair.session.caption
+            let base = caption ?? pair.session.caption
+            let styled = preset?.applied(to: base) ?? base
             items.append(ReelItem(asset: asset,
                                   segment: pair.clip.segment,
                                   caption: CaptionText.resolve(
@@ -1096,6 +1102,8 @@ final class SessionStore: ObservableObject {
         // reel with the same platform and pace replaced the first. Declared out
         // here so the catch can remove the sidecar it wrote.
         let id = "reel_" + UUID().uuidString.prefix(8).lowercased()
+        let sources = ordered.map { ReelSource(sessionID: $0.session.id,
+                                               clipIndex: $0.clip.index) }
         do {
             try? fm.createDirectory(at: reelsDir, withIntermediateDirectories: true)
             let out = reelsDir.appendingPathComponent(id + ".mp4")
@@ -1106,7 +1114,8 @@ final class SessionStore: ObservableObject {
             let placeholder = ReelInfo(id: id, createdAt: Date(), target: target.rawValue,
                                        frame: frame.rawValue, pace: pace.rawValue,
                                        preset: preset?.rawValue, rallies: 0, duration: 0,
-                                       place: ordered.first?.session.placeName)
+                                       place: ordered.first?.session.placeName,
+                                       sources: sources, caption: caption)
             try? JSONEncoder().encode(placeholder)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"))
             let plan = try await ReelBuilder.build(
@@ -1123,7 +1132,8 @@ final class SessionStore: ObservableObject {
                                 frame: frame.rawValue, pace: pace.rawValue,
                                 preset: preset?.rawValue,
                                 rallies: plan.used, duration: plan.duration,
-                                place: ordered.first?.session.placeName)
+                                place: ordered.first?.session.placeName,
+                                sources: sources, caption: caption)
             try? JSONEncoder().encode(info)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"))
             objectWillChange.send()
@@ -1135,6 +1145,38 @@ final class SessionStore: ObservableObject {
             progress[key] = .failed(error.localizedDescription)
             return nil
         }
+    }
+
+    /// Rebuilds a finished reel with a different caption.
+    ///
+    /// The rally sources are re-resolved from the sidecar, so a session or a
+    /// rally that has since been deleted stops the rebuild rather than
+    /// producing a shorter reel than the one the user is looking at. The new
+    /// reel is built under its own id and the old one is removed only once it
+    /// has succeeded — a failed rebuild must not take the finished video with
+    /// it.
+    func rebuildReel(_ reel: ReelInfo,
+                     caption: CaptionSettings?) async -> ReelInfo? {
+        let sources = reel.sources ?? []
+        guard !sources.isEmpty else { return nil }
+        var pairs: [(session: Session, clip: ClipInfo)] = []
+        for source in sources {
+            guard let session = sessions.first(where: { $0.id == source.sessionID }) else {
+                return nil
+            }
+            guard let clip = clips(of: session).first(where: { $0.index == source.clipIndex })
+            else { return nil }
+            pairs.append((session, clip))
+        }
+        guard await buildReel(from: pairs,
+                              target: ReelTarget(rawValue: reel.target) ?? .reels,
+                              frame: OutputFrame(reel.frame),
+                              pace: ReelPace(rawValue: reel.pace) ?? .full,
+                              preset: reel.preset.flatMap(ReelPreset.init(rawValue:)),
+                              caption: caption) != nil
+        else { return nil }
+        deleteReel(reel)
+        return reels().first
     }
 
     /// Saves a finished reel to Photos so it can be picked up by Instagram or

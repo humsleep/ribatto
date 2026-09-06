@@ -7,7 +7,15 @@ struct CaptionEditorView: View {
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dismiss) private var dismiss
 
+    /// The session the preview borrows its poster and sample words from. For a
+    /// reel that is simply the session its first rally came from.
     let session: Session
+    /// The shape to preview in. A reel is vertical whatever its session was.
+    private let previewFrame: OutputFrame
+    /// Set when the caption belongs to something other than the session — a
+    /// reel — in which case applying hands it back instead of writing it to
+    /// the session.
+    private let onApply: ((CaptionSettings) -> Void)?
     @State private var draft: CaptionSettings
     @State private var dragging = false
 
@@ -15,7 +23,19 @@ struct CaptionEditorView: View {
 
     init(session: Session) {
         self.session = session
+        self.previewFrame = OutputFrame(session.effectiveOrientation)
+        self.onApply = nil
         _draft = State(initialValue: session.caption ?? CaptionSettings())
+    }
+
+    init(session: Session,
+         caption: CaptionSettings?,
+         frame: OutputFrame,
+         onApply: @escaping (CaptionSettings) -> Void) {
+        self.session = session
+        self.previewFrame = frame
+        self.onApply = onApply
+        _draft = State(initialValue: caption ?? session.caption ?? CaptionSettings())
     }
 
     var body: some View {
@@ -44,7 +64,7 @@ struct CaptionEditorView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(L.s("apply", lang)) {
-                        store.setCaption(session, draft)
+                        if let onApply { onApply(draft) } else { store.setCaption(session, draft) }
                         dismiss()
                     }
                     .font(.headline)
@@ -57,7 +77,7 @@ struct CaptionEditorView: View {
     // MARK: - Preview / drag target
 
     private var preview: some View {
-        let frame = OutputFrame(session.effectiveOrientation)
+        let frame = previewFrame
         return GeometryReader { geo in
             let w = geo.size.width
             let h = w / frame.aspectRatio
