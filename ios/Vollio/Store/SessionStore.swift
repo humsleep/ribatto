@@ -190,7 +190,7 @@ final class SessionStore: ObservableObject {
                       let date = await self.captureDate(
                         assetIdentifier: session.assetIdentifier, asset: asset)
                 else { return }
-                await MainActor.run { self.mutate(id) { $0.capturedAt = date } }
+                _ = await MainActor.run { self.mutate(id) { $0.capturedAt = date } }
             }
         }
     }
@@ -206,7 +206,7 @@ final class SessionStore: ObservableObject {
                 for: CLLocationCoordinate2D(latitude: lat, longitude: lon),
                 locale: locale)
             guard let name, let self else { return }
-            await MainActor.run { self.mutate(sessionID) { $0.placeName = name } }
+            _ = await MainActor.run { self.mutate(sessionID) { $0.placeName = name } }
         }
     }
 

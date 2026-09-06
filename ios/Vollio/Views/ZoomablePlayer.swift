@@ -169,8 +169,17 @@ struct ZoomableVideo: View {
     }
 
     private func attach() {
-        if let d = player.currentItem?.asset.duration.seconds, d.isFinite, d > 0 {
-            duration = d
+        // Loaded asynchronously. The synchronous `asset.duration` blocks the
+        // caller until the asset has parsed, which on the main thread means a
+        // frozen player for anything slower than a local file — an iCloud-backed
+        // original, or a large one still being written.
+        if let item = player.currentItem {
+            Task {
+                if let d = try? await item.asset.load(.duration).seconds,
+                   d.isFinite, d > 0 {
+                    await MainActor.run { duration = d }
+                }
+            }
         }
         observer = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.1, preferredTimescale: 600), queue: .main) { t in
