@@ -93,8 +93,13 @@ struct StatsView: View {
                             record("chart.bar.fill", L.s("rec_busiest", lang),
                                    String(b.rallies), L.dateOnly(b.date, lang))
                         }
+                        // The trend compares this month with last, so the
+                        // figure beside it has to be this month's too. Pairing
+                        // it with the all-time average read as the record
+                        // itself having moved.
                         record("figure.tennis", L.s("rec_avg", lang),
-                               String(format: "%.1f", s.avgShots),
+                               String(format: "%.1f", s.monthAvgShots > 0 ? s.monthAvgShots
+                                                                          : s.avgShots),
                                s.avgTrend == 0 ? "" :
                                    String(format: "%@%.1f", s.avgTrend > 0 ? "+" : "", s.avgTrend))
                     }
@@ -260,7 +265,9 @@ struct StatsView: View {
               let data = img.pngData() else { return }
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("vollio-season.png")
-        try? data.write(to: url)
+        // A fixed path plus a swallowed failure meant a full disk shared last
+        // month's card as this month's.
+        guard (try? data.write(to: url)) != nil else { return }
         shareURL = url
     }
 }
@@ -357,7 +364,10 @@ private struct ShareCard: View {
     private var monthRow: some View {
         HStack(spacing: 14) {
             pill(String(stats.monthMatches), L.s("matches", lang))
-            pill(fmtDur(stats.totalSeconds), L.s("total", lang))
+            // This row sits under the THIS MONTH heading; the all-time total
+            // here told everyone who saw the card that a 40-minute month was
+            // thirty hours.
+            pill(fmtDur(stats.monthSeconds), L.s("total", lang))
             if let l = stats.longest {
                 pill(String(Int(l.seconds)) + L.s("sec", lang), L.s("longest", lang))
             }
@@ -502,7 +512,9 @@ extension StatsView {
         var monthShots = 0, monthRallyCount = 0
         var prevShots = 0, prevRallyCount = 0
 
-        var opponentTotals: [String: (won: Int, lost: Int, matches: Int)] = [:]
+        // value carries the first-seen spelling, so the row still reads the way
+        // the user typed it
+        var opponentTotals: [String: (won: Int, lost: Int, matches: Int, name: String)] = [:]
         var tempoSum = 0.0, tempoCount = 0
 
         for session in store.sessions {
@@ -512,10 +524,14 @@ extension StatsView {
                 tempoSum += t; tempoCount += 1
             }
             if let name = session.opponent, session.taggedPoints > 0 {
+                // Keyed case-insensitively: iOS autocapitalises the first
+                // typing and a later paste often does not, which split one
+                // person's head-to-head into two half-records.
+                let key = name.lowercased()
                 let r = TennisScore.record(session.segments ?? [])
-                var entry = opponentTotals[name] ?? (0, 0, 0)
+                var entry = opponentTotals[key] ?? (0, 0, 0, name)
                 entry.won += r.me; entry.lost += r.them; entry.matches += 1
-                opponentTotals[name] = entry
+                opponentTotals[key] = entry
             }
             s.matches += 1
             s.rallies += clips.count
@@ -579,7 +595,7 @@ extension StatsView {
         s.prevAvgShots = prevRallyCount > 0 ? Double(prevShots) / Double(prevRallyCount) : 0
         s.tempo = tempoCount > 0 ? tempoSum / Double(tempoCount) : 0
         s.opponents = opponentTotals
-            .map { (name: $0.key, won: $0.value.won, lost: $0.value.lost,
+            .map { (name: $0.value.name, won: $0.value.won, lost: $0.value.lost,
                     matches: $0.value.matches) }
             .sorted { $0.matches > $1.matches }
         return s

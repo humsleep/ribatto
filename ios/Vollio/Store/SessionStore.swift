@@ -66,15 +66,28 @@ final class SessionStore: ObservableObject {
 
     // MARK: - Persistence
 
+    /// Folders whose meta.json will not decode. They hold clips and possibly a
+    /// whole recording, so they are counted rather than silently ignored — the
+    /// storage line can then explain where the space went.
+    private(set) var unreadableSessions = 0
+
     func load() {
         guard let ids = try? fm.contentsOfDirectory(atPath: root.path) else { return }
         var out: [Session] = []
+        var unreadable = 0
         for idStr in ids {
-            guard let id = UUID(uuidString: idStr),
-                  let data = try? Data(contentsOf: metaURL(id)),
-                  let s = try? JSONDecoder().decode(Session.self, from: data) else { continue }
+            guard let id = UUID(uuidString: idStr) else { continue }
+            guard let data = try? Data(contentsOf: metaURL(id)),
+                  let s = try? JSONDecoder().decode(Session.self, from: data) else {
+                // A folder that will not decode holds clips and possibly a whole
+                // recording. Skipping it silently left gigabytes the user could
+                // neither see nor free, so it is at least counted.
+                unreadable += 1
+                continue
+            }
             out.append(s)
         }
+        unreadableSessions = unreadable
         sessions = out.sorted { $0.playedAt > $1.playedAt }
     }
 
@@ -82,7 +95,9 @@ final class SessionStore: ObservableObject {
         if let i = sessions.firstIndex(where: { $0.id == s.id }) {
             sessions[i] = s
         }
-        try? JSONEncoder().encode(s).write(to: metaURL(s.id))
+        // Atomic: a kill or a full disk part-way through this write used to
+        // truncate the file, and `load` then dropped the session for good.
+        try? JSONEncoder().encode(s).write(to: metaURL(s.id), options: .atomic)
     }
 
     /// Read-modify-write against the freshest copy.
@@ -324,8 +339,17 @@ final class SessionStore: ObservableObject {
                 s.latitude = coordinate.latitude
                 s.longitude = coordinate.longitude
             }
-            sessions.insert(s, at: 0)
-            try? JSONEncoder().encode(s).write(to: metaURL(id))
+            // Written before the session joins the list: if the encode fails
+            // the folder is orphaned rather than shown once and lost on the
+            // next launch.
+            try JSONEncoder().encode(s).write(to: metaURL(id), options: .atomic)
+            // Ordered by when the match was played, the same rule `load`
+            // applies. Inserting at the front put an old import above newer
+            // sessions until the next launch — and StatsView's share card takes
+            // its backdrop from the first session, so the card used that old
+            // match's poster.
+            let at = sessions.firstIndex { $0.playedAt < s.playedAt } ?? sessions.count
+            sessions.insert(s, at: at)
             // Counted here, not after processing: a force-quit mid-detect used
             // to leave the session on disk with the free allowance untouched.
             // `process` hands it back if the video turned out to have no
@@ -336,16 +360,38 @@ final class SessionStore: ObservableObject {
             await process(sessionID: id)          // auto-detect on import
             return true
         } catch {
+            // An in-app recording lives nowhere else — UIImagePickerController
+            // does not write to Photos — so deleting the session folder on a
+            // failed probe destroyed a whole match. Put the movie somewhere
+            // recoverable before the folder goes.
+            let moved = sdir.appendingPathComponent("source.mov")
+            if fm.fileExists(atPath: moved.path) {
+                let rescue = root.appendingPathComponent("recovered", isDirectory: true)
+                try? fm.createDirectory(at: rescue, withIntermediateDirectories: true)
+                try? fm.moveItem(
+                    at: moved,
+                    to: rescue.appendingPathComponent("\(id.uuidString).mov"))
+            }
             try? fm.removeItem(at: sdir)
             return false
         }
     }
 
     func deleteSession(_ s: Session) {
+        // Marked before the files go: a render already in flight keeps writing
+        // into the folder and re-creates it, leaving clips with no meta.json
+        // that `load` skips forever and nothing can reclaim.
+        deleted.insert(s.id)
         try? fm.removeItem(at: dir(s))
         sessions.removeAll { $0.id == s.id }
         progress[s.id] = nil
     }
+
+    /// Sessions removed while work was still running. The pipeline checks this
+    /// after each await and stops.
+    private var deleted: Set<UUID> = []
+
+    private func wasDeleted(_ id: UUID) -> Bool { deleted.contains(id) }
 
     // MARK: - Settings
 
@@ -750,6 +796,7 @@ final class SessionStore: ObservableObject {
 
             // 2) the actual clips
             for (i, seg) in segments.enumerated() {
+                if wasDeleted(sessionID) { return }
                 progress[sessionID] = .render(done: i, total: segments.count)
                 let base = String(format: "clip_%02d", i + 1)
                 try await ClipExporter.export(

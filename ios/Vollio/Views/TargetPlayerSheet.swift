@@ -168,7 +168,12 @@ struct TargetPlayerSheet: View {
         let ny = clamp((min(a.y, b.y) - fit.minY) / fit.height)
         let nw = clamp((max(a.x, b.x) - fit.minX) / fit.width) - nx
         let nh = clamp((max(a.y, b.y) - fit.minY) / fit.height) - ny
-        return CGRect(x: nx, y: ny, width: max(nw, 0.02), height: max(nh, 0.02))
+        // The minimum size is applied first, then the origin is pulled back so
+        // the box still ends inside the frame. Bumping the size afterwards let
+        // a drag on the right edge store x = 1.0 with width 0.02 — a rect whose
+        // maxX is outside the space PlayerTracker seeds from.
+        let w = max(nw, 0.02), h = max(nh, 0.02)
+        return CGRect(x: min(nx, 1 - w), y: min(ny, 1 - h), width: w, height: h)
     }
 
     // MARK: - Load + detect
@@ -192,6 +197,11 @@ struct TargetPlayerSheet: View {
     private func loadFrame() async {
         loading = true
         let t = frameTime
+        // The pick belongs to the frame it was made on. Keeping it across a
+        // scrub saved a box from the old frame with the new frame's timestamp,
+        // so the tracker seeded on whatever was at those coordinates later —
+        // often empty court.
+        chosen = nil
         guard let asset = await store.loadAsset(session) else { loading = false; return }
         let gen = AVAssetImageGenerator(asset: asset)
         gen.appliesPreferredTrackTransform = true
@@ -203,6 +213,8 @@ struct TargetPlayerSheet: View {
             loading = false
             return
         }
+        // A slower earlier request must not overwrite a newer frame.
+        guard t == frameTime else { return }
         image = UIImage(cgImage: cg)
         detected = Self.detectPeople(cg)
         loading = false
