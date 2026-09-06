@@ -98,6 +98,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - 감지 결과가 0개인 것은 "완료"가 아니다. `apply`는 빈 배열도 재감지 대상으로 본다. 빼면 재감지 버튼이 죽는다.
 - 릴스 파일명은 UUID다. 설정 조합으로 이름을 만들면 같은 설정의 다음 릴스가 이전 것을 덮어쓴다.
 - 캡션은 프레임 폭에 맞춰 자동 축소된다(`captionImage`). 크기는 높이 기준이라 세로 크롭에서 폭이 넘칠 수 있다.
+- 워터마크는 자막을 피해 위로 올라간다(`place(clearOf:)`). 고정 위치로 두면 기본 자막 위에 겹쳐 한 단어처럼 읽힌다.
+- PlayerTracker 2단계 재획득도 1단계와 같은 크기 검사를 거친다. 빼면 카메라 앞 다른 사람에게 붙잡혀 랠리 끝까지 못 돌아온다.
 - 내보내기 구간은 실제 에셋 길이로 자른다. 영상 밖에서 시작하면 AVAssetExportSession이 실패가 아니라 무한 대기한다.
 - 무료 횟수 환불은 세션당 1회(`importRefunded`). `process`는 재감지에서도 실행되므로 조건 없이 돌려주면 무료가 무제한이 된다.
 - 지원 언어는 Info.plist(`INFOPLIST_KEY_CFBundleLocalizations`)에 선언한다. 선언이 없으면 iOS가 한국어 기기에도 영어만 넘겨 기기 언어 시드가 무력화된다.

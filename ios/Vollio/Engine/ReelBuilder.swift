@@ -227,6 +227,14 @@ enum ReelBuilder {
         }
         plan.duration = planned.reduce(0) { $0 + $1.seconds }
 
+        // Every rally dropped means there is nothing to merge, and
+        // `HighlightMerger` asserts on an empty list — a trap the caller's
+        // catch cannot see. Fail as an error instead.
+        guard !planned.isEmpty else {
+            throw NSError(domain: "Vollio", code: 22, userInfo:
+                            [NSLocalizedDescriptionKey: "No rally was long enough to include"])
+        }
+
         let work = FileManager.default.temporaryDirectory
             .appendingPathComponent("reel-" + UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)

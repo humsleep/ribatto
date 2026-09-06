@@ -504,8 +504,16 @@ enum ClipExporter {
             guard let image else { return }
             overlay = overlay.map { image.composited(over: $0) } ?? image
         }
-        if let caption, caption.isVisible { add(captionImage(caption, in: size)) }
-        if watermark { add(watermarkImage(for: size)) }
+        let captionLayer: CIImage? = {
+            guard let caption, caption.isVisible else { return nil }
+            return captionImage(caption, in: size)
+        }()
+        if let captionLayer { add(captionLayer) }
+        // The mark yields to the caption, not the other way round: the caption
+        // is the user's text and sits where they dragged it. Drawn at the fixed
+        // bottom-right corner it landed on top of a default caption and the two
+        // read as one run-on word.
+        if watermark { add(watermarkImage(for: size, clearOf: captionLayer?.extent)) }
         if let scoreLayer { add(scoreLayer) }
 
         // One bitmap per count, drawn up front; the per-frame handler only
@@ -674,7 +682,8 @@ enum ClipExporter {
     /// a bright sky, which is the half of the job that matters — so it is drawn
     /// in the bundled condensed face with a thin dark outline, which holds on
     /// both a white cloud and a dark court.
-    private static func watermarkImage(for size: CGSize) -> CIImage? {
+    private static func watermarkImage(for size: CGSize,
+                                       clearOf occupied: CGRect? = nil) -> CIImage? {
         let fontSize = max(20, size.height * 0.040)
         guard let image = textImage("VOLLIO", font: .bebas, fontSize: fontSize,
                                     color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
@@ -682,7 +691,7 @@ enum ClipExporter {
                                     edge: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55),
                                     edgeWidth: -3.5,
                                     tracking: fontSize * 0.06) else { return nil }
-        return place(image, in: size)
+        return place(image, in: size, clearOf: occupied)
     }
 
     /// Registers the bundled OFL faces with CoreText. A `static let` so it
@@ -732,11 +741,21 @@ enum ClipExporter {
     }
 
     /// Bottom-right placement, used by the free-tier mark.
-    private static func place(_ image: CGImage, in size: CGSize) -> CIImage {
-        let w = CGFloat(image.width)
+    private static func place(_ image: CGImage, in size: CGSize,
+                              clearOf occupied: CGRect? = nil) -> CIImage {
+        let w = CGFloat(image.width), h = CGFloat(image.height)
         let margin = size.height * 0.042
+        let x = size.width - w - margin
+        var y = margin
+        // Bottom-right unless something is already there. CoreImage counts y
+        // from the bottom, so lifting the mark above the caption means moving
+        // to the caption's top edge plus a gap.
+        if let occupied, occupied.maxX > x, occupied.minY < y + h {
+            let lifted = occupied.maxY + margin * 0.4
+            y = min(lifted, max(margin, size.height - h - margin))
+        }
         return CIImage(cgImage: image).transformed(
-            by: CGAffineTransform(translationX: size.width - w - margin, y: margin))
+            by: CGAffineTransform(translationX: x, y: y))
     }
 
     /// Text rendered into a bitmap. Uses the emphasized system font so Korean

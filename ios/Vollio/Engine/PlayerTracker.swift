@@ -131,14 +131,24 @@ enum PlayerTracker {
                 let detect = VNDetectHumanRectanglesRequest()
                 detect.upperBodyOnly = false
                 if (try? VNImageRequestHandler(cgImage: cg).perform([detect])) != nil,
-                   let people = detect.results,
-                   let nearest = people.min(by: {
-                       abs($0.boundingBox.midX - lastCenter) < abs($1.boundingBox.midX - lastCenter)
-                   }),
-                   abs(nearest.boundingBox.midX - lastCenter) < reacquireRadius {
-                    box = nearest.boundingBox
-                    center = nearest.boundingBox.midX
-                    seen = topLeft(nearest.boundingBox)
+                   let people = detect.results {
+                    // Size-checked like stage 1. Without this a player nearer
+                    // the camera — whose box can be five times the seed — was
+                    // accepted just for being horizontally close, and from then
+                    // on stage 1 could never be plausible again, so every later
+                    // frame re-ran this branch and the crop stayed on the wrong
+                    // person for the rest of the rally with no way back.
+                    var best: CGRect?
+                    var bestGap = reacquireRadius
+                    for p in people where plausible(p.boundingBox) {
+                        let gap = abs(p.boundingBox.midX - lastCenter)
+                        if gap < bestGap { bestGap = gap; best = p.boundingBox }
+                    }
+                    if let best {
+                        box = best
+                        center = best.midX
+                        seen = topLeft(best)
+                    }
                 }
             }
 
