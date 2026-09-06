@@ -5,6 +5,7 @@ struct PaywallView: View {
     @EnvironmentObject var purchases: PurchaseManager
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// Name of the feature the user just tried to use, if any.
     var feature: String? = nil
 
@@ -16,17 +17,25 @@ struct PaywallView: View {
                 VStack(spacing: 22) {
                     header
                     features
+                    // At accessibility sizes the pinned bar below grows until
+                    // it owns the whole screen and the feature list cannot be
+                    // reached at all, so there it scrolls with the content
+                    // instead.
+                    if typeSize.isAccessibilitySize { priceBlock }
                 }
                 .padding(20)
             }
             .background(Theme.background.ignoresSafeArea())
-            // The price and the button stay on screen however long the list
-            // is; a buyer should never have to hunt for them.
+            // Otherwise the price and the button stay on screen however long
+            // the list is; a buyer should never have to hunt for them.
             .safeAreaInset(edge: .bottom) {
-                priceBlock
-                    .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 6)
-                    .background(Theme.background.ignoresSafeArea())
-                    .overlay(Rectangle().fill(Theme.hairline).frame(height: 1), alignment: .top)
+                if !typeSize.isAccessibilitySize {
+                    priceBlock
+                        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 6)
+                        .background(Theme.background.ignoresSafeArea())
+                        .overlay(Rectangle().fill(Theme.hairline).frame(height: 1),
+                                 alignment: .top)
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
