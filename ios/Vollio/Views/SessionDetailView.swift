@@ -82,11 +82,7 @@ struct SessionDetailView: View {
                     statsRow(clips)
                     toolbar(session, busy: busy)
                     clipGrid(clips)
-                    if selecting {
-                        selectionBar(session, busy: busy)
-                    } else {
-                        saveAllButton(session, busy: busy)
-                    }
+                    if !selecting { saveAllButton(session, busy: busy) }
                     // clear the floating tab bar
                     Color.clear.frame(height: 62)
                 } else if !busy {
@@ -94,6 +90,15 @@ struct SessionDetailView: View {
                 }
             }
             .padding()
+        }
+        // Pinned, not appended: below the grid the bar sat a whole screen away
+        // from the clips it acts on.
+        .safeAreaInset(edge: .bottom) {
+            if selecting {
+                selectionBar(session, busy: busy)
+                    .padding(.horizontal)
+                    .padding(.bottom, 62)
+            }
         }
         .navigationTitle(L.dateTime(session.playedAt, lang))
         .navigationBarTitleDisplayMode(.inline)

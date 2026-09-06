@@ -511,11 +511,18 @@ struct AllClipsView: View {
                             }
                         }
                         .padding()
-                        if selecting {
-                            selectionBar.padding(.horizontal)
-                        }
                         // clear the floating tab bar
                         Color.clear.frame(height: 62)
+                    }
+                    // Pinned, not appended: at the end of the scroll a user who
+                    // ticked two clips at the top had to scroll past every
+                    // remaining clip to find out what selecting them does.
+                    .safeAreaInset(edge: .bottom) {
+                        if selecting {
+                            selectionBar
+                                .padding(.horizontal)
+                                .padding(.bottom, 62)
+                        }
                     }
                 }
             }

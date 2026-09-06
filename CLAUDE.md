@@ -120,6 +120,10 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - 행 높이 상수는 `@ScaledMetric`으로 둔다. ReelSheet의 52pt 고정 때문에 큰 글씨에서 4개 중 1개만 보였다.
 - 한 번만 보여줄 힌트는 `@State`가 아니라 `@AppStorage`에 둔다. 회전은 뷰를 새로 만들기 때문에 화면을 돌릴 때마다 힌트가 되살아난다.
 - 시트는 스크롤 컨테이너 안에 둔다. TrimSheet은 고정 스택이라 큰 글씨에서 영상이 위로, 적용 버튼이 아래로 잘려 나갔다.
+- 선택 동작 바는 스크롤 끝이 아니라 `safeAreaInset`으로 화면에 고정한다.
+  목록 끝에 두면 위쪽 클립 두 개를 고른 사용자가 나머지를 다 지나야 무엇을 할 수 있는지 알게 된다.
+- 온보딩 페이지 점은 TabView 기본 인디케이터(`.always`)가 아니라 직접 그려 페이지 아래에 둔다.
+  기본 인디케이터는 스크롤 위에 떠서 큰 글씨일 때 문장 한가운데를 덮는다.
 - 화면의 유일한 내용이 플레이어라면 `AVPlayer`를 `onAppear`가 아니라 init에서 만든다.
   첫 레이아웃에서 nil이면 NavigationStack이 배치할 것이 없어 시트가 제목까지 통째로 빈 채로 뜨고, 플레이어가 생겨도 그대로 남는다.
 - "업로드 없음"이라고 쓰지 말 것. PlaceLookup이 좌표를 애플 지오코더로 보낸다. 문구는 "영상은 기기 밖으로 나가지 않는다"로.

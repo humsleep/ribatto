@@ -26,6 +26,9 @@ struct OnboardingView: View {
                     .font(.footnote)
                     .tint(.secondary)
             }
+            // Both are chrome. Unbounded, "한국어" broke into two lines and ran
+            // into "건너뛰기" on a 4.7" screen.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .padding(.horizontal, 20)
             .padding(.top, 12)
 
@@ -64,8 +67,19 @@ struct OnboardingView: View {
                     .tag(i)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .indexViewStyle(.page(backgroundDisplayMode: .always))
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            // Our own dots, below the pages rather than floating over them.
+            // TabView's own indicator sits on top of the scroll view, and at
+            // the largest text size it landed in the middle of the sentence.
+            HStack(spacing: 8) {
+                ForEach(pages.indices, id: \.self) { i in
+                    Circle()
+                        .fill(i == page ? Color.white : Color.white.opacity(0.3))
+                        .frame(width: 8, height: 8)
+                }
+            }
+            .padding(.top, 6)
 
             Button {
                 if page < pages.count - 1 {
@@ -102,6 +116,7 @@ struct OnboardingView: View {
                 Image(systemName: "globe")
                 Text(L.languages.first { $0.code == lang }?.label ?? "English")
                     .font(.footnote)
+                    .lineLimit(1)
             }
             .tint(.secondary)
         }
