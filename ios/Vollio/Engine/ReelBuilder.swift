@@ -171,6 +171,63 @@ enum ReelBuilder {
     /// The least of a rally that still counts as having made the reel.
     static let minPlacedSeconds = 1.0
 
+    /// One piece of the running order: which rally it came from, the part of
+    /// that rally to take, and how many seconds of it survive the cap.
+    struct PlannedPiece {
+        let rally: Int
+        let segment: RallySegment
+        let seconds: Double
+    }
+
+    /// What would go into a reel, without touching a single video file.
+    ///
+    /// Rallies are taken in order; the piece that straddles the limit is
+    /// trimmed, and anything after it is reported as dropped rather than
+    /// silently discarded. `dropped` counts rallies, not pieces, so the number
+    /// matches what the user picked.
+    ///
+    /// Separate from `build` because the answer is worth having on its own: it
+    /// is how a finished reel whose sidecar predates source tracking is matched
+    /// back to the rallies it was made from.
+    static func plan(segments: [RallySegment],
+                     target: ReelTarget,
+                     pace: ReelPace) -> (plan: ReelPlan, pieces: [PlannedPiece]) {
+        var pieces: [PlannedPiece] = []
+        var plan = ReelPlan()
+        var remaining = target.maxDuration ?? .greatestFiniteMagnitude
+        for (i, segment) in segments.enumerated() {
+            let before = pieces.count
+            var placed = 0.0
+            for piece in pace.pieces(of: segment) {
+                let length = piece.duration
+                if remaining <= 0.5 { break }
+                if length > remaining {
+                    pieces.append(PlannedPiece(rally: i, segment: piece, seconds: remaining))
+                    plan.trimmed = true
+                    placed += remaining
+                    remaining = 0
+                } else {
+                    pieces.append(PlannedPiece(rally: i, segment: piece, seconds: length))
+                    placed += length
+                    remaining -= length
+                }
+            }
+            // A sliver is not a rally. Under `hook` the first piece is a 0.8s
+            // lead, so a cap that ran out mid-lead used to leave a sub-second
+            // flash on the end of the reel and still count it in "3 rallies".
+            // Below a second it is dropped instead.
+            if placed >= minPlacedSeconds {
+                plan.used += 1
+            } else {
+                pieces.removeSubrange(before...)
+                remaining += placed
+                plan.dropped += 1
+            }
+        }
+        plan.duration = pieces.reduce(0) { $0 + $1.seconds }
+        return (plan, pieces)
+    }
+
     /// Renders each rally vertically from its original source, then joins them.
     ///
     /// Re-rendering rather than concatenating the existing clips costs time but
@@ -189,43 +246,11 @@ enum ReelBuilder {
                           userInfo: [NSLocalizedDescriptionKey: "Nothing to build"])
         }
 
-        // 1) Decide what fits. Rallies are taken in order; the piece that
-        //    straddles the limit is trimmed, and anything after it is reported
-        //    as dropped rather than silently discarded. `dropped` counts
-        //    rallies, not pieces, so the number matches what the user picked.
-        var planned: [(item: ReelItem, segment: RallySegment, seconds: Double)] = []
-        var plan = ReelPlan()
-        var remaining = target.maxDuration ?? .greatestFiniteMagnitude
-        for item in items {
-            let before = planned.count
-            var placed = 0.0
-            for piece in pace.pieces(of: item.segment) {
-                let length = piece.duration
-                if remaining <= 0.5 { break }
-                if length > remaining {
-                    planned.append((item, piece, remaining))
-                    plan.trimmed = true
-                    placed += remaining
-                    remaining = 0
-                } else {
-                    planned.append((item, piece, length))
-                    placed += length
-                    remaining -= length
-                }
-            }
-            // A sliver is not a rally. Under `hook` the first piece is a 0.8s
-            // lead, so a cap that ran out mid-lead used to leave a
-            // sub-second flash on the end of the reel and still count it in
-            // "3 rallies". Below a second it is dropped instead.
-            if placed >= minPlacedSeconds {
-                plan.used += 1
-            } else {
-                planned.removeSubrange(before...)
-                remaining += placed
-                plan.dropped += 1
-            }
-        }
-        plan.duration = planned.reduce(0) { $0 + $1.seconds }
+        // 1) Decide what fits.
+        let (plan, pieces) = Self.plan(segments: items.map(\.segment),
+                                       target: target, pace: pace)
+        let planned = pieces.map { (item: items[$0.rally], segment: $0.segment,
+                                    seconds: $0.seconds) }
 
         // Every rally dropped means there is nothing to merge, and
         // `HighlightMerger` asserts on an empty list — a trap the caller's

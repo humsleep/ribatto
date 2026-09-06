@@ -146,10 +146,13 @@ struct ReelPlayerSheet: View {
     @State private var message: String?
 
     private var shown: ReelInfo { current ?? reel }
+    /// The rallies this reel can be rebuilt from — recorded in its sidecar, or
+    /// worked back out for a reel made before that was recorded.
+    private var rebuildSources: [ReelSource]? { store.recoverSources(for: shown) }
     /// The session the caption editor previews against — the one the reel's
     /// first rally came from.
     private var captionSession: Session? {
-        guard let first = shown.sources?.first else { return nil }
+        guard let first = rebuildSources?.first else { return nil }
         return store.sessions.first { $0.id == first.sessionID }
     }
 

@@ -1147,6 +1147,56 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    /// Works out which rallies a reel was made from when its sidecar never
+    /// recorded them.
+    ///
+    /// An old reel describes itself only by its settings and its length.
+    /// Re-planning each session's rallies with those settings and comparing is
+    /// enough to identify one: the planned duration is a fingerprint, exact to
+    /// the millisecond, and planning touches no video files. A session that has
+    /// been re-detected or trimmed since simply stops matching — which is the
+    /// right answer, because rebuilding it from today's rallies would not be
+    /// the reel the user is looking at.
+    ///
+    /// Returns nil when nothing matches, and also when more than one session
+    /// does: two identical-length matches are indistinguishable, and guessing
+    /// would rebuild the reel out of the wrong match.
+    func recoverSources(for reel: ReelInfo) -> [ReelSource]? {
+        if let known = reel.sources, !known.isEmpty { return known }
+        let target = ReelTarget(rawValue: reel.target) ?? .reels
+        let pace = ReelPace(rawValue: reel.pace) ?? .full
+
+        func matches(among candidates: [Session]) -> [[ReelSource]] {
+            var found: [[ReelSource]] = []
+            for session in candidates {
+                // A session imported after the reel was made cannot be in it.
+                guard session.createdAt <= reel.createdAt.addingTimeInterval(60) else { continue }
+                let ready = clips(of: session).filter(\.isReady)
+                    .sorted { $0.segment.start < $1.segment.start }
+                guard !ready.isEmpty else { continue }
+                let planned = ReelBuilder.plan(segments: ready.map(\.segment),
+                                               target: target, pace: pace).plan
+                guard planned.used == reel.rallies,
+                      abs(planned.duration - reel.duration) < 0.05 else { continue }
+                found.append(ready.map {
+                    ReelSource(sessionID: session.id, clipIndex: $0.index)
+                })
+                if found.count > 1 { return found }
+            }
+            return found
+        }
+
+        // The court the reel recorded is the strongest discriminator: sessions
+        // of the same shape plan to the same length, and on a phone that films
+        // the same match every week that is the common case, not the corner.
+        if let place = reel.place {
+            let sameCourt = matches(among: sessions.filter { $0.placeName == place })
+            if sameCourt.count == 1 { return sameCourt[0] }
+        }
+        let any = matches(among: sessions)
+        return any.count == 1 ? any[0] : nil
+    }
+
     /// Rebuilds a finished reel with a different caption.
     ///
     /// The rally sources are re-resolved from the sidecar, so a session or a
@@ -1157,8 +1207,7 @@ final class SessionStore: ObservableObject {
     /// it.
     func rebuildReel(_ reel: ReelInfo,
                      caption: CaptionSettings?) async -> ReelInfo? {
-        let sources = reel.sources ?? []
-        guard !sources.isEmpty else { return nil }
+        guard let sources = recoverSources(for: reel), !sources.isEmpty else { return nil }
         var pairs: [(session: Session, clip: ClipInfo)] = []
         for source in sources {
             guard let session = sessions.first(where: { $0.id == source.sessionID }) else {
