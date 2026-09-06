@@ -27,6 +27,7 @@ struct ClipCard: View {
                         .clipped()
                     Text(String(Int(clip.duration)) + L.s("sec", lang))
                         .font(.caption2.bold())
+                        .dynamicTypeSize(...DynamicTypeSize.large)
                         .padding(.horizontal, 6).padding(.vertical, 3)
                         .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 6))
                         .padding(6)
@@ -47,8 +48,11 @@ struct ClipCard: View {
                     }
                     VStack {
                         HStack {
+                            // Badges sit on a fixed-size thumbnail; scaling
+                            // them made the rank and duration chips overlap.
                             Text("#" + String(clip.index + 1))
                                 .font(.caption2.bold())
+                                .dynamicTypeSize(...DynamicTypeSize.large)
                                 .padding(.horizontal, 7).padding(.vertical, 3)
                                 .background(.black.opacity(0.65),
                                             in: RoundedRectangle(cornerRadius: 6))
@@ -176,8 +180,11 @@ struct ClipPlayerSheet: View {
         // and the departing variant's `onDisappear` would revoke the permission
         // the instant it was used, snapping the phone straight back to portrait.
         // Only a wide clip gains anything from turning the phone; a 9:16 rally
-        // would just be letterboxed on its side.
-        .allowsLandscape(!OutputFrame(clip.orientation).isPortrait)
+        // would just be letterboxed on its side. And not while a sheet is open
+        // over the player: the landscape layout hid it completely, and its X
+        // then dismissed player and sheet together, silently dropping the trim
+        // the user was in the middle of.
+        .allowsLandscape(!OutputFrame(clip.orientation).isPortrait && destination == nil)
     }
 
     private var landscapePlayer: some View {

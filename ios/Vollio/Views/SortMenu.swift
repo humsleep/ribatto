@@ -56,10 +56,15 @@ struct SortMenu: View {
                 Image(systemName: "arrow.up.arrow.down")
                     .font(.caption.weight(.bold))
                 Text(L.s(sort.key, lang))
+                    .lineLimit(1)
                 Image(systemName: "chevron.down")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.secondary)
             }
+            // A pill in a toolbar row cannot grow without bound: at the largest
+            // accessibility size it became one letter per line, swallowed the
+            // header and pushed the grid off screen.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .chip(active: false)
         }
         .tint(.primary)

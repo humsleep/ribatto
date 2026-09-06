@@ -52,95 +52,102 @@ struct TrimSheet: View {
         splitAt = lo < hi ? min(max(splitAt, lo), hi) : lo
     }
 
+    /// Scrollable: at the largest accessibility size the fixed stack put
+    /// the video off the top and cut "Apply trim" off the bottom, with no
+    /// way to reach either.
+    private var content: some View {
+        VStack(spacing: 16) {
+                    if let player {
+                        VideoPlayer(player: player)
+                            .aspectRatio(OutputFrame(clip.orientation).aspectRatio,
+                                         contentMode: .fit)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    VStack(spacing: 14) {
+                        // Ranges are built with `safe`, never `a...b` directly.
+                        // Dragging End below Start made the lower bound exceed the
+                        // upper one, and Swift traps on that — the app disappeared
+                        // mid-drag.
+                        handle(L.s("trim_start", lang), value: $start,
+                               range: safe(lower, end - store.minClipSeconds),
+                               preview: start)
+                        handle(L.s("trim_end", lang), value: $end,
+                               range: safe(start + store.minClipSeconds, upper),
+                               preview: max(start, end - 0.15))
+
+                        HStack {
+                            Text(L.s("length", lang)).font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Text(fmtDur(end - start))
+                                .font(.subheadline.monospacedDigit().bold())
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                    .padding(14)
+                    .rcCard()
+
+                    // Two points run together by the detector are one clip that
+                    // nobody wants to post; cutting it is the other half of trimming.
+                    VStack(alignment: .leading, spacing: 10) {
+                        handle(L.s("split_rally", lang), value: $splitAt,
+                               range: safe(start + store.minClipSeconds,
+                                           end - store.minClipSeconds),
+                               preview: splitAt)
+                        Text(L.s("split_hint", lang))
+                            .font(.caption2).foregroundStyle(.tertiary)
+                        Button {
+                            working = true
+                            Task {
+                                // Apply the trim first when the handles have moved:
+                                // `splitRally` reads the stored segment, so a split
+                                // taken while a trim was pending cut at a point
+                                // outside the range the user could see.
+                                if start != clip.segment.start || end != clip.segment.end {
+                                    await store.trimClip(clip, start: start, end: end)
+                                }
+                                let ok = await store.splitRally(clip, at: splitAt)
+                                working = false
+                                if ok { dismiss() } else { message = L.s("split_failed", lang) }
+                            }
+                        } label: {
+                            Label(L.s("split_rally", lang), systemImage: "scissors")
+                                .font(.subheadline.bold())
+                                .frame(maxWidth: .infinity, minHeight: 24)
+                        }
+                        .rcSecondary()
+                        .disabled(working || end - start < store.minClipSeconds * 2)
+                    }
+                    .padding(14)
+                    .rcCard()
+
+                    if working {
+                        ProgressView().progressViewStyle(.linear).tint(Theme.accent)
+                        Text(L.s("trim_rendering", lang))
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Button {
+                            Task {
+                                working = true
+                                await store.trimClip(clip, start: start, end: end)
+                                working = false
+                                dismiss()
+                            }
+                        } label: {
+                            Label(L.s("trim_apply", lang), systemImage: "scissors")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .rcPrimary()
+                        .disabled(!changed)
+                    }
+                    Spacer(minLength: 0)
+        }
+        .padding(16)
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                if let player {
-                    VideoPlayer(player: player)
-                        .aspectRatio(OutputFrame(clip.orientation).aspectRatio,
-                                     contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-
-                VStack(spacing: 14) {
-                    // Ranges are built with `safe`, never `a...b` directly.
-                    // Dragging End below Start made the lower bound exceed the
-                    // upper one, and Swift traps on that — the app disappeared
-                    // mid-drag.
-                    handle(L.s("trim_start", lang), value: $start,
-                           range: safe(lower, end - store.minClipSeconds),
-                           preview: start)
-                    handle(L.s("trim_end", lang), value: $end,
-                           range: safe(start + store.minClipSeconds, upper),
-                           preview: max(start, end - 0.15))
-
-                    HStack {
-                        Text(L.s("length", lang)).font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Text(fmtDur(end - start))
-                            .font(.subheadline.monospacedDigit().bold())
-                            .foregroundStyle(Theme.accent)
-                    }
-                }
-                .padding(14)
-                .rcCard()
-
-                // Two points run together by the detector are one clip that
-                // nobody wants to post; cutting it is the other half of trimming.
-                VStack(alignment: .leading, spacing: 10) {
-                    handle(L.s("split_rally", lang), value: $splitAt,
-                           range: safe(start + store.minClipSeconds,
-                                       end - store.minClipSeconds),
-                           preview: splitAt)
-                    Text(L.s("split_hint", lang))
-                        .font(.caption2).foregroundStyle(.tertiary)
-                    Button {
-                        working = true
-                        Task {
-                            // Apply the trim first when the handles have moved:
-                            // `splitRally` reads the stored segment, so a split
-                            // taken while a trim was pending cut at a point
-                            // outside the range the user could see.
-                            if start != clip.segment.start || end != clip.segment.end {
-                                await store.trimClip(clip, start: start, end: end)
-                            }
-                            let ok = await store.splitRally(clip, at: splitAt)
-                            working = false
-                            if ok { dismiss() } else { message = L.s("split_failed", lang) }
-                        }
-                    } label: {
-                        Label(L.s("split_rally", lang), systemImage: "scissors")
-                            .font(.subheadline.bold())
-                            .frame(maxWidth: .infinity, minHeight: 24)
-                    }
-                    .rcSecondary()
-                    .disabled(working || end - start < store.minClipSeconds * 2)
-                }
-                .padding(14)
-                .rcCard()
-
-                if working {
-                    ProgressView().progressViewStyle(.linear).tint(Theme.accent)
-                    Text(L.s("trim_rendering", lang))
-                        .font(.caption).foregroundStyle(.secondary)
-                } else {
-                    Button {
-                        Task {
-                            working = true
-                            await store.trimClip(clip, start: start, end: end)
-                            working = false
-                            dismiss()
-                        }
-                    } label: {
-                        Label(L.s("trim_apply", lang), systemImage: "scissors")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .rcPrimary()
-                    .disabled(!changed)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(16)
+            ScrollView { content }
             .background(Theme.background.ignoresSafeArea())
             // The split point is only meaningful inside the trimmed range;
             // left alone it kept displaying a time outside it.

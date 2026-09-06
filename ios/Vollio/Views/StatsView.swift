@@ -39,6 +39,7 @@ struct SeasonStats {
 struct StatsView: View {
     @EnvironmentObject var store: SessionStore
     @AppStorage("rc_lang") private var lang = "en"
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var shareURL: URL?
     @State private var building = false
 
@@ -111,16 +112,20 @@ struct StatsView: View {
                     card {
                         Text(L.s("opponent", lang)).font(.caption).foregroundStyle(.secondary)
                         ForEach(s.opponents.prefix(6), id: \.name) { o in
-                            HStack(spacing: 12) {
-                                Image(systemName: "person.2.fill")
-                                    .foregroundStyle(Theme.accent).frame(width: 22)
-                                Text(o.name).font(.subheadline).lineLimit(1)
-                                Spacer(minLength: 8)
+                            // Same treatment as the record rows: side by side,
+                            // the score wrapped to "4– / 0 / poi / nts" and took
+                            // the width the name needed, leaving "Cl…" — and
+                            // pinning the score to one line squeezed the name
+                            // out entirely.
+                            statRow(icon: "person.2.fill", name: o.name) {
                                 Text(String(format: L.s("record_fmt", lang), o.won, o.lost))
                                     .font(.subheadline.bold())
                                     .foregroundStyle(o.won >= o.lost ? Theme.accent : .primary)
+                                    .lineLimit(1)
                                 Text(String(format: L.s(o.matches == 1 ? "matches_one" : "matches_n", lang), o.matches))
                                     .font(.caption).foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                             }
                         }
                     }
@@ -130,16 +135,10 @@ struct StatsView: View {
                     card {
                         Text(L.s("courts", lang)).font(.caption).foregroundStyle(.secondary)
                         ForEach(s.places.prefix(6), id: \.name) { place in
-                            HStack(spacing: 12) {
-                                Image(systemName: "mappin.and.ellipse")
-                                    .foregroundStyle(Theme.accent).frame(width: 22)
-                                Text(place.name).font(.subheadline).lineLimit(1)
-                                Spacer(minLength: 8)
+                            statRow(icon: "mappin.and.ellipse", name: place.name) {
                                 Text(String(format: L.s(place.visits == 1 ? "visits_one" : "visits_fmt", lang), place.visits))
-                                    .font(.subheadline.bold())
-                                Text(String(format: L.s(place.rallies == 1 ? "rallies_one" : "rallies_n", lang),
-                                              place.rallies))
                                     .font(.caption).foregroundStyle(.secondary)
+                                    .lineLimit(1)
                             }
                         }
                     }
@@ -205,6 +204,9 @@ struct StatsView: View {
                 AxisValueLabel().font(.caption2).foregroundStyle(Color.secondary)
             }
         }
+        // Axis labels are chrome sized to the bars beneath them. Left to scale
+        // they merged into one run and no longer sat under their own bar.
+        .dynamicTypeSize(...DynamicTypeSize.large)
         .frame(height: 130)
         .padding(.top, 4)
     }
@@ -234,15 +236,56 @@ struct StatsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// A name on the left and a value on the right, stacked once the text is
+    /// big enough that they would fight for the same width.
+    @ViewBuilder
+    private func statRow<V: View>(icon: String, name: String,
+                                  @ViewBuilder value: () -> V) -> some View {
+        HStack(alignment: typeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
+            Image(systemName: icon).foregroundStyle(Theme.accent).frame(width: 22)
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name).font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    // Vertical too: side by side the score itself truncated
+                    // once the name had the width it needed.
+                    VStack(alignment: .leading, spacing: 2) { value() }
+                }
+                Spacer(minLength: 0)
+            } else {
+                Text(name).font(.subheadline).lineLimit(1)
+                Spacer(minLength: 8)
+                value()
+            }
+        }
+    }
+
     private func record(_ icon: String, _ title: String,
                         _ value: String, _ sub: String) -> some View {
-        HStack(spacing: 11) {
+        // At accessibility sizes the label wraps to several lines and the row
+        // stacks: side by side the icon ended up drawn over the second line and
+        // the value column took the width the name needed.
+        let stacked = typeSize.isAccessibilitySize
+        return HStack(alignment: stacked ? .top : .center, spacing: 11) {
             Image(systemName: icon).foregroundStyle(.tint).frame(width: 22)
-            Text(title).font(.subheadline)
-            Spacer(minLength: 8)
-            Text(value).font(.subheadline.bold().monospacedDigit())
-            if !sub.isEmpty {
-                Text(sub).font(.caption2).foregroundStyle(.secondary)
+            if stacked {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.subheadline)
+                    HStack(spacing: 8) {
+                        Text(value).font(.subheadline.bold().monospacedDigit())
+                        if !sub.isEmpty {
+                            Text(sub).font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+            } else {
+                Text(title).font(.subheadline)
+                Spacer(minLength: 8)
+                Text(value).font(.subheadline.bold().monospacedDigit())
+                if !sub.isEmpty {
+                    Text(sub).font(.caption2).foregroundStyle(.secondary)
+                }
             }
         }
     }

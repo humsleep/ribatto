@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnboardingView: View {
     @AppStorage("rc_lang") private var lang = "en"
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Binding var done: Bool
     @State private var page = 0
 
@@ -12,6 +13,9 @@ struct OnboardingView: View {
          ("waveform", L.s("ob2_t", lang), L.s("ob2_d", lang)),
          ("square.and.arrow.up", L.s("ob3_t", lang), L.s("ob3_d", lang))]
     }
+
+    /// The artwork yields to the words when the words need the room.
+    private var art: CGFloat { typeSize.isAccessibilitySize ? 120 : 220 }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,27 +31,35 @@ struct OnboardingView: View {
 
             TabView(selection: $page) {
                 ForEach(pages.indices, id: \.self) { i in
-                    VStack(spacing: 16) {
-                        Spacer()
-                        ZStack {
-                            Circle()
-                                .fill(RadialGradient(colors: [accent.opacity(0.3), .clear],
-                                                     center: .center,
-                                                     startRadius: 4, endRadius: 110))
-                                .frame(width: 220, height: 220)
-                            Image(systemName: pages[i].symbol)
-                                .font(.system(size: 70, weight: .light))
-                                .foregroundStyle(accent)
+                    // Scrollable, and the artwork shrinks: at the largest text
+                    // size the fixed layout cut the headline and the body off
+                    // mid-word — on the first screen a new user ever sees.
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            Spacer(minLength: 12)
+                            ZStack {
+                                Circle()
+                                    .fill(RadialGradient(colors: [accent.opacity(0.3), .clear],
+                                                         center: .center,
+                                                         startRadius: 4, endRadius: 110))
+                                    .frame(width: art, height: art)
+                                Image(systemName: pages[i].symbol)
+                                    .font(.system(size: art * 0.32, weight: .light))
+                                    .foregroundStyle(accent)
+                            }
+                            Text(pages[i].title)
+                                .font(.title.bold())
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(pages[i].body)
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 34)
+                            Spacer(minLength: 12)
                         }
-                        Text(pages[i].title)
-                            .font(.title.bold())
-                            .multilineTextAlignment(.center)
-                        Text(pages[i].body)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 34)
-                        Spacer()
+                        .frame(maxWidth: .infinity)
                     }
                     .tag(i)
                 }
