@@ -17,6 +17,7 @@
 | 지원 언어 | en ko ja es pt de fr it zh-Hans (9종) |
 | 최소 iOS | 17.0 |
 | 스크린샷 | `marketing/01~05_*.png` · 1320×2868 (6.9인치) |
+| 개인정보 URL | **https://humsleep.github.io/Ribatto/privacy.html** (2026-09-07 발행 확인) |
 
 **코드는 제출 가능한 상태다.** 남은 것은 전부 App Store Connect 안에서, 사람이 눌러야 하는 일이다.
 
@@ -34,10 +35,13 @@
       "Vollio"를 버린 이유가 VLLO(vimosoft, 2019년 미국 9류 출원)와의 유사성이었으므로,
       같은 실수를 반복하지 않으려면 이번엔 선점해 두는 편이 낫다.
 
-## 2. 개인정보 처리방침 페이지를 새 경로로 올린다
+## 2. 개인정보 처리방침 페이지 — ✅ 완료
 
-- [ ] `docs/privacy.html`을 GitHub Pages로 발행한다(아래 "개인정보 페이지 올리기" 참고).
-      옛 `/vollio/privacy` 페이지는 새 주소가 살아난 뒤에 내린다.
+발행 주소: **https://humsleep.github.io/Ribatto/privacy.html**
+(HTTP 200 · 영어/한국어 본문 · 문의처 `humsleep@naver.com` 확인. 원문은 `docs/privacy.html`)
+
+- [x] `docs/privacy.html`을 GitHub Pages로 발행
+- [ ] 옛 `/vollio/privacy` 페이지가 아직 살아 있다면 내린다 (새 주소가 뜬 뒤에)
 - [ ] 문구는 코드와 일치해야 한다. **"업로드 없음"이라고 쓰지 말 것** — `PlaceLookup`이 영상의 GPS
       태그를 애플 지오코더로 보내 코트 이름을 받아온다. 올바른 표현은 "영상은 기기 밖으로 나가지 않는다"다.
       (앱 내 개인정보 화면·스토어 문구·IAP 설명은 이미 이 표현으로 통일해 뒀다.)
