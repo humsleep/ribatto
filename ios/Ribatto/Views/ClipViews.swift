@@ -58,6 +58,19 @@ struct ClipCard: View {
                                             in: RoundedRectangle(cornerRadius: 6))
                                 .padding(6)
                             Spacer()
+                            // Which clip the session banner is talking about.
+                            // A count left off the video is invisible in a
+                            // grid, and the banner cannot say "this one".
+                            if clip.segment.countIsUncertain {
+                                Image(systemName: "waveform.badge.exclamationmark")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.warning)
+                                    .padding(.horizontal, 6).padding(.vertical, 4)
+                                    .background(.black.opacity(0.65),
+                                                in: RoundedRectangle(cornerRadius: 6))
+                                    .padding(6)
+                                    .accessibilityLabel(L.s("count_uncertain", lang))
+                            }
                             if clip.segment.isFavourite {
                                 Image(systemName: "star.fill")
                                     .font(.caption2)
@@ -105,8 +118,12 @@ struct ClipCard: View {
     }
 
     private var subLabel: some View {
-        Text(showSession ?? (String(clip.segment.effectiveHits) + " " + L.s("shots_n", lang)))
-            .font(.caption2).foregroundStyle(.secondary)
+        // The count is the part in doubt, so it is the part that changes
+        // colour — the session name next to it in All Clips is not.
+        let doubtful = showSession == nil && clip.segment.countIsUncertain
+        return Text(showSession ?? (String(clip.segment.effectiveHits) + " " + L.s("shots_n", lang)))
+            .font(.caption2)
+            .foregroundStyle(doubtful ? AnyShapeStyle(Theme.warning) : AnyShapeStyle(.secondary))
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .lineLimit(1).minimumScaleFactor(0.7)
     }
