@@ -384,6 +384,7 @@ struct HighlightPlayerSheet: View {
 // MARK: - All clips tab
 
 struct AllClipsView: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var purchases: PurchaseManager
     @AppStorage("rc_lang") private var lang = "en"
@@ -473,31 +474,43 @@ struct AllClipsView: View {
                 // Empty state only when there is nothing at all: a filter that
                 // matches nothing must keep the filter bar so it can be cleared.
                 if all.isEmpty {
-                    VStack(spacing: 10) {
-                        Text("🎬").font(.system(size: 44))
-                        Text(L.s("all_clips_empty", lang))
-                            .font(.subheadline).foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
+                    EmptyStateBox {
+                        VStack(spacing: 10) {
+                            Text("🎬").font(.system(size: 44))
+                            Text(L.s("all_clips_empty", lang))
+                                .font(.subheadline).foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(32)
                     }
-                    .padding(32)
-                    // Fills the space the list would have taken. Without it this branch
-                    // shrinks to its content and the VStack above centres the whole page —
-                    // the title and the tab's own background with it — so an empty tab
-                    // opened the title floating in the middle of a black screen.
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         SearchField(prompt: L.s("search_clips", lang), text: $search)
                             .padding(.horizontal)
                             .padding(.bottom, 10)
-                        HStack {
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        // Side by side the sort chip takes the width the
+                        // label needs, and a German plural broke as "Clip / s".
+                        // The session screen already stacks this row at these
+                        // sizes; this one does too.
+                        Group {
+                            let count = HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 Text(L.s("clips_title", lang)).font(.headline)
                                 Text(String(items.count))
                                     .font(.subheadline.bold()).foregroundStyle(.secondary)
                             }
-                            Spacer()
-                            SortMenu(sort: $sort)
+                            if typeSize.isAccessibilitySize {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    count
+                                    SortMenu(sort: $sort)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                HStack {
+                                    count
+                                    Spacer()
+                                    SortMenu(sort: $sort)
+                                }
+                            }
                         }
                         .padding(.horizontal)
                         // Collapsed, the panel is a single row, so it earns its

@@ -137,6 +137,14 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   같은 규칙이 시즌 기록·상대·코트 행에도 적용된다(`statRow`). 좌우 배치를 고집하면 아이콘이 글자를 덮거나 이름이 두 글자로 잘린다.
 - 장식 요소(정렬 칩, 썸네일 배지, 차트 축 라벨)는 `dynamicTypeSize(...)`로 상한을 둔다. 두면 한 글자씩 줄바꿈되어 화면을 삼킨다.
   클립 카드의 시각·타구수도 같다. 격자가 폭을 고정하므로 상한이 없으면 "00:02–0…"으로 잘린다.
+  행 앞의 SF Symbol도 마찬가지다. 글리프는 Dynamic Type을 따라 커지는데 `frame(width:)` 칸은 안 커져서,
+  상한이 없으면 칸 밖으로 그려져 옆 글자를 덮는다(`StatsView.record`/`statRow`).
+- 탭 헤더는 접근성 크기에서 제목과 동작을 세로로 쌓는다(`TabHeader`). 한 줄을 나눠 가지면 긴 제목에 남는 폭이 없어
+  독일어 "Meine Matches"가 "Mein…"이 되고 버튼이 "Auswä…"가 된다. 같은 이유로 "모든 클립"의 개수 라벨도 정렬 칩과
+  줄을 나누지 않는다 — 나누면 "Clips"가 "Clip / s"로 끊긴다.
+- 빈 화면은 `EmptyStateBox`로 감싼다. 공간을 채우게만 하면 콘텐츠가 화면보다 길어질 때 SwiftUI가 넘치는 대신
+  글자를 잘라낸다. 새로 설치한 사용자가 처음 보는 화면이 "Ancora nessuna parti…"였다. 상자는 짧으면 가운데,
+  길면 스크롤이고 떠 있는 탭 바만큼(62pt) 여백을 준다.
 - 앞 아이콘과 뒤 글리프(연필·체크·화살표)가 한 줄을 나눠 가지면 접근성 크기에서 남는 폭이 한 단어보다 좁다.
   값이 폭을 갖도록 글리프를 글에 흘려넣거나(`editableRow`) 별도 줄로 올린다(`selectableRow`, 캡션 행).
   "Wednesday group"·"Instagram Reels"·"Caption"이 각각 단어 중간에서 끊겼다.

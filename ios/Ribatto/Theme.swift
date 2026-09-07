@@ -56,9 +56,36 @@ extension View {
 /// A tab's title and its actions on one row, drawn in the content rather than
 /// by the navigation bar. A large title bar spends one row on the buttons and
 /// a second on the title; on a tab with no buttons the first row is pure gap.
+/// A tab's empty state: centred while it fits, scrollable once it does not.
+///
+/// Filling the space is not enough on its own. At accessibility sizes the
+/// icon, the two lines of explanation and the buttons are taller than the
+/// screen, and a view that cannot scroll answers that by truncating its text —
+/// the first screen of a new install read "Ancora nessuna parti…".
+struct EmptyStateBox<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+
+    /// Matches the spacer the scrolling tabs put at the end of their lists:
+    /// the tab bar floats over the content, and without the clearance the last
+    /// button of a tall empty state ends its scroll underneath it.
+    private let tabBarClearance: CGFloat = 62
+
+    var body: some View {
+        GeometryReader { geo in
+            ScrollView {
+                content()
+                    .frame(maxWidth: .infinity,
+                           minHeight: max(0, geo.size.height - tabBarClearance))
+                    .padding(.bottom, tabBarClearance)
+            }
+        }
+    }
+}
+
 struct TabHeader<Trailing: View>: View {
     let title: String
     @ViewBuilder var trailing: () -> Trailing
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     init(title: String, @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }) {
         self.title = title
@@ -66,23 +93,45 @@ struct TabHeader<Trailing: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(title)
-                .font(.largeTitle.bold())
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Spacer(minLength: 4)
-            // The actions share this row with the title. Unbounded, at
-            // accessibility sizes a two-syllable button wrapped mid-word and
-            // the icon glyphs grew as tall as three lines, turning a one-line
-            // header into a block that pushed the content down.
-            trailing()
-                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-                .lineLimit(1)
+        Group {
+            // Side by side there is no width left for a long title once the
+            // actions have taken theirs: German at the largest setting showed
+            // "Meine Matches" as "Mein…" and its button as "Auswä…". The rest
+            // of the app stacks its rows at these sizes; the header does too.
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    titleText
+                    HStack(spacing: 10) {
+                        actions
+                        Spacer(minLength: 0)
+                    }
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    titleText
+                    Spacer(minLength: 4)
+                    actions
+                }
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 6)
         .padding(.bottom, 8)
+    }
+
+    private var titleText: some View {
+        Text(title)
+            .font(.largeTitle.bold())
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+    }
+
+    /// Bounded even when stacked: unbounded, a two-syllable button wrapped
+    /// mid-word and the icon glyphs grew as tall as three lines.
+    private var actions: some View {
+        trailing()
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            .lineLimit(1)
     }
 }
 

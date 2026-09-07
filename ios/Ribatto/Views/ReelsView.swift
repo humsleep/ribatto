@@ -26,20 +26,17 @@ struct ReelsView: View {
                 let reels = store.reels()
                 let bytes = reels.reduce(Int64(0)) { $0 + $1.bytes }
                 if reels.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "rectangle.portrait.on.rectangle.portrait.angled")
-                            .font(.system(size: 40, weight: .light))
-                            .foregroundStyle(.secondary)
-                        Text(L.s("reels_empty", lang))
-                            .font(.subheadline).foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
+                    EmptyStateBox {
+                        VStack(spacing: 10) {
+                            Image(systemName: "rectangle.portrait.on.rectangle.portrait.angled")
+                                .font(.system(size: 40, weight: .light))
+                                .foregroundStyle(.secondary)
+                            Text(L.s("reels_empty", lang))
+                                .font(.subheadline).foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(32)
                     }
-                    .padding(32)
-                    // Fills the space the list would have taken. Without it this branch
-                    // shrinks to its content and the VStack above centres the whole page —
-                    // the title and the tab's own background with it — so an empty tab
-                    // opened the title floating in the middle of a black screen.
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         // Reels are the biggest files the app writes, so the
