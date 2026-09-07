@@ -62,6 +62,26 @@ extension View {
 /// A tab's title and its actions on one row, drawn in the content rather than
 /// by the navigation bar. A large title bar spends one row on the buttons and
 /// a second on the title; on a tab with no buttons the first row is pure gap.
+/// Scrolls its content only when asked to.
+///
+/// A sheet whose main content is a video cannot live in a ScrollView at normal
+/// sizes — the player would collapse to its ideal height instead of filling the
+/// screen. At accessibility sizes the opposite is true: the controls alone are
+/// taller than the phone, and in a fixed stack they squeeze the video to
+/// nothing and drive the last button off the bottom.
+struct AdaptiveScroll<Content: View>: View {
+    let scrolls: Bool
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        if scrolls {
+            ScrollView { content() }
+        } else {
+            content()
+        }
+    }
+}
+
 /// A tab's empty state: centred while it fits, scrollable once it does not.
 ///
 /// Filling the space is not enough on its own. At accessibility sizes the

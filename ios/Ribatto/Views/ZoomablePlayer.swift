@@ -170,6 +170,11 @@ struct ZoomableVideo: View {
                 Text(fmtTs(duration))
             }
             .font(.caption2.monospacedDigit())
+            // A timestamp is five characters wide and shares its row with the
+            // play button. Unbounded it wrapped into "0" over "0:04" at the
+            // largest setting — a clock that cannot be read is worse than a
+            // small one, and the button keeps a 44pt target regardless.
+            .dynamicTypeSize(...DynamicTypeSize.large)
             .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 16)

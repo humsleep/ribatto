@@ -89,6 +89,11 @@ struct ClipCard: View {
                                     .padding(6)
                             }
                         }
+                        // Every badge in this row sits on a thumbnail the grid
+                        // sizes, so none of them may grow with the body text.
+                        // The warning glyph was added without a cap and ate a
+                        // third of the poster at the largest setting.
+                        .dynamicTypeSize(...DynamicTypeSize.large)
                         Spacer()
                     }
                 }
@@ -275,9 +280,24 @@ struct ClipPlayerSheet: View {
 
     private var portraitPlayer: some View {
         NavigationStack {
+            AdaptiveScroll(scrolls: typeSize.isAccessibilitySize) {
             VStack(spacing: 0) {
                 if let player {
-                    ZoomableVideo(player: player)
+                    // Given its own aspect only when the stack scrolls: in the
+                    // fixed layout the video takes the space the controls leave,
+                    // which at accessibility sizes was none at all.
+                    if typeSize.isAccessibilitySize {
+                        // Capped, not just given its aspect: a 9:16 clip at its
+                        // own ratio fills the phone, and the player's own pan
+                        // gesture then swallows the drag that would scroll to
+                        // the controls underneath it.
+                        ZoomableVideo(player: player)
+                            .aspectRatio(OutputFrame(clip.orientation).aspectRatio,
+                                         contentMode: .fit)
+                            .frame(maxHeight: 300)
+                    } else {
+                        ZoomableVideo(player: player)
+                    }
                 }
                 // A player picked once for the session is the right subject for
                 // most rallies but not all — they change ends, or the rally
@@ -343,6 +363,7 @@ struct ClipPlayerSheet: View {
                 .rcPrimary()
                 .padding(.horizontal, 16)
                 .padding(.bottom, 10)
+            }
             }
             .background(Color.black.ignoresSafeArea())
             .onAppear { if player == nil { player = AVPlayer(url: clip.url) } }
