@@ -270,13 +270,13 @@ struct SessionDetailView: View {
                         if let score, !typeSize.isAccessibilitySize {
                             Text(score)
                                 .font(.caption.bold())
-                                .foregroundStyle(Theme.accent)
+                                .foregroundStyle(.primary)
                         }
                     }
                     if let score, typeSize.isAccessibilitySize {
                         Text(score)
                             .font(.caption.bold())
-                            .foregroundStyle(Theme.accent)
+                            .foregroundStyle(.primary)
                     }
                 }
             }
@@ -367,7 +367,7 @@ struct SessionDetailView: View {
                                    ? "quality_1080" : "quality_source", lang)
                                              : L.s("quality_720", lang))
                             .font(.caption.bold())
-                            .foregroundStyle(purchases.isPro ? Theme.accent : .secondary)
+                            .foregroundStyle(purchases.isPro ? .primary : .secondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -682,7 +682,7 @@ struct SessionDetailView: View {
     private func highlightCard(_ session: Session) -> some View {
         let title = HStack(spacing: 10) {
             Image(systemName: "sparkles")
-                .font(.title3).foregroundStyle(.tint)
+                .font(.title3).foregroundStyle(.secondary)
             Text(L.s("highlight_ready", lang))
                 .font(.subheadline.bold())
                 .fixedSize(horizontal: false, vertical: true)
@@ -906,7 +906,7 @@ struct SessionDetailView: View {
                                 systemImage: tagged == total && total > 0
                                     ? "checkmark.circle.fill" : "flag.checkered")
             .font(.caption)
-            .foregroundStyle(tagged > 0 ? Theme.accent : .secondary)
+            .foregroundStyle(tagged == total && total > 0 ? .primary : .secondary)
         let addRally = Button { destination = .addRally } label: {
             Label(L.s("add_rally", lang), systemImage: "plus")
                 .font(.caption.bold())

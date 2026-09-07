@@ -125,7 +125,7 @@ struct StatsView: View {
                             statRow(icon: "person.2.fill", name: o.name) {
                                 Text(String(format: L.s("record_fmt", lang), o.won, o.lost))
                                     .font(.subheadline.bold())
-                                    .foregroundStyle(o.won >= o.lost ? Theme.accent : .primary)
+                                    .foregroundStyle(.primary)
                                     .lineLimit(1)
                                 Text(String(format: L.s(o.matches == 1 ? "matches_one" : "matches_n", lang), o.matches))
                                     .font(.caption).foregroundStyle(.secondary)
@@ -199,7 +199,7 @@ struct StatsView: View {
                 if entry.rallies > 0 {
                     Text(String(entry.rallies))
                         .font(.caption2.bold().monospacedDigit())
-                        .foregroundStyle(entry.month == current ? Theme.accent : .secondary)
+                        .foregroundStyle(entry.month == current ? .primary : .secondary)
                 }
             }
         }
@@ -251,7 +251,7 @@ struct StatsView: View {
             // accessibility sizes it drew well outside the 22pt frame and over
             // the label beside it. It is decorative, so it is capped rather
             // than given the width it asks for.
-            Image(systemName: icon).foregroundStyle(Theme.accent)
+            Image(systemName: icon).foregroundStyle(.secondary)
                 .dynamicTypeSize(...DynamicTypeSize.large)
                 .frame(width: 22)
             if typeSize.isAccessibilitySize {

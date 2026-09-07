@@ -31,7 +31,7 @@ struct PrivacyView: View {
                         HStack(alignment: .top, spacing: 13) {
                             Image(systemName: icon)
                                 .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Theme.accent)
+                                .foregroundStyle(.secondary)
                                 .frame(width: 26)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(L.s(title, lang)).font(.subheadline.bold())

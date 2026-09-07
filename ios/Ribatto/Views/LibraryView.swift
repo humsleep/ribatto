@@ -201,7 +201,7 @@ struct LibraryView: View {
         VStack(spacing: 12) {
             Image(systemName: "sportscourt")
                 .font(.system(size: 54, weight: .light))
-                .foregroundStyle(.tint)
+                .foregroundStyle(.secondary)
             Text(L.s("lib_empty_title", lang)).font(.title3.bold())
             Text(L.s("lib_empty_body", lang))
                 .font(.subheadline).foregroundStyle(.secondary)
@@ -536,7 +536,7 @@ struct SessionCard: View {
             StageLabel(stage: stage)
         } else if let segs = session.segments {
             Text("\(String(segs.count)) \(L.s(segs.count == 1 ? "clip_one" : "clips", lang))")
-                .font(.caption.bold()).foregroundStyle(.tint)
+                .font(.caption.bold()).foregroundStyle(.secondary)
         } else {
             Text(L.s("not_detected", lang))
                 .font(.caption).foregroundStyle(.secondary)

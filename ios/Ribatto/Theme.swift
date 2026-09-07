@@ -4,6 +4,12 @@ import SwiftUI
 ///
 /// Volt lime on near-black: it ties back to the ball in the app icon, reads as
 /// sports rather than "generic dark app", and stays legible on video posters.
+///
+/// Where the accent is allowed: things you can press, and the thing that is
+/// currently selected. Not values, not status text, not row decoration — a
+/// screen that paints its counts, its stats and its list glyphs in the accent
+/// has nothing left to mark the one button that matters, which is what the
+/// library, session and season screens had become.
 enum Theme {
     static let accent      = Color(red: 0.784, green: 0.965, blue: 0.243)
     /// Text and glyphs drawn on top of `accent`.
@@ -184,6 +190,10 @@ struct AdaptiveButtonRow<Content: View>: View {
 
 
 /// Marks a control that free users can see but not use yet.
+///
+/// Tinted rather than filled: a solid accent capsule is what the primary
+/// buttons look like, so a badge drawn that way reads as something to press.
+/// Four of them sat on the session screen next to one real button.
 struct ProBadge: View {
     var body: some View {
         Text("PRO")
@@ -191,8 +201,9 @@ struct ProBadge: View {
             .tracking(0.5)
             .fixedSize()
             .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(Theme.accent, in: Capsule())
-            .foregroundStyle(Theme.onAccent)
+            .background(Theme.accent.opacity(0.18), in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1))
+            .foregroundStyle(Theme.accent)
     }
 }
 
