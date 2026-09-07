@@ -17,7 +17,7 @@ enum VideoProbe {
     /// of being copied into the app.
     static func probe(asset: AVAsset, posterURL: URL? = nil) async throws -> ProbeInfo {
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
-            throw NSError(domain: "Vollio", code: 30,
+            throw NSError(domain: "Ribatto", code: 30,
                           userInfo: [NSLocalizedDescriptionKey: "No video track"])
         }
         let t = try await track.load(.preferredTransform)

@@ -1,4 +1,4 @@
-# Vollio 🎾🏸🥎
+# Ribatto 🎾🏸🥎
 
 라켓 스포츠(테니스·배드민턴·피클볼·파델) 경기 영상에서 랠리를 자동 감지해
 릴스/쇼츠용 세로 클립을 만들어주는 **iOS 앱**.
@@ -9,7 +9,7 @@
 ## 실행
 
 ```bash
-open ios/Vollio.xcodeproj
+open ios/Ribatto.xcodeproj
 ```
 
 Xcode에서 시뮬레이터나 아이폰을 고르고 ⌘R. 터미널 빌드는 [ios/README.md](ios/README.md) 참고.

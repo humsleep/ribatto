@@ -221,7 +221,7 @@ enum ClipExporter {
                        counter: ShotCounter? = nil,
                        scoreboard: String? = nil) async throws {
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
-            throw NSError(domain: "Vollio", code: 10,
+            throw NSError(domain: "Ribatto", code: 10,
                           userInfo: [NSLocalizedDescriptionKey: "No video track"])
         }
         let t = try await track.load(.preferredTransform)
@@ -290,7 +290,7 @@ enum ClipExporter {
         // but force-quitting.
         let total = assetDuration.seconds
         guard total.isFinite, total > 0 else {
-            throw NSError(domain: "Vollio", code: 16, userInfo:
+            throw NSError(domain: "Ribatto", code: 16, userInfo:
                             [NSLocalizedDescriptionKey: "The video has no readable duration"])
         }
         // The END may legitimately overrun by a little — metadata rounding, or a
@@ -298,13 +298,13 @@ enum ClipExporter {
         // the end is not a rounding error: the rally is not in this video, and
         // clamping it would quietly produce a fraction-of-a-second clip.
         guard segment.start < total - 0.05 else {
-            throw NSError(domain: "Vollio", code: 17, userInfo:
+            throw NSError(domain: "Ribatto", code: 17, userInfo:
                             [NSLocalizedDescriptionKey: "That rally is outside the video"])
         }
         let start = max(0, segment.start)
         let dur = min(segment.end, total) - start
         guard dur > 0.05 else {
-            throw NSError(domain: "Vollio", code: 17, userInfo:
+            throw NSError(domain: "Ribatto", code: 17, userInfo:
                             [NSLocalizedDescriptionKey: "That rally is outside the video"])
         }
         let segStart = CMTime(seconds: start, preferredTimescale: 600)
@@ -373,7 +373,7 @@ enum ClipExporter {
 
         guard let session = AVAssetExportSession(
             asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
-            throw NSError(domain: "Vollio", code: 11)
+            throw NSError(domain: "Ribatto", code: 11)
         }
         // Encode beside the clip and move it into place at the end. Deleting
         // the old file first meant a trim that failed halfway — a disk that
@@ -581,7 +581,7 @@ enum ClipExporter {
         guard let session = AVAssetExportSession(
             asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
             // Returning success here burned nothing into the clip.
-            throw NSError(domain: "Vollio", code: 15)
+            throw NSError(domain: "Ribatto", code: 15)
         }
         session.videoComposition = comp
         let tmp = url.deletingLastPathComponent()
@@ -600,7 +600,7 @@ enum ClipExporter {
         // the error and then deleting it shipped a free clip with no watermark.
         guard (try? FileManager.default.replaceItemAt(url, withItemAt: tmp)) != nil else {
             try? FileManager.default.removeItem(at: tmp)
-            throw NSError(domain: "Vollio", code: 14, userInfo:
+            throw NSError(domain: "Ribatto", code: 14, userInfo:
                             [NSLocalizedDescriptionKey: "Could not write the finished clip"])
         }
         try? FileManager.default.removeItem(at: tmp)
@@ -676,7 +676,7 @@ enum ClipExporter {
                          bar: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55))
     }
 
-    /// "Vollio" drawn once into a small bitmap, placed bottom-right.
+    /// "Ribatto" drawn once into a small bitmap, placed bottom-right.
     /// The free tier's mark, and the only advertising this app has: every clip
     /// a free user posts carries it. Plain white at 92% used to disappear into
     /// a bright sky, which is the half of the job that matters — so it is drawn
@@ -685,7 +685,7 @@ enum ClipExporter {
     private static func watermarkImage(for size: CGSize,
                                        clearOf occupied: CGRect? = nil) -> CIImage? {
         let fontSize = max(20, size.height * 0.040)
-        guard let image = textImage("VOLLIO", font: .bebas, fontSize: fontSize,
+        guard let image = textImage("RIBATTO", font: .bebas, fontSize: fontSize,
                                     color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
                                     bar: nil,
                                     edge: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55),
@@ -817,7 +817,7 @@ enum ClipExporter {
             session.exportAsynchronously { cont.resume() }
         }
         guard session.status == .completed else {
-            throw session.error ?? NSError(domain: "Vollio", code: 12)
+            throw session.error ?? NSError(domain: "Ribatto", code: 12)
         }
     }
 
@@ -835,7 +835,7 @@ enum ClipExporter {
             at: CMTime(seconds: seconds, preferredTimescale: 600), actualTime: nil)
         guard let dest = CGImageDestinationCreateWithURL(
             url as CFURL, UTType.jpeg.identifier as CFString, 1, nil) else {
-            throw NSError(domain: "Vollio", code: 13)
+            throw NSError(domain: "Ribatto", code: 13)
         }
         CGImageDestinationAddImage(dest, img,
             [kCGImageDestinationLossyCompressionQuality: 0.75] as CFDictionary)

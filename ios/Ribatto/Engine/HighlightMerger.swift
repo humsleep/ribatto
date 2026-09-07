@@ -12,7 +12,7 @@ enum HighlightMerger {
                 withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
               let aTrack = comp.addMutableTrack(
                 withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
-            throw NSError(domain: "Vollio", code: 20)
+            throw NSError(domain: "Ribatto", code: 20)
         }
 
         var cursor = CMTime.zero
@@ -49,7 +49,7 @@ enum HighlightMerger {
                 continue
             }
         }
-        throw NSError(domain: "Vollio", code: 21,
+        throw NSError(domain: "Ribatto", code: 21,
                       userInfo: [NSLocalizedDescriptionKey: "Merge failed"])
     }
 }

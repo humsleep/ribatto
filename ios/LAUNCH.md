@@ -3,7 +3,7 @@
 ## 0. 냉정한 전제
 
 경쟁자는 **구독제 고가 앱**이다 — SwingVision 연 $179.99, PB Vision 연 $180~396.
-Vollio은 그들과 같은 "AI 분석 앱"으로 경쟁하면 진다(스탯·라인콜·코칭이 없다).
+Ribatto은 그들과 같은 "AI 분석 앱"으로 경쟁하면 진다(스탯·라인콜·코칭이 없다).
 **"경기 영상 → 릴스용 클립"** 이라는 한 가지 일을 가장 빠르고 싸게 하는 도구로 포지셔닝해야 한다.
 
 > 한 줄 포지셔닝: **"구독 없이, 폰 안에서, 경기 끝나고 1분이면 릴스가 나온다."**
@@ -24,7 +24,7 @@ Vollio은 그들과 같은 "AI 분석 앱"으로 경쟁하면 진다(스탯·라
 
 인디 앱 다운로드의 대부분은 스토어 검색에서 온다. 유료 광고보다 ASO가 ROI가 높다.
 
-- **이름**: `Vollio` (짧고 브랜드형)
+- **이름**: `Ribatto` (짧고 브랜드형)
 - **부제(30자)**: `Rally clips for racket sports` — 종목 범위를 여기서 드러낸다
 - **키워드 필드(100자, 쉼표만, 공백 없이)**:
   `tennis,badminton,pickleball,padel,rally,highlight,clips,reels,shorts,editor,trim,match,video`

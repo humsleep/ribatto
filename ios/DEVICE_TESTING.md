@@ -5,8 +5,8 @@
 
 ## 1. 서명 설정 (최초 1회)
 
-1. Xcode에서 `ios/Vollio.xcodeproj` 열기
-2. 왼쪽 프로젝트 네비게이터에서 **Vollio** (파란 아이콘) 클릭 → **TARGETS: Vollio** 선택
+1. Xcode에서 `ios/Ribatto.xcodeproj` 열기
+2. 왼쪽 프로젝트 네비게이터에서 **Ribatto** (파란 아이콘) 클릭 → **TARGETS: Ribatto** 선택
 3. **Signing & Capabilities** 탭:
    - **Automatically manage signing** 체크
    - **Team**: 본인 Apple ID 선택 (없으면 `Add an Account…`로 로그인)
@@ -15,15 +15,15 @@
 > Debug/Release 모두에 들어가 있어 실기기 빌드가 바로 된다.
 > 다른 Apple ID로 바꾸려면 이 값을 지우고 Xcode에서 Team을 다시 고르면 된다.
 >
-> `Signing for "Vollio" requires a development team` 오류가 다시 나면
+> `Signing for "Ribatto" requires a development team` 오류가 다시 나면
 > 이 값이 비어 있는 것이다. 본인 팀 ID는 아래로 확인할 수 있다:
 > ```bash
 > security find-certificate -a -c "Apple Development" -p | openssl x509 -noout -subject
 > ```
 > 출력의 `OU=` 뒤 10자리가 팀 ID다.
-   - **Bundle Identifier**: `com.vollio.app` 이 이미 누군가 쓰고 있으면 거부된다.
-     `com.<본인영문이름>.vollio` 처럼 고유하게 바꾼다.
-     → 바꿨다면 `Vollio.storekit`의 `productID` 접두사도 같이 맞추는 게 좋다.
+   - **Bundle Identifier**: `com.ribatto.app` 이 이미 누군가 쓰고 있으면 거부된다.
+     `com.<본인영문이름>.ribatto` 처럼 고유하게 바꾼다.
+     → 바꿨다면 `Ribatto.storekit`의 `productID` 접두사도 같이 맞추는 게 좋다.
 
 ## 2. 아이폰 연결 + 개발자 모드
 
@@ -52,9 +52,9 @@
 > **유료 개발자 프로그램 가입 완료 상태다.** 서명된 앱은 **1년간 유효**하므로
 > 7일마다 다시 설치할 필요가 없다.
 >
-> **이 첫 실행이 번들 ID를 애플에 등록한다.** `com.vollio.app`을 다른 개발자가
-> 이미 선점했다면 바로 여기서 오류가 난다 — 그때는 `com.본인영문이름.vollio`처럼
-> 바꾸고 `Vollio.storekit`의 제품 ID 접두사도 함께 맞춘다.
+> **이 첫 실행이 번들 ID를 애플에 등록한다.** `com.ribatto.app`을 다른 개발자가
+> 이미 선점했다면 바로 여기서 오류가 난다 — 그때는 `com.본인영문이름.ribatto`처럼
+> 바꾸고 `Ribatto.storekit`의 제품 ID 접두사도 함께 맞춘다.
 > 즉 **기기 테스트가 번들 ID 확보를 겸한다.** 그래서 이 단계를 가장 먼저 해야 한다.
 
 ## 2-1. 내 기기에서 Pro / 무료 자유 전환 (소유자 모드)
@@ -88,7 +88,7 @@ TestFlight·App Store 빌드는 Release라 개발용 우회가 없고, 한 번 �
 
 ## 4. 결제(IAP) 테스트
 
-- **시뮬레이터/로컬**: Xcode에서 ⌘R로 실행하면 `Vollio.storekit` 설정이 자동 적용되어
+- **시뮬레이터/로컬**: Xcode에서 ⌘R로 실행하면 `Ribatto.storekit` 설정이 자동 적용되어
   실제 결제 없이 구매 흐름을 테스트할 수 있다 (스킴에 이미 연결돼 있음).
   Xcode 메뉴 **Debug → StoreKit → Manage Transactions**에서 구매 취소/환불도 시뮬레이션 가능.
 - **실기기 샌드박스**: App Store Connect에 상품을 등록하고 Sandbox 테스터 계정으로 로그인해야 한다.

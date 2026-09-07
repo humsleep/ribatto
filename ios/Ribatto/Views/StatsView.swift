@@ -310,7 +310,7 @@ struct StatsView: View {
         guard let img = renderer.uiImage,
               let data = img.pngData() else { return }
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("vollio-season.png")
+            .appendingPathComponent("ribatto-season.png")
         // A fixed path plus a swallowed failure meant a full disk shared last
         // month's card as this month's.
         guard (try? data.write(to: url)) != nil else { return }
@@ -359,7 +359,7 @@ private struct ShareCard: View {
     private var header: some View {
         HStack(spacing: 14) {
             mark
-            Text("VOLLIO")
+            Text("RIBATTO")
                 .font(.system(size: 25, weight: .black, design: .rounded))
                 .tracking(3)
             Spacer()
@@ -457,7 +457,7 @@ private struct ShareCard: View {
                     .font(.system(size: 27, weight: .bold, design: .rounded))
             }
             Spacer()
-            Text("vollio.app")
+            Text("ribatto.app")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.30))
         }

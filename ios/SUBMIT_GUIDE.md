@@ -59,12 +59,12 @@ App Store Connect → **비즈니스**(Business) 메뉴에서:
 
 1. App Store Connect → **나의 앱 → +** → 새로운 앱
    - 플랫폼: iOS
-   - 이름: `Vollio`
+   - 이름: `Ribatto`
    - 기본 언어: **English (U.S.)** (전 세계 대상이므로)
    - 번들 ID: Xcode에서 쓰는 것과 **정확히 일치**해야 한다
-     → 현재 `com.vollio.app`. 이미 남이 선점했다면 `com.본인이름.vollio` 등으로 바꾸고
+     → 현재 `com.ribatto.app`. 이미 남이 선점했다면 `com.본인이름.ribatto` 등으로 바꾸고
        Xcode의 `PRODUCT_BUNDLE_IDENTIFIER`도 같이 바꿔야 한다
-   - SKU: `vollio-001` (내부 식별용, 아무 문자열)
+   - SKU: `ribatto-001` (내부 식별용, 아무 문자열)
 2. **가격**: 앱 자체는 **무료**로 설정 (판매는 인앱 구입으로 한다)
 
 ---
@@ -76,8 +76,8 @@ App Store Connect → 앱 → **수익 창출 → 인앱 구입 → +**
 | 항목 | 값 |
 |---|---|
 | 유형 | **비소모품 (Non-Consumable)** ← 한 번 사면 영구 |
-| 제품 ID | `com.vollio.pro` ← 코드의 `PurchaseManager.productID`와 **반드시 동일** |
-| 참조명 | Vollio Pro |
+| 제품 ID | `com.ribatto.pro` ← 코드의 `PurchaseManager.productID`와 **반드시 동일** |
+| 참조명 | Ribatto Pro |
 | 가격 | **US$2.99 티어** (한국 약 ₩4,400). 근거는 [APP_STORE.md](APP_STORE.md) 참고 |
 
 그리고 **현지화 정보**(영어/한국어/일본어 표시명·설명)와 **심사용 스크린샷 1장**이 필요하다.
@@ -121,7 +121,7 @@ App Store Connect의 앱 페이지에서:
   >
   > All analysis and rendering happen on-device. No server, no analytics, nothing uploaded.
   >
-  > IAP "Vollio Pro" (com.vollio.pro) is a one-time non-consumable; Restore is at the
+  > IAP "Ribatto Pro" (com.ribatto.pro) is a one-time non-consumable; Restore is at the
   > top right of the paywall.
 
   (예전 문안 "Uses PHPicker only — no photo library permission prompt"은 **사실과 달랐다**.

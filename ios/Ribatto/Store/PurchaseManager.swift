@@ -7,7 +7,7 @@ import StoreKit
 /// deleting sessions doesn't hand out more free imports.
 @MainActor
 final class PurchaseManager: ObservableObject {
-    static let productID = "com.vollio.pro"
+    static let productID = "com.ribatto.pro"
 #if DEBUG
     /// Debug builds only — lets Pro be exercised without a StoreKit product.
     /// Never compiled into a Release/App Store build.

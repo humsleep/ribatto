@@ -11,7 +11,7 @@ enum AudioLoader {
     static func loadMono16k(asset: AVAsset) async throws -> [Float] {
         let tracks = try await asset.loadTracks(withMediaType: .audio)
         guard let track = tracks.first else {
-            throw NSError(domain: "Vollio", code: 1,
+            throw NSError(domain: "Ribatto", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "No audio track"])
         }
         let reader = try AVAssetReader(asset: asset)
@@ -45,7 +45,7 @@ enum AudioLoader {
             }
         }
         if reader.status == .failed {
-            throw reader.error ?? NSError(domain: "Vollio", code: 2)
+            throw reader.error ?? NSError(domain: "Ribatto", code: 2)
         }
         return samples
     }

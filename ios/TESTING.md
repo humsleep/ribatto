@@ -3,11 +3,11 @@
 ## 실행
 
 ```bash
-open ios/Vollio.xcodeproj
+open ios/Ribatto.xcodeproj
 ```
 
 Xcode에서 기기(시뮬레이터 또는 본인 아이폰)를 고르고 **⌘R**.
-시뮬레이터로 실행하면 `Vollio.storekit`이 자동 적용되어 **실제 결제 없이 구매 흐름까지** 테스트된다.
+시뮬레이터로 실행하면 `Ribatto.storekit`이 자동 적용되어 **실제 결제 없이 구매 흐름까지** 테스트된다.
 
 > 시뮬레이터에 테스트 영상을 넣으려면: 사진 앱을 한 번 실행해 라이브러리를 초기화한 뒤,
 > Finder에서 영상 파일을 시뮬레이터 창으로 끌어다 놓으면 된다.
@@ -85,7 +85,7 @@ cd ios && ./Tools/validate.sh ~/Movies/경기영상.mov badminton
 > 이 동작은 `#if DEBUG` 안에 있어 **App Store용 Release 빌드에는 포함되지 않는다.**
 - [ ] 기존 세션에 **"Pro 잠금 해제됨 — 다시 만들기"** 배너가 뜨고, 누르면 원본 화질로 재렌더링된다
 - [ ] **전체 사진 앱에 저장** 이 동작한다 (사진 접근 허용 팝업 1회)
-- [ ] **무료 상태에서 만든 클립 우하단에 `Vollio` 워터마크가 보인다**
+- [ ] **무료 상태에서 만든 클립 우하단에 `Ribatto` 워터마크가 보인다**
 - [ ] Pro로 바꾸고 다시 만들면 워터마크가 사라진다
 - [ ] Xcode 메뉴 **Debug → StoreKit → Manage Transactions** 에서 구매를 취소하면 다시 무료로 돌아간다
 
@@ -100,7 +100,7 @@ cd ios && ./Tools/validate.sh ~/Movies/경기영상.mov badminton
 - [ ] 30분 4K 영상 처리 시간과 발열 ([DEVICE_TESTING.md](DEVICE_TESTING.md) 참고)
 - [ ] 처리 중 앱을 백그라운드로 보냈다가 복귀했을 때의 동작
 - [ ] 저장 공간: 사진 앱 원본을 **참조**하므로 30분 4K를 넣어도 앱 용량이 수 GB 늘지 않는다
-      (설정 → 일반 → iPhone 저장 공간 → Vollio 에서 확인)
+      (설정 → 일반 → iPhone 저장 공간 → Ribatto 에서 확인)
 - [ ] 사진 앱에서 원본 영상을 지우면 세션 상세에 경고가 뜨고 재감지가 막힌다
 
 ## 알려진 제약

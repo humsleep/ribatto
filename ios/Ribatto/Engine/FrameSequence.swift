@@ -41,7 +41,7 @@ enum FrameSequence {
                                    body: (Double, CGImage) -> Bool) async throws -> Int {
         guard fps > 0, end > start,
               let track = try await asset.loadTracks(withMediaType: .video).first else {
-            throw NSError(domain: "Vollio", code: 60)
+            throw NSError(domain: "Ribatto", code: 60)
         }
         // A composition applies the track's preferred transform and the
         // downscale in one pass, so frames come out the right way up.
@@ -49,7 +49,7 @@ enum FrameSequence {
             withPropertiesOf: asset)
         let full = composition.renderSize
         guard full.width > 0, full.height > 0 else {
-            throw NSError(domain: "Vollio", code: 61)
+            throw NSError(domain: "Ribatto", code: 61)
         }
         let shrink = min(1, maxWidth / max(full.width, full.height))
         func even(_ v: CGFloat) -> CGFloat { max(2, (v / 2).rounded() * 2) }
@@ -66,10 +66,10 @@ enum FrameSequence {
                                 kCVPixelFormatType_32BGRA])
         output.videoComposition = composition
         output.alwaysCopiesSampleData = false
-        guard reader.canAdd(output) else { throw NSError(domain: "Vollio", code: 62) }
+        guard reader.canAdd(output) else { throw NSError(domain: "Ribatto", code: 62) }
         reader.add(output)
         guard reader.startReading() else {
-            throw reader.error ?? NSError(domain: "Vollio", code: 63)
+            throw reader.error ?? NSError(domain: "Ribatto", code: 63)
         }
         defer { if reader.status == .reading { reader.cancelReading() } }
 

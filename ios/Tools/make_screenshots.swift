@@ -30,7 +30,7 @@ let dim = rgb(150, 156, 168)
 // The bundled display face, so the store frames and the burned-in overlays are
 // visibly the same product.
 for name in ["Anton-Regular", "BebasNeue-Regular"] {
-    let u = URL(fileURLWithPath: "Vollio/Fonts/\(name).ttf")
+    let u = URL(fileURLWithPath: "Ribatto/Fonts/\(name).ttf")
     CTFontManagerRegisterFontsForURL(u as CFURL, .process, nil)
 }
 func display(_ size: CGFloat) -> NSFont {

@@ -325,7 +325,7 @@ final class SessionStore: ObservableObject {
                 try fm.moveItem(at: localCopy, to: dest)
                 source = AVURLAsset(url: dest)
             }
-            guard let source else { throw NSError(domain: "Vollio", code: 40) }
+            guard let source else { throw NSError(domain: "Ribatto", code: 40) }
             let info = try await VideoProbe.probe(
                 asset: source, posterURL: sdir.appendingPathComponent("poster.jpg"))
             var s = Session(id: id, name: name, createdAt: Date(),
@@ -728,7 +728,7 @@ final class SessionStore: ObservableObject {
         // has already deleted the session's old clips by then. Ending the task
         // in the handler lets the app be suspended normally instead.
         var id: UIBackgroundTaskIdentifier = .invalid
-        id = UIApplication.shared.beginBackgroundTask(withName: "VollioRender") {
+        id = UIApplication.shared.beginBackgroundTask(withName: "RibattoRender") {
             [weak self] in
             guard let self else { return }
             // No `.failed` here: the work usually finishes anyway, and the

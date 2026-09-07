@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 
 // Generates the 1024x1024 App Store icon.
-//   swift Tools/make_icon.swift Vollio/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+//   swift Tools/make_icon.swift Ribatto/Assets.xcassets/AppIcon.appiconset/icon-1024.png
 //
 // The mark: a court-blue ground crossed by a white net, with the vertical clip
 // lifted out in front of it, play mark inside. That is the app in one picture —

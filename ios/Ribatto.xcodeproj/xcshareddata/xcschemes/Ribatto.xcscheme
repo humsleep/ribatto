@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "AA0000000000000000000050"
-               BuildableName = "Vollio.app"
-               BlueprintName = "Vollio"
-               ReferencedContainer = "container:Vollio.xcodeproj">
+               BuildableName = "Ribatto.app"
+               BlueprintName = "Ribatto"
+               ReferencedContainer = "container:Ribatto.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,13 +45,13 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA0000000000000000000050"
-            BuildableName = "Vollio.app"
-            BlueprintName = "Vollio"
-            ReferencedContainer = "container:Vollio.xcodeproj">
+            BuildableName = "Ribatto.app"
+            BlueprintName = "Ribatto"
+            ReferencedContainer = "container:Ribatto.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <StoreKitConfigurationFileReference
-         identifier = "../../../Vollio.storekit">
+         identifier = "../../../Ribatto.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
@@ -65,9 +65,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA0000000000000000000050"
-            BuildableName = "Vollio.app"
-            BlueprintName = "Vollio"
-            ReferencedContainer = "container:Vollio.xcodeproj">
+            BuildableName = "Ribatto.app"
+            BlueprintName = "Ribatto"
+            ReferencedContainer = "container:Ribatto.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

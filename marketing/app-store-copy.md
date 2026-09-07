@@ -1,4 +1,4 @@
-# Vollio — App Store listing copy
+# Ribatto — App Store listing copy
 
 Character limits are Apple's. Counts are given so you can edit safely.
 
@@ -8,7 +8,7 @@ Character limits are Apple's. Counts are given so you can edit safely.
 
 **App Name** (max 30) — 19 chars
 ```
-Vollio: Rally Clips
+Ribatto: Rally Clips
 ```
 
 **Subtitle** (max 30) — 26 chars
@@ -29,9 +29,9 @@ Pay once, keep it forever. No subscription, no account, nothing uploaded. Your m
 
 **Description** (max 4000)
 ```
-Film your match. Vollio keeps only the rallies.
+Film your match. Ribatto keeps only the rallies.
 
-Point your phone at the court and play. Vollio listens for the sound of the strike, finds every rally, and cuts the dead time away. A 30-minute match becomes the handful of points worth watching — ready to post.
+Point your phone at the court and play. Ribatto listens for the sound of the strike, finds every rally, and cuts the dead time away. A 30-minute match becomes the handful of points worth watching — ready to post.
 
 NO TRIPOD, NO SETUP
 Detection works from sound, not from a fixed camera angle. Film from a bag, a fence, a bench, courtside or up in the stands. Tennis, padel, pickleball and badminton each get their own tuning.
@@ -52,7 +52,7 @@ IT ALL RUNS ON YOUR IPHONE
 No account. No sign-up. No server. Your video and its audio never leave the phone, and the whole thing works offline at the court. The only thing that ever leaves is a coordinate sent to Apple to name a court, and only if your video carries GPS.
 
 PAY ONCE
-Vollio Pro is a one-time purchase, not a subscription. Unlimited imports, export at source quality with no watermark, smart vertical crop, player tracking, shot counter and scoreboard. Buy it once and it is yours on every iPhone signed into your Apple ID.
+Ribatto Pro is a one-time purchase, not a subscription. Unlimited imports, export at source quality with no watermark, smart vertical crop, player tracking, shot counter and scoreboard. Buy it once and it is yours on every iPhone signed into your Apple ID.
 
 Free: three imports, 720p, watermark. Enough to run a real match through it before you decide.
 ```
@@ -68,7 +68,7 @@ First release.
 
 **앱 이름** (30자)
 ```
-Vollio: 랠리 클립
+Ribatto: 랠리 클립
 ```
 
 **부제** (30자)
@@ -90,7 +90,7 @@ Vollio: 랠리 클립
 ```
 경기를 찍기만 하세요. 랠리만 남습니다.
 
-폰을 코트로 향해 두고 경기하세요. Vollio가 타구음을 듣고 랠리를 찾아내 사이의 빈 시간을 잘라냅니다. 30분짜리 경기가 볼 만한 포인트 몇 개로 정리되고, 바로 올릴 수 있는 상태가 됩니다.
+폰을 코트로 향해 두고 경기하세요. Ribatto가 타구음을 듣고 랠리를 찾아내 사이의 빈 시간을 잘라냅니다. 30분짜리 경기가 볼 만한 포인트 몇 개로 정리되고, 바로 올릴 수 있는 상태가 됩니다.
 
 삼각대도 세팅도 필요 없습니다
 영상이 아니라 소리로 찾기 때문에 카메라 각도를 맞출 필요가 없습니다. 가방 위, 펜스, 벤치, 관중석 어디서 찍어도 됩니다. 테니스·패들·피클볼·배드민턴은 각각 다른 설정으로 감지합니다.
@@ -111,7 +111,7 @@ Vollio: 랠리 클립
 계정도 가입도 서버도 없습니다. 영상과 소리는 폰을 벗어나지 않고, 코트에서 오프라인으로도 전부 동작합니다. 밖으로 나가는 것은 코트 이름을 붙일 때 애플에 보내는 좌표뿐이며, 그것도 영상에 GPS 정보가 있을 때만입니다.
 
 한 번만 결제
-Vollio Pro는 구독이 아니라 1회 결제입니다. 무제한 가져오기, 워터마크 없는 원본 화질 저장, 스마트 세로 크롭, 선수 추적, 타구 카운터와 점수판. 한 번 사면 같은 Apple ID의 모든 아이폰에서 쓸 수 있습니다.
+Ribatto Pro는 구독이 아니라 1회 결제입니다. 무제한 가져오기, 워터마크 없는 원본 화질 저장, 스마트 세로 크롭, 선수 추적, 타구 카운터와 점수판. 한 번 사면 같은 Apple ID의 모든 아이폰에서 쓸 수 있습니다.
 
 무료: 영상 3개, 720p, 워터마크. 결정하기 전에 실제 경기 한 판을 끝까지 돌려보기에 충분합니다.
 ```
@@ -140,19 +140,19 @@ Vollio Pro는 구독이 아니라 1회 결제입니다. 무제한 가져오기, 
 ## 리뷰 노트 (App Store Connect 심사용)
 
 ```
-Vollio analyses a racket-sport match video that the user imports from Photos.
+Ribatto analyses a racket-sport match video that the user imports from Photos.
 The reviewer's device is unlikely to have suitable footage, so please use this
 sample: <PUT A DIRECT DOWNLOAD LINK TO A 30-60s TENNIS CLIP HERE>
 
 Steps:
 1. Save the sample video to the device's Photos library.
-2. Open Vollio, tap + (Import Video) and pick the sample.
+2. Open Ribatto, tap + (Import Video) and pick the sample.
 3. Detection runs automatically; clips appear within about a minute.
 4. Open a clip to play it, or tap "Make a Reel" for the vertical export.
 
 Notes:
 - Everything is processed on-device. There is no account and no login.
-- Vollio Pro is a single non-consumable IAP (com.vollio.pro). The free tier
+- Ribatto Pro is a single non-consumable IAP (com.ribatto.pro). The free tier
   allows three imports at 720p with a watermark, which is enough to review the
   whole flow without purchasing.
 - Detection works from the sound of racket impacts, so footage without racket

@@ -1,4 +1,4 @@
-# Vollio — repo guide
+# Ribatto — repo guide
 
 라켓 스포츠 영상에서 랠리를 자동 감지해 릴스/쇼츠 클립을 만드는 온디바이스 앱.
 
@@ -18,8 +18,8 @@
 ## iOS 앱 지도
 
 ```
-ios/Vollio/
-  VollioApp.swift        진입점 · 온보딩 분기 · 4탭(라이브러리/모든 클립/릴스/시즌)
+ios/Ribatto/
+  RibattoApp.swift        진입점 · 온보딩 분기 · 4탭(라이브러리/모든 클립/릴스/시즌)
   Models.swift             Sport·Sensitivity·AspectSetting·Session·RallySegment·CaptionSettings
   L10n.swift               인앱 다국어 9종 (en 기본 / ko ja es pt de fr it zh-Hans) — 문자열은 9곳 모두 추가
                            s()는 없는 키를 영어로 폴백한다. 키 누락 검사는 세션 기록의 파서 스크립트 참고
@@ -80,7 +80,7 @@ swift Tools/make_screenshots.swift <캡처폴더> <출력폴더>   # ios/ 에서
 
 ## Pro 결제 테스트
 
-`ios/Vollio.storekit`(상품 `com.vollio.pro`, 비소모성)이 공유 스킴에 연결돼 있다.
+`ios/Ribatto.storekit`(상품 `com.ribatto.pro`, 비소모성)이 공유 스킴에 연결돼 있다.
 **Xcode에서 Run하면** 이 설정이 적용돼 결제가 로컬에서 무료로 완결된다. Debug ▸ StoreKit ▸ Manage Transactions에서
 거래를 지우면 다시 무료 등급으로 돌아온다. `xcrun simctl launch`로 띄우면 스킴을 거치지 않아 적용되지 않는다 —
 페이월이 "가격 불러오는 중"에 머무는 건 이 경우다.
@@ -90,7 +90,7 @@ App Store Connect의 샌드박스 테스터 계정으로만 확인할 수 있다
 ## 빌드 / 실행
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios/Vollio.xcodeproj -scheme Vollio -destination 'platform=iOS Simulator,name=iPhone 17' build
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios/Ribatto.xcodeproj -scheme Ribatto -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
 이 Mac은 `xcode-select`가 Command Line Tools를 가리켜서 `DEVELOPER_DIR` 접두가 필요하다.

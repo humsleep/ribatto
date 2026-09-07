@@ -1,4 +1,4 @@
-# Vollio — iOS 앱
+# Ribatto — iOS 앱
 
 라켓 스포츠 경기 영상에서 랠리를 자동으로 찾아 클립·하이라이트로 만들어주는 앱.
 사진 앱에서 영상을 가져오면 감지부터 렌더링까지 **전부 아이폰 안에서** 처리된다
@@ -7,13 +7,13 @@
 ## 실행
 
 ```bash
-open ios/Vollio.xcodeproj
+open ios/Ribatto.xcodeproj
 ```
 
 Xcode에서 시뮬레이터나 본인 아이폰을 선택하고 ⌘R. 터미널 빌드는:
 
 ```bash
-cd ios && xcodebuild -project Vollio.xcodeproj -scheme Vollio -destination 'platform=iOS Simulator,name=iPhone 17' build
+cd ios && xcodebuild -project Ribatto.xcodeproj -scheme Ribatto -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
 > 이 Mac은 `xcode-select`가 Command Line Tools를 가리키고 있어서, 터미널에서 빌드할 땐
@@ -22,8 +22,8 @@ cd ios && xcodebuild -project Vollio.xcodeproj -scheme Vollio -destination 'plat
 ## 구조
 
 ```
-Vollio/
-  VollioApp.swift          앱 진입점 · 온보딩 분기 · 탭(라이브러리/모든 클립)
+Ribatto/
+  RibattoApp.swift          앱 진입점 · 온보딩 분기 · 탭(라이브러리/모든 클립)
   Models.swift               Sport(종목별 감지 파라미터) · Sensitivity · Aspect · Session
   L10n.swift                 인앱 다국어 (영어 기본, 한국어, 일본어)
   Engine/                    ★ 핵심 — macOS/iOS 공용, 실측 검증 완료
@@ -47,7 +47,7 @@ Tools/
   make_shots.swift           App Store 마케팅 스크린샷 합성 (1320x2868)
   validate.sh + ValidateMain.swift   새 영상으로 감지 정확도 점검
 Marketing/                   생성된 스토어 스크린샷 5종
-Vollio.storekit            로컬 결제 테스트 설정 (스킴에 연결됨)
+Ribatto.storekit            로컬 결제 테스트 설정 (스킴에 연결됨)
 ```
 
 ## 수익 모델 (무료 / Pro)
@@ -56,16 +56,16 @@ Vollio.storekit            로컬 결제 테스트 설정 (스킴에 연결됨)
 |---|---|---|
 | 영상 가져오기 | 3개 | 무제한 |
 | 내보내기 화질 | 720p | **원본 화질 — 가로 최대 4K / 세로 1080p** |
-| 워터마크 | 우하단 `Vollio` | **없음** |
+| 워터마크 | 우하단 `Ribatto` | **없음** |
 | 사진 앱 일괄 저장 | — | **세션 전체 한 번에** |
 | 클립 병합 | — | **고른 클립을 한 영상으로** |
 | 랠리 중심 잡기(스마트 세로 크롭) | 중앙 고정 크롭 | **랠리가 벌어진 위치로 클립마다 프레임 배치** |
 | 종목·방향·민감도·하이라이트 | 전부 사용 가능 | 동일 |
 
-비소모품 IAP `com.vollio.pro`, 구독 아님. 잔여 횟수는 라이브러리 상단에 표시된다.
+비소모품 IAP `com.ribatto.pro`, 구독 아님. 잔여 횟수는 라이브러리 상단에 표시된다.
 Pro로 전환하면 기존 세션에 "원본 화질로 다시 만들기" 배너가 뜬다.
 
-Xcode에서 ⌘R로 실행하면 `Vollio.storekit` 설정이 자동 적용되어 실제 결제 없이
+Xcode에서 ⌘R로 실행하면 `Ribatto.storekit` 설정이 자동 적용되어 실제 결제 없이
 구매 흐름을 테스트할 수 있다 (Debug → StoreKit → Manage Transactions에서 환불도 가능).
 
 ## 새 영상으로 감지 정확도 점검

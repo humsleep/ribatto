@@ -242,7 +242,7 @@ enum ReelBuilder {
                       to output: URL,
                       progress: @MainActor @escaping (Int, Int) -> Void) async throws -> ReelPlan {
         guard !items.isEmpty else {
-            throw NSError(domain: "Vollio", code: 50,
+            throw NSError(domain: "Ribatto", code: 50,
                           userInfo: [NSLocalizedDescriptionKey: "Nothing to build"])
         }
 
@@ -256,7 +256,7 @@ enum ReelBuilder {
         // `HighlightMerger` asserts on an empty list — a trap the caller's
         // catch cannot see. Fail as an error instead.
         guard !planned.isEmpty else {
-            throw NSError(domain: "Vollio", code: 22, userInfo:
+            throw NSError(domain: "Ribatto", code: 22, userInfo:
                             [NSLocalizedDescriptionKey: "No rally was long enough to include"])
         }
 

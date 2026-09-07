@@ -15,16 +15,16 @@ mkdir -p .build
 cp Tools/TrackMain.swift .build/main.swift
 
 swiftc -O \
-  Vollio/Models.swift \
-  Vollio/Engine/AudioLoader.swift \
-  Vollio/Engine/RallyDetector.swift \
-  Vollio/Engine/ClipExporter.swift \
-  Vollio/Engine/SmartCrop.swift \
-  Vollio/Engine/PlayerTracker.swift \
-  Vollio/Engine/FrameSequence.swift \
-  Vollio/Engine/HighlightMerger.swift \
-  Vollio/Engine/ReelBuilder.swift \
-  Vollio/Engine/VideoProbe.swift \
+  Ribatto/Models.swift \
+  Ribatto/Engine/AudioLoader.swift \
+  Ribatto/Engine/RallyDetector.swift \
+  Ribatto/Engine/ClipExporter.swift \
+  Ribatto/Engine/SmartCrop.swift \
+  Ribatto/Engine/PlayerTracker.swift \
+  Ribatto/Engine/FrameSequence.swift \
+  Ribatto/Engine/HighlightMerger.swift \
+  Ribatto/Engine/ReelBuilder.swift \
+  Ribatto/Engine/VideoProbe.swift \
   .build/main.swift \
   -o "$OUT" 2>&1 | grep -v "warning:" | grep -v "^ *[0-9|]" | grep -v "^ *\`-" || true
 

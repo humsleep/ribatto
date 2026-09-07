@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct VollioApp: App {
+struct RibattoApp: App {
     // Supplies the orientation callback. SwiftUI has no per-screen orientation
     // control, so the app delegate answers UIKit's question and the player
     // screens flip the switch it reads.
