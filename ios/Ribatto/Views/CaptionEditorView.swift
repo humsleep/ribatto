@@ -185,15 +185,27 @@ struct CaptionEditorView: View {
         let style: CaptionStyle
     }
 
+    /// Ordered the way you would flip through them: the quiet ones first, then
+    /// the structured, then the loud. Between them they use every font, every
+    /// colour and every style at least once — a preset that duplicates another
+    /// one's look with a different name is a chip the user has to rule out.
     static let looks: [CaptionLook] = [
         .init(id: "clean",     font: .rounded,   color: .white, style: .plain),
         .init(id: "bar",       font: .rounded,   color: .white, style: .bar),
+        // Solid black pill, white letters — the caption people expect on a
+        // vertical video. `ink` only works filled: as text it disappears.
+        .init(id: "subtitle",  font: .system,    color: .ink,   style: .accent),
         .init(id: "broadcast", font: .condensed, color: .white, style: .bar),
+        .init(id: "data",      font: .mono,      color: .white, style: .bar),
+        .init(id: "cool",      font: .condensed, color: .sky,   style: .bar),
         .init(id: "poster",    font: .anton,     color: .white, style: .outline),
+        .init(id: "chalk",     font: .serif,     color: .white, style: .outline),
         .init(id: "volt",      font: .bebas,     color: .volt,  style: .accent),
+        .init(id: "neon",      font: .rounded,   color: .volt,  style: .bar),
+        .init(id: "gold",      font: .bebas,     color: .sun,   style: .accent),
         .init(id: "score",     font: .mono,      color: .sun,   style: .outline),
-        .init(id: "editorial", font: .serif,     color: .white, style: .plain),
         .init(id: "punch",     font: .anton,     color: .rose,  style: .accent),
+        .init(id: "editorial", font: .serif,     color: .white, style: .plain),
     ]
 
     private var lookPicker: some View {
