@@ -13,13 +13,15 @@ Ribatto: Rally Clips
 
 **Subtitle** (max 30) — 26 chars
 ```
-Auto rally clips for reels
+Tennis & padel rally clips
 ```
 
-**Keywords** (max 100, comma separated, no spaces) — 92 chars
+**Keywords** (max 100, comma separated, no spaces) — 98 chars
 ```
-tennis,padel,pickleball,badminton,squash,highlight,editor,trim,video,court,match,serve,coach
+pickleball,badminton,squash,highlight,editor,trim,video,court,match,serve,coach,slowmo,vlog,sports
 ```
+Sport terms that already appear in the name or subtitle are left out on purpose: Apple indexes the
+three fields together, so repeating a word spends space without adding reach.
 Do not repeat words already in the name or subtitle — Apple indexes those separately.
 
 **Promotional text** (max 170, editable without a new build) — 138 chars
@@ -73,12 +75,12 @@ Ribatto: 랠리 클립
 
 **부제** (30자)
 ```
-릴스용 랠리 자동 편집
+테니스·파델 랠리 자동 편집
 ```
 
 **키워드** (100자)
 ```
-테니스,패들,피클볼,배드민턴,스쿼시,하이라이트,편집,자르기,영상,코트,경기,서브,레슨
+피클볼,배드민턴,스쿼시,패들,하이라이트,자르기,영상,코트,경기,서브,레슨,슬로우모션,브이로그,숏폼,동영상편집,클립,라켓,동호회,스포츠
 ```
 
 **프로모션 문구** (170자)
