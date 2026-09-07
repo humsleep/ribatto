@@ -1,5 +1,7 @@
 # App Store 출시 체크리스트
 
+> 순서표는 [RELEASE.md](RELEASE.md)에 있다. 이 문서는 그 안의 단계를 자세히 푼 것이다.
+
 ## 0. 준비물
 
 | 항목 | 상태 | 비고 |
@@ -44,7 +46,7 @@
   > • Tennis, badminton, pickleball and padel presets
   > • Wide 16:9 and vertical 9:16 output
   > • Sensitivity control for noisy or quiet courts
-  > • Everything runs on your iPhone — no uploads, no account, no subscription
+  > • Everything runs on your iPhone — your video never leaves it, no account, no subscription
   >
   > Free to try. One-time purchase for unlimited imports.
 
@@ -91,7 +93,10 @@ storage, and so it can save exported clips back to the library. If access is
 denied, import still works through the picker using a local copy.
 
 All video analysis and rendering happen entirely on-device. There is no
-server, no analytics, no tracking, and nothing is uploaded.
+server of ours, no analytics and no tracking, and the video itself never
+leaves the device. The app makes exactly two kinds of network call, neither
+to us: StoreKit for the one-time purchase, and CLGeocoder to turn a video's
+own GPS tag into a court name.
 
 In-app purchase: "Ribatto Pro" (com.ribatto.pro) is a one-time
 non-consumable. It removes the import limit, the watermark and the 720p

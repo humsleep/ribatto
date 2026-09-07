@@ -1,5 +1,7 @@
 # 앱스토어 등록 — 처음 하는 사람을 위한 전체 절차
 
+> 순서표는 [RELEASE.md](RELEASE.md)에 있다. 이 문서는 그 안의 단계를 자세히 푼 것이다.
+
 무료/프로가 나뉘는 앱이라 **결제(인앱 구입) 설정**이 함께 필요하다.
 순서대로 따라가면 되고, 각 단계에서 **내가 해야 할 일**과 **걸리는 시간**을 적어뒀다.
 
@@ -119,7 +121,9 @@ App Store Connect의 앱 페이지에서:
   > instead of duplicating a multi-gigabyte file, and to save exported clips back to the
   > library. Denying access still allows import through the picker using a local copy.
   >
-  > All analysis and rendering happen on-device. No server, no analytics, nothing uploaded.
+  > All analysis and rendering happen on-device. No server of ours, no analytics; the video
+  > never leaves the device. Only two network calls exist: StoreKit, and CLGeocoder for the
+  > court name from the video's own GPS tag.
   >
   > IAP "Ribatto Pro" (com.ribatto.pro) is a one-time non-consumable; Restore is at the
   > top right of the paywall.

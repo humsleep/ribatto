@@ -1,0 +1,136 @@
+# Ribatto 출시 가이드
+
+**기준일 2026-09-07.** 이 문서가 출시까지의 단일 순서표다. 세부 절차는 기존 문서로 연결한다
+(계정·정산 절차는 [SUBMIT_GUIDE.md](SUBMIT_GUIDE.md), 메타데이터 원문은
+[../marketing/app-store-copy.md](../marketing/app-store-copy.md), IAP 문구는
+[../marketing/iap-setup.md](../marketing/iap-setup.md), 홍보 계획은 [LAUNCH.md](LAUNCH.md)).
+
+---
+
+## 0. 지금 상태
+
+| | |
+|---|---|
+| 앱 이름 | **Ribatto** (이탈리아어 "되받아친다") |
+| 번들 ID | `com.ribatto.app` |
+| IAP | `com.ribatto.pro` · 비소모품 · 가족 공유 켬 · ₩4,400 기준 |
+| 지원 언어 | en ko ja es pt de fr it zh-Hans (9종) |
+| 최소 iOS | 17.0 |
+| 스크린샷 | `marketing/01~05_*.png` · 1320×2868 (6.9인치) |
+
+**코드는 제출 가능한 상태다.** 남은 것은 전부 App Store Connect 안에서, 사람이 눌러야 하는 일이다.
+
+---
+
+## 1. 이름을 확정한다 (제일 먼저)
+
+이름 예약이 실패하면 그 뒤 단계가 전부 헛수고가 된다.
+
+- [ ] **App Store Connect에서 `Ribatto` 이름 예약.** 여기서 통과해야 확정이다. 스토어 검색 API로
+      미국·한국 스토어에 동명 앱이 없는 것은 확인했지만, 예약 시점의 판정은 애플이 한다.
+- [ ] **`ribatto.com` / `ribatto.app` 도메인 취득.** 둘 다 미등록 상태였다. 시즌 공유 카드에
+      `ribatto.app`이 **픽셀로 찍혀 나가므로**(`StatsView`) 남이 선점하면 남의 사이트를 광고하게 된다.
+- [ ] **상표 확인 또는 출원** — KIPRIS·USPTO 9류. 자가출원 5~6만원, 변리사 10~20만원.
+      "Vollio"를 버린 이유가 VLLO(vimosoft, 2019년 미국 9류 출원)와의 유사성이었으므로,
+      같은 실수를 반복하지 않으려면 이번엔 선점해 두는 편이 낫다.
+
+## 2. 개인정보 처리방침 페이지를 새 경로로 올린다
+
+- [ ] GitHub Pages의 `/vollio/privacy` → **`/ribatto/privacy`로 재발행**하고, 본문의 앱 이름도 바꾼다.
+- [ ] 문구는 코드와 일치해야 한다. **"업로드 없음"이라고 쓰지 말 것** — `PlaceLookup`이 영상의 GPS
+      태그를 애플 지오코더로 보내 코트 이름을 받아온다. 올바른 표현은 "영상은 기기 밖으로 나가지 않는다"다.
+      (앱 내 개인정보 화면·스토어 문구·IAP 설명은 이미 이 표현으로 통일해 뒀다.)
+
+## 3. App Store Connect — 앱 레코드
+
+[SUBMIT_GUIDE.md 단계 2](SUBMIT_GUIDE.md) 참고.
+
+- [ ] 플랫폼 iOS · 이름 `Ribatto` · 기본 언어 **English (U.S.)** · 번들 ID `com.ribatto.app` · SKU `ribatto-001`
+- [ ] **현지화 9개 언어 추가.** 이걸 해야 제품 페이지에 9개 언어가 표시된다.
+      (앱 번들 쪽 선언은 `Ribatto-Info.plist`의 `CFBundleLocalizations`로 이미 처리돼 있다.)
+- [ ] 카테고리: 스포츠 / 사진 및 비디오
+- [ ] 연령 등급 설문 — 전 연령. 사용자 생성 콘텐츠·웹 접근·광고 모두 없음
+
+## 4. App Store Connect — 인앱 구입
+
+문구 원문은 [../marketing/iap-setup.md](../marketing/iap-setup.md)에 9개 언어로 정리돼 있다.
+
+- [ ] 제품 ID **`com.ribatto.pro`** — 코드의 `PurchaseManager.productID`와 **글자 하나까지 같아야 한다.**
+      다르면 페이월이 영원히 "가격 불러오는 중"에 머문다.
+- [ ] 유형 비소모품 · 가족 공유 **켬**
+- [ ] 심사용 스크린샷(페이월 화면)과 심사 메모 첨부
+- [ ] 이전에 `com.vollio.pro`로 만들어 둔 IAP가 있다면 **새로 만들어야 한다.** 제품 ID는 생성 후 변경 불가다.
+
+## 5. 메타데이터 · 스크린샷
+
+- [ ] 설명·프로모션 문구·키워드: [../marketing/app-store-copy.md](../marketing/app-store-copy.md)
+- [ ] **키워드에 `VLLO`·`블로`를 넣지 말 것.** 상표 분쟁은 대개 여기서 시작된다.
+- [ ] 스크린샷 5장 업로드 (`marketing/01_hero.png` … `05_s4_clips.png`)
+- [ ] 개인정보 URL: 2번에서 만든 새 주소
+- [ ] App Privacy 설문: **Data Not Collected**. 번들의 `PrivacyInfo.xcprivacy`와 답이 일치해야 한다.
+
+## 6. 빌드 업로드 · 제출
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios/Ribatto.xcodeproj -scheme Ribatto -destination 'platform=iOS Simulator,name=iPhone 17' build
+```
+시뮬레이터 빌드는 위 명령으로 확인하고, 제출용은 Xcode에서 **Any iOS Device → Product ▸ Archive → Distribute**.
+
+- [ ] Archive 업로드 후 App Store Connect에서 빌드 선택
+- [ ] **TestFlight로 자기 기기에서 한 번 실행해 본다.** 시뮬레이터에서 안 잡히는 것(실제 촬영 영상의
+      타구음 감지 품질, 긴 영상 렌더 시간, 저장 공간)은 여기서만 보인다. [DEVICE_TESTING.md](DEVICE_TESTING.md)
+- [ ] 심사 정보 메모: [APP_STORE.md 4-1](APP_STORE.md) 문단을 그대로 복사.
+      영상 없이는 앱이 비어 보이므로 **심사자용 샘플 영상 링크를 반드시 넣는다.**
+
+---
+
+## 제출 전 최종 점검
+
+### 이미 검증된 것 (2026-09-07, 이 저장소 기준)
+
+- Debug·Release 빌드 통과, 시뮬레이터 설치·실행·전 탭 이동 확인
+- 번들 검증: `com.ribatto.app` / 표시명 `Ribatto` / `PrivacyInfo.xcprivacy` 포함 / 폰트·아이콘 포함
+- `CFBundleLocalizations` 9개 언어가 **빌드된** Info.plist에 실제로 들어감
+- 개인정보 매니페스트: `UserDefaults(CA92.1)` + `FileTimestamp(C617.1)` 선언 — 코드의 실제 API 사용과 일치
+- 9개 언어 × 373키 전수 대조: 누락 0 · 자리표시자 불일치 0
+- StoreKit 설정 파일의 상품 ID가 코드와 일치, 9개 로케일 문구 존재
+- 접근성 최대 글씨(AX5) + 소형 화면(iPhone SE)에서 4개 탭 레이아웃 확인
+- 시즌 공유 카드·클립 워터마크·파일명까지 새 이름으로 렌더되는 것 확인
+
+### 사람만 할 수 있는 것
+
+- [ ] 실기기에서 실제 경기 영상 1개 전체 흐름 (가져오기 → 감지 → 클립 → 릴스 → 사진 앱 저장)
+- [ ] 샌드박스 테스터 계정으로 실제 결제·복원 (시뮬레이터의 StoreKit 설정으로는 확인 불가)
+- [ ] 스크린샷 속 문구가 실제 화면과 어긋나지 않는지 눈으로 대조
+
+---
+
+## 거절 위험과 대비
+
+| 사유 | 상태 | 대비 |
+|---|---|---|
+| **2.3.1 숨은 기능** | 대응됨 | 오너 패널 진입은 `#if DEBUG`. 릴리스 바이너리에 `rc_test_pro` 문자열 없음을 확인 |
+| **ITMS-91053 API 선언 누락** | 대응됨 | `FileTimestamp` 카테고리를 매니페스트에 추가함 (누락 상태였음) |
+| **5.1.1 / 2.1 콘텐츠 없음** | 대비 필요 | 심사자는 영상이 없어 빈 앱을 본다. 심사 노트에 샘플 영상 링크 필수 |
+| **2.3.10 부정확한 메타데이터** | 대응됨 | "업로드 없음" 류의 포괄 주장을 영상 기준 표현으로 교체함 |
+| **3.1.1 결제 우회** | 해당 없음 | 외부 결제 유도 없음, 단일 비소모품 |
+
+## Pro 테스트 방법 (헷갈리기 쉬움)
+
+- **Xcode에서 Run** → 스킴에 `Ribatto.storekit`이 붙어 있어 가격이 뜨고 결제가 로컬에서 무료로 완결된다.
+  되돌리려면 Debug ▸ StoreKit ▸ Manage Transactions에서 거래 삭제.
+- **`xcrun simctl launch`로 띄우면** 스킴을 안 거쳐 상품이 없다. 이 경우 페이월은 "가격 불러오는 중"에
+  머물지만, **Debug 빌드에서는 잠금 해제 버튼이 눌린다** — 눌러서 로컬로 Pro가 켜진다(2026-09-07 수정).
+- **오너 패널**(등급 알약 1.2초 길게 누르기 + 패스프레이즈)은 **Debug 전용이다.**
+  TestFlight·App Store 빌드는 Release라 진입도, 등급 전환도 되지 않는다. 실기기에서 무료↔Pro를
+  오가며 보려면 Xcode로 Debug 빌드를 설치해야 한다.
+
+## 알아둘 것
+
+- **기존에 만들어 둔 클립·릴스에는 옛 워터마크(`VOLLIO`)가 픽셀로 박혀 있다.** 마케팅에 쓸 영상은
+  새 빌드로 다시 렌더해야 `RIBATTO`가 나온다.
+- **시뮬레이터·기기에 남아 있던 데모 데이터는 새 앱에서 안 보인다.** 번들 ID가 바뀌면 데이터 컨테이너가
+  달라지기 때문이다. 실제 사용자에게는 해당 없는 문제다(출시 전이라 기존 사용자가 없다).
+- 스크린샷 원본 캡처(`hero.jpg`, `s1_library.png` …)는 남아 있지 않다. 완성본만 있으므로,
+  화면을 다시 찍어야 할 일이 생기면 시뮬레이터에 데모 데이터를 채우고 `Tools/make_screenshots.swift`를
+  다시 돌려야 한다.

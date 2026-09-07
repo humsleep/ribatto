@@ -24,7 +24,7 @@ Do not repeat words already in the name or subtitle — Apple indexes those sepa
 
 **Promotional text** (max 170, editable without a new build) — 138 chars
 ```
-Pay once, keep it forever. No subscription, no account, nothing uploaded. Your match is analysed right on your iPhone, even offline.
+Pay once, keep it forever. No subscription, no account, and your video never leaves your iPhone. Your match is analysed right on the device, even offline.
 ```
 
 **Description** (max 4000)
@@ -83,7 +83,7 @@ Ribatto: 랠리 클립
 
 **프로모션 문구** (170자)
 ```
-한 번 결제하면 평생 사용합니다. 구독도 계정도 없고 업로드도 없습니다. 경기 영상은 아이폰 안에서 분석되며, 오프라인에서도 동작합니다.
+한 번 결제하면 평생 사용합니다. 구독도 계정도 없고, 영상은 아이폰 밖으로 나가지 않습니다. 경기 영상은 아이폰 안에서 분석되며, 오프라인에서도 동작합니다.
 ```
 
 **설명** (4000자)
@@ -126,7 +126,7 @@ Ribatto Pro는 구독이 아니라 1회 결제입니다. 무제한 가져오기,
 | 2 | 라이브러리 | SKIP THE DEAD TIME | A 30-minute match becomes the rallies worth watching. |
 | 3 | 세션 설정 | FOUND BY SOUND | No tripod, no mount, no fixed angle. It listens for the strike. |
 | 4 | 시즌 | YOUR SEASON, COUNTED | Every rally, every court, every opponent you tagged. |
-| 5 | 모든 클립 | PAY ONCE. NO ACCOUNT. | Everything runs on your iPhone. Nothing is uploaded. |
+| 5 | 모든 클립 | PAY ONCE. NO ACCOUNT. | Everything runs on your iPhone. Your video never leaves it. |
 
 한국어판 헤드라인
 1. 한 번에, 경기에서 릴스로 — 랠리는 자동으로 찾고 점수와 타구 수를 새깁니다.

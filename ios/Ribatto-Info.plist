@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The nine in-app languages, declared for the App Store product page.
+
+	     This file exists only for this key. Everything else in the bundle's
+	     Info.plist is still generated (GENERATE_INFOPLIST_FILE = YES) and
+	     merged into it at build time, so add new keys as INFOPLIST_KEY_*
+	     build settings first and only fall back here when Xcode drops them.
+
+	     Why it cannot be a build setting: INFOPLIST_KEY_CFBundleLocalizations
+	     was set for both configurations and never reached the built plist —
+	     the generator only honours the keys it knows, and this is not one of
+	     them. Without the declaration the store page lists English alone, and
+	     the nine languages the app actually ships are invisible to buyers. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ko</string>
+		<string>ja</string>
+		<string>es</string>
+		<string>pt</string>
+		<string>de</string>
+		<string>fr</string>
+		<string>it</string>
+		<string>zh-Hans</string>
+	</array>
+</dict>
+</plist>

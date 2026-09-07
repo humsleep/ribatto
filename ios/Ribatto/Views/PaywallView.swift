@@ -140,6 +140,21 @@ struct PaywallView: View {
         }
     }
 
+    /// A dead Unlock button is right in a shipped build — with no product
+    /// there is nothing to buy, and the price above says so — but wrong in a
+    /// test build. Launched outside Xcode the `.storekit` config never loads,
+    /// so `product` stays nil, and `purchase()`'s DEBUG fallback that unlocks
+    /// Pro locally sits behind a button that can never be pressed. That is the
+    /// "stuck on loading the price" dead end, and it made the Pro paths
+    /// untestable anywhere but a scheme-launched run.
+    private var unlockDisabled: Bool {
+#if DEBUG
+        purchases.isPurchasing
+#else
+        purchases.isPurchasing || purchases.product == nil
+#endif
+    }
+
     private var priceBlock: some View {
         VStack(spacing: 12) {
             // StoreKit may still be fetching the product: a dash next to
@@ -177,7 +192,7 @@ struct PaywallView: View {
             .rcPrimary()
             .tint(accent)
             .foregroundStyle(.black)
-            .disabled(purchases.isPurchasing || purchases.product == nil)
+            .disabled(unlockDisabled)
 
             if let err = purchases.errorMessage {
                 Text(err).font(.caption2).foregroundStyle(Theme.danger)

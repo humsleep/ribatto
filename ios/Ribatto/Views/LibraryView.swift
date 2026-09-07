@@ -240,6 +240,11 @@ struct LibraryView: View {
             .padding(.top, 8)
         }
         .padding(32)
+        // Fills the space the list would have taken. Without it this branch
+        // shrinks to its content and the VStack above centres the whole page —
+        // the title and the tab's own background with it — so an empty tab
+        // opened the title floating in the middle of a black screen.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Restore reports failure through the same channel the paywall uses;
         // here there is no paywall on screen to show it.
         .alert(purchases.errorMessage ?? "", isPresented: Binding(
@@ -405,8 +410,9 @@ struct LibraryView: View {
                 }
             }
             Divider()
-            // "No account, nothing uploaded" is the app's main promise, so the
-            // detail behind it should be readable without leaving the app.
+            // "No account, and the video never leaves the phone" is the app's
+            // main promise, so the detail behind it should be readable without
+            // leaving the app.
             Button {
                 showPrivacy = true
             } label: {

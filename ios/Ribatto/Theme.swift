@@ -72,7 +72,13 @@ struct TabHeader<Trailing: View>: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Spacer(minLength: 4)
+            // The actions share this row with the title. Unbounded, at
+            // accessibility sizes a two-syllable button wrapped mid-word and
+            // the icon glyphs grew as tall as three lines, turning a one-line
+            // header into a block that pushed the content down.
             trailing()
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                .lineLimit(1)
         }
         .padding(.horizontal, 20)
         .padding(.top, 6)

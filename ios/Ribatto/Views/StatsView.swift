@@ -60,6 +60,11 @@ struct StatsView: View {
                             .multilineTextAlignment(.center)
                     }
                     .padding(32)
+                    // Fills the space the list would have taken. Without it this branch
+                    // shrinks to its content and the VStack above centres the whole page —
+                    // the title and the tab's own background with it — so an empty tab
+                    // opened the title floating in the middle of a black screen.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     content
                 }
@@ -245,7 +250,13 @@ struct StatsView: View {
     private func statRow<V: View>(icon: String, name: String,
                                   @ViewBuilder value: () -> V) -> some View {
         HStack(alignment: typeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
-            Image(systemName: icon).foregroundStyle(Theme.accent).frame(width: 22)
+            // The glyph scales with Dynamic Type but its column does not, so at
+            // accessibility sizes it drew well outside the 22pt frame and over
+            // the label beside it. It is decorative, so it is capped rather
+            // than given the width it asks for.
+            Image(systemName: icon).foregroundStyle(Theme.accent)
+                .dynamicTypeSize(...DynamicTypeSize.large)
+                .frame(width: 22)
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name).font(.subheadline)
@@ -270,7 +281,13 @@ struct StatsView: View {
         // the value column took the width the name needed.
         let stacked = typeSize.isAccessibilitySize
         return HStack(alignment: stacked ? .top : .center, spacing: 11) {
-            Image(systemName: icon).foregroundStyle(.tint).frame(width: 22)
+            // The glyph scales with Dynamic Type but its column does not, so at
+            // accessibility sizes it drew well outside the 22pt frame and over
+            // the label beside it. It is decorative, so it is capped rather
+            // than given the width it asks for.
+            Image(systemName: icon).foregroundStyle(.tint)
+                .dynamicTypeSize(...DynamicTypeSize.large)
+                .frame(width: 22)
             if stacked {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.subheadline)

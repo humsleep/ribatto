@@ -121,7 +121,12 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - PlayerTracker 2단계 재획득도 1단계와 같은 크기 검사를 거친다. 빼면 카메라 앞 다른 사람에게 붙잡혀 랠리 끝까지 못 돌아온다.
 - 내보내기 구간은 실제 에셋 길이로 자른다. 영상 밖에서 시작하면 AVAssetExportSession이 실패가 아니라 무한 대기한다.
 - 무료 횟수 환불은 세션당 1회(`importRefunded`). `process`는 재감지에서도 실행되므로 조건 없이 돌려주면 무료가 무제한이 된다.
-- 지원 언어는 Info.plist(`INFOPLIST_KEY_CFBundleLocalizations`)에 선언한다. 선언이 없으면 iOS가 한국어 기기에도 영어만 넘겨 기기 언어 시드가 무력화된다.
+- 지원 언어는 `ios/Ribatto-Info.plist`의 `CFBundleLocalizations`에 선언한다. 빌드 설정
+  `INFOPLIST_KEY_CFBundleLocalizations`로는 안 된다 — 생성기가 아는 키만 반영해서 조용히 사라진다.
+  실제로 두 configuration 모두 선언돼 있었는데 빌드된 Info.plist에는 없었다. 선언이 빠지면 App Store
+  제품 페이지에 영어 하나만 표시된다. 기기 언어 시드는 `Locale.preferredLanguages` 대신
+  `AppleLanguages` 원본을 읽어 이 선언과 무관하게 동작한다(`seedLanguageFromDevice`).
+  이 파일은 그 키 하나 때문에 존재하고, 나머지 키는 여전히 생성된 뒤 여기에 병합된다.
 - 오버레이 번인 결과를 원본 자리로 옮기는 데 실패하면 던진다. 삼키면 워터마크 없는 무료 클립이 나간다.
 - 세로 고정이다(OrientationGate + AppDelegate). 가로는 클립·하이라이트 재생 화면만, 그것도 가로 영상일 때만 허용한다.
   하이라이트·병합 재생도 세션의 `renderedOrientation`을 받아 같은 판정을 한다. 무조건 허용하면 세로 하이라이트가 옆으로 눕는다.

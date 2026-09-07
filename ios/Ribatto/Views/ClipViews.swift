@@ -480,6 +480,11 @@ struct AllClipsView: View {
                             .multilineTextAlignment(.center)
                     }
                     .padding(32)
+                    // Fills the space the list would have taken. Without it this branch
+                    // shrinks to its content and the VStack above centres the whole page —
+                    // the title and the tab's own background with it — so an empty tab
+                    // opened the title floating in the middle of a black screen.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         SearchField(prompt: L.s("search_clips", lang), text: $search)

@@ -22,10 +22,20 @@
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array/>
 
-	<!-- The only required-reason API in the app. UserDefaults backs
-	     @AppStorage (language, onboarding flag) and PurchaseManager's
-	     entitlement counters — all of it this app's own data, never shared
-	     with or read from another app or a device-wide identifier. -->
+	<!-- Two required-reason APIs, both on the app's own files and settings.
+
+	     UserDefaults backs @AppStorage (language, onboarding flag) and
+	     PurchaseManager's entitlement counters — all of it this app's own
+	     data, never shared with or read from another app or a device-wide
+	     identifier.
+
+	     File timestamps: PosterCache.key(for:) reads a clip's modification
+	     date to key its thumbnail cache, so a re-rendered clip whose poster is
+	     rewritten in place still refreshes, and SessionStore reads a rendered
+	     clip's byte size. Both files live in this app's own container, which
+	     is what C617.1 covers. Undeclared, this is the App Store's automated
+	     "ITMS-91053: Missing API declaration" mail — add the category here
+	     whenever a new call reads file metadata. -->
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>
@@ -34,6 +44,14 @@
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
 				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
 			</array>
 		</dict>
 	</array>

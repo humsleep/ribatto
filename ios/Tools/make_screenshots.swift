@@ -66,7 +66,7 @@ let frames: [Frame] = [
           full: false),
     Frame(file: "s4_clips.png",
           headline: ["PAY ONCE.", "NO ACCOUNT."],
-          sub: "Everything runs on your iPhone. Nothing is uploaded.",
+          sub: "Everything runs on your iPhone. Your video never leaves it.",
           full: false),
 ]
 

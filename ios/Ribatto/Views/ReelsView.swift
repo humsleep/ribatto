@@ -35,6 +35,11 @@ struct ReelsView: View {
                             .multilineTextAlignment(.center)
                     }
                     .padding(32)
+                    // Fills the space the list would have taken. Without it this branch
+                    // shrinks to its content and the VStack above centres the whole page —
+                    // the title and the tab's own background with it — so an empty tab
+                    // opened the title floating in the middle of a black screen.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         // Reels are the biggest files the app writes, so the
@@ -89,6 +94,10 @@ struct ReelsView: View {
                         .clipped()
                     Text(fmtDur(reel.duration))
                         .font(.caption2.bold())
+                        // Badges sit on a fixed-size thumbnail, as on the clip
+                        // cards: scaled with the body text they cover the frame
+                        // they are meant to annotate.
+                        .dynamicTypeSize(...DynamicTypeSize.large)
                         .padding(.horizontal, 6).padding(.vertical, 3)
                         .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 6))
                         .padding(6)
@@ -97,6 +106,7 @@ struct ReelsView: View {
                     Text(L.s("reel_" + reel.target, lang))
                         .font(.caption2.bold())
                         .lineLimit(1)
+                        .dynamicTypeSize(...DynamicTypeSize.large)
                         .padding(.horizontal, 6).padding(.vertical, 3)
                         .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 6))
                         .padding(6)
@@ -110,6 +120,9 @@ struct ReelsView: View {
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // The grid fixes the cell width, so unbounded these two lines
+                // wrap one syllable per row and swallow the card.
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 .padding(8)
             }
             .background(Theme.surface)
