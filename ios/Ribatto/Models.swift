@@ -318,8 +318,14 @@ enum CaptionFont: String, Codable, CaseIterable, Identifiable {
 struct CaptionSettings: Codable, Equatable {
     var enabled = false
     var text = ""
-    var style: CaptionStyle = .bar
-    var color: CaptionColor = .white
+    /// A filled pill in ink, white letters — the default has to be readable
+    /// over footage nobody screened. A translucent bar takes its contrast from
+    /// whatever is behind it: white text on it measures 4.8:1 against a blown
+    /// out sky and 18:1 against an indoor court, and the sky is the one people
+    /// film. Filled, it is 19:1 everywhere. The picker still offers the bar for
+    /// anyone who would rather see the court through it.
+    var style: CaptionStyle = .accent
+    var color: CaptionColor = .ink
     var font: CaptionFont = .rounded
     /// font size multiplier, 1.0 = 4.5% of the frame height
     var size: Double = 1.0
@@ -338,6 +344,9 @@ struct CaptionSettings: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
         text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
+        // Deliberately not the property defaults above: a caption written
+        // before these keys existed looked like a translucent bar in white, and
+        // changing what the app defaults to must not restyle it.
         style = try c.decodeIfPresent(CaptionStyle.self, forKey: .style) ?? .bar
         color = try c.decodeIfPresent(CaptionColor.self, forKey: .color) ?? .white
         font = try c.decodeIfPresent(CaptionFont.self, forKey: .font) ?? .rounded

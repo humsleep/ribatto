@@ -190,11 +190,12 @@ struct CaptionEditorView: View {
     /// colour and every style at least once — a preset that duplicates another
     /// one's look with a different name is a chip the user has to rule out.
     static let looks: [CaptionLook] = [
-        .init(id: "clean",     font: .rounded,   color: .white, style: .plain),
+        .init(id: "clean",     font: .system,    color: .white, style: .plain),
         .init(id: "bar",       font: .rounded,   color: .white, style: .bar),
         // Solid black pill, white letters — the caption people expect on a
-        // vertical video. `ink` only works filled: as text it disappears.
-        .init(id: "subtitle",  font: .system,    color: .ink,   style: .accent),
+        // vertical video, and what a new session starts with. `ink` only works
+        // filled: as text it disappears.
+        .init(id: "subtitle",  font: .rounded,   color: .ink,   style: .accent),
         .init(id: "broadcast", font: .condensed, color: .white, style: .bar),
         .init(id: "data",      font: .mono,      color: .white, style: .bar),
         .init(id: "cool",      font: .condensed, color: .sky,   style: .bar),
