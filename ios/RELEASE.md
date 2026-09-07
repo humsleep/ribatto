@@ -36,10 +36,29 @@
 
 ## 2. 개인정보 처리방침 페이지를 새 경로로 올린다
 
-- [ ] GitHub Pages의 `/vollio/privacy` → **`/ribatto/privacy`로 재발행**하고, 본문의 앱 이름도 바꾼다.
+- [ ] `docs/privacy.html`을 GitHub Pages로 발행한다(아래 "개인정보 페이지 올리기" 참고).
+      옛 `/vollio/privacy` 페이지는 새 주소가 살아난 뒤에 내린다.
 - [ ] 문구는 코드와 일치해야 한다. **"업로드 없음"이라고 쓰지 말 것** — `PlaceLookup`이 영상의 GPS
       태그를 애플 지오코더로 보내 코트 이름을 받아온다. 올바른 표현은 "영상은 기기 밖으로 나가지 않는다"다.
       (앱 내 개인정보 화면·스토어 문구·IAP 설명은 이미 이 표현으로 통일해 뒀다.)
+
+### 개인정보 페이지 올리기 (GitHub Pages, 무료)
+
+이 저장소는 원격이 없는 로컬 저장소다. 정책 페이지만 올리는 **공개 저장소를 따로 하나** 만드는 것이
+가장 간단하고, 앱 소스는 계속 비공개로 둘 수 있다.
+
+1. github.com → **New repository** → 이름 `ribatto` → **Public** → Create
+2. 저장소 화면에서 **Add file ▸ Upload files** → `docs/privacy.html`을 끌어다 놓고,
+   업로드 후 파일명을 **`index.html`로 바꾼다**(그래야 주소가 짧아진다) → Commit
+3. **Settings ▸ Pages** → Source: **Deploy from a branch** → Branch: `main` / 폴더 `/ (root)` → Save
+4. 1~2분 뒤 주소가 뜬다: `https://<깃허브아이디>.github.io/ribatto/`
+5. 그 주소를 브라우저에서 직접 열어 **본문이 보이는지** 확인한다. App Store Connect의
+   개인정보 URL 칸에는 이 주소를 넣는다.
+
+> `github.com/<아이디>/<저장소>/blob/...` 형태의 주소는 깃허브 UI가 감싸진 페이지라 정책 URL로 쓰지 않는다.
+> 반드시 `github.io` 주소를 쓴다.
+
+파일 안의 `CONTACT@EXAMPLE.COM` 두 곳을 실제 연락 메일로 바꾼 뒤 올린다. 애플은 동작하는 연락 수단을 요구한다.
 
 ## 3. App Store Connect — 앱 레코드
 
@@ -66,7 +85,7 @@
 - [ ] 설명·프로모션 문구·키워드: [../marketing/app-store-copy.md](../marketing/app-store-copy.md)
 - [ ] **키워드에 `VLLO`·`블로`를 넣지 말 것.** 상표 분쟁은 대개 여기서 시작된다.
 - [ ] 스크린샷 5장 업로드 (`marketing/01_hero.png` … `05_s4_clips.png`)
-- [ ] 개인정보 URL: 2번에서 만든 새 주소
+- [ ] 개인정보 URL: 2번에서 만든 새 주소 (원문은 저장소의 `docs/privacy.html`)
 - [ ] App Privacy 설문: **Data Not Collected**. 번들의 `PrivacyInfo.xcprivacy`와 답이 일치해야 한다.
 
 ## 6. 빌드 업로드 · 제출
@@ -81,6 +100,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
       타구음 감지 품질, 긴 영상 렌더 시간, 저장 공간)은 여기서만 보인다. [DEVICE_TESTING.md](DEVICE_TESTING.md)
 - [ ] 심사 정보 메모: [APP_STORE.md 4-1](APP_STORE.md) 문단을 그대로 복사.
       영상 없이는 앱이 비어 보이므로 **심사자용 샘플 영상 링크를 반드시 넣는다.**
+      한 줄 더 넣을 것: **"옆 코트 소리가 섞인 랠리에서는 타구 카운터를 일부러 넣지 않습니다"** —
+      Pro를 켜고 카운터가 안 보이면 심사자가 버그로 신고할 수 있다.
 
 ---
 
