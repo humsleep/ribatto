@@ -487,17 +487,30 @@ final class SessionStore: ObservableObject {
               seg.end - time >= minClipSeconds else { return false }
         // Strikes and the crowd reaction belong to whichever half they land in;
         // the score is no longer meaningful for either, so both are unscored.
+        let paired = zip(seg.hitTimes ?? [], seg.hitStrengths ?? [])
         let firstHits = (seg.hitTimes ?? []).filter { $0 < time }
         let secondHits = (seg.hitTimes ?? []).filter { $0 >= time }
+        // Levels travel with their strikes so a corrected count still knows
+        // which of them were the quiet ones.
+        let firstStr = seg.hitStrengths?.count == seg.hitTimes?.count
+            ? paired.filter { $0.0 < time }.map(\.1) : nil
+        let secondStr = seg.hitStrengths?.count == seg.hitTimes?.count
+            ? paired.filter { $0.0 >= time }.map(\.1) : nil
         let first = RallySegment(start: seg.start, end: time,
                                  hits: firstHits.isEmpty ? seg.hits / 2 : firstHits.count,
                                  score: nil, trimmed: true,
-                                 hitTimes: seg.hitTimes == nil ? nil : firstHits)
+                                 hitTimes: seg.hitTimes == nil ? nil : firstHits,
+                                 hitStrengths: firstStr,
+                                 hitsUncertain: firstStr.map {
+                                     RallyDetector.mixedSources($0.map(Float.init)) })
         var second = RallySegment(start: time, end: seg.end,
                                   hits: secondHits.isEmpty ? seg.hits - seg.hits / 2 : secondHits.count,
                                   score: nil, trimmed: true,
                                   hitTimes: seg.hitTimes == nil ? nil : secondHits,
-                                  cheer: seg.cheer)
+                                  cheer: seg.cheer,
+                                  hitStrengths: secondStr,
+                                  hitsUncertain: secondStr.map {
+                                      RallyDetector.mixedSources($0.map(Float.init)) })
         // Both tags describe the point the user was looking at, and that point
         // is the one that ends where the original ended — the second half.
         // Splitting them across the two halves put the winner on a point the
@@ -854,13 +867,21 @@ final class SessionStore: ObservableObject {
         }
         try? fm.removeItem(at: highlightURL(session))
 
-        progress[session.id] = .render(done: clip.index, total: segments.count)
+        await rerenderClip(session, segments: segments, index: clip.index)
+    }
+
+    /// Renders one clip again with the settings the session was last rendered
+    /// with. Every per-clip edit — a trim, a corrected shot count — ends here,
+    /// because what the user changed lives in pixels.
+    private func rerenderClip(_ session: Session, segments: [RallySegment], index: Int) async {
+        let segment = segments[index]
+        progress[session.id] = .render(done: index, total: segments.count)
         defer { clearProgressUnlessFailed(session.id) }
         guard let source = await loadAsset(session) else {
             progress[session.id] = .failed(missingSourceMessage)
             return
         }
-        let base = String(format: "clip_%02d", clip.index + 1)
+        let base = String(format: "clip_%02d", index + 1)
         let dir = clipsDir(session)
         do {
             try await ClipExporter.export(
@@ -868,19 +889,44 @@ final class SessionStore: ObservableObject {
                 orientation: session.renderedOrientation ?? session.effectiveOrientation,
                 pro: session.renderedPro ?? isPro,
                 caption: CaptionText.resolve(session.renderedCaption, session: session,
-                                             segments: segments, index: clip.index, lang: lang),
+                                             segments: segments, index: index, lang: lang),
                 smartCrop: session.renderedSmartCrop ?? false,
                 clipURL: dir.appendingPathComponent("\(base).mp4"),
                 thumbURL: dir.appendingPathComponent("\(base).jpg"),
                 targetPlayer: (session.renderedSmartCrop ?? false)
-                    ? session.target(forClip: clip.index) : nil,
+                    ? session.target(forClip: index) : nil,
                 counter: (session.renderedShotCounter ?? false)
                     ? ShotCounter.make(for: segment, label: L.s("counter_label", lang)) : nil,
-                scoreboard: scoreboardLine(session, segments: segments, at: clip.index))
+                scoreboard: scoreboardLine(session, segments: segments, at: index))
             objectWillChange.send()
         } catch {
             progress[session.id] = .failed(error.localizedDescription)
         }
+    }
+
+    /// Corrects the strike count of one rally.
+    ///
+    /// Detection counts what it hears, and on a court with a match going on
+    /// next door it hears both. This is the way out: the number the user can
+    /// see in the clip wins, and everything downstream — the burned-in counter,
+    /// a `{shots}` caption, the season totals — follows it.
+    func setHitCount(_ clip: ClipInfo, _ count: Int) async {
+        guard let session = sessions.first(where: { $0.id == clip.sessionID }),
+              var segments = session.segments, clip.index < segments.count,
+              !isBusy(session.id) else { return }
+        let clamped = max(0, min(count, 400))
+        guard clamped != segments[clip.index].effectiveHits else { return }
+        segments[clip.index].hitsOverride = clamped
+        let segments2 = segments
+        mutate(session.id) { $0.segments = segments2 }
+        // Only worth a re-render when the number is actually in the picture.
+        let burnsCount = (session.renderedShotCounter ?? false)
+            || (session.renderedCaption?.text.contains("{shots}") ?? false)
+        guard burnsCount, fm.fileExists(atPath: clip.url.path) else {
+            objectWillChange.send()
+            return
+        }
+        await rerenderClip(session, segments: segments2, index: clip.index)
     }
 
     /// Shortest clip worth making — below this there is no rally to watch,

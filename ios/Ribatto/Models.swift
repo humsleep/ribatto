@@ -16,6 +16,18 @@ enum Sport: String, Codable, CaseIterable, Identifiable {
         case .pickleball, .padel: return (700, 4500)
         }
     }
+    /// The shortest interval two strikes of the *same* exchange can have. The
+    /// ball has to cross the court and come back, so anything faster is two
+    /// sources — the usual one being the next court over, whose strikes
+    /// interleave with ours. Measured on a courtside recording: pairs 0.15 s
+    /// apart appeared inside a rally whose own strikes were 0.8–2 s apart.
+    var minExchangeS: Double {
+        switch self {
+        case .tennis: return 0.30
+        case .badminton: return 0.22
+        case .pickleball, .padel: return 0.28
+        }
+    }
     /// Max in-rally gap between hits (s).
     var gap: Double {
         switch self {
@@ -130,8 +142,45 @@ struct RallySegment: Codable, Equatable {
     /// rally's own median, so 1 is silence and 2 is a clear shout. nil before
     /// it was kept.
     var cheer: Double? = nil
+    /// Peak band level of each strike, parallel to `hitTimes`. Kept so a count
+    /// the user corrects drops the quietest strikes rather than the last ones.
+    var hitStrengths: [Double]? = nil
+    /// Set when the strikes fall into two clearly separated loudness groups.
+    /// That is what a second court audible in the recording looks like: our own
+    /// strikes in one group, theirs — quieter, from further away — in the
+    /// other. The count is not trustworthy while it holds.
+    var hitsUncertain: Bool? = nil
+    /// The count the user typed after checking the clip. It wins over anything
+    /// detection has to say, and settles the uncertainty above.
+    var hitsOverride: Int? = nil
 
     var duration: Double { end - start }
+
+    /// What the app should show and burn in: what the user said, else what was
+    /// detected.
+    var effectiveHits: Int { hitsOverride ?? hits }
+
+    /// True while the detector's count is in doubt and nobody has corrected it.
+    var countIsUncertain: Bool { (hitsUncertain ?? false) && hitsOverride == nil }
+
+    /// Strike times to drive the burned-in counter with, or nil to leave the
+    /// counter off. Two sources mixed together means a wrong number, and a
+    /// wrong number burned into a video is worse than no number.
+    var counterTimes: [Double]? {
+        guard let all = hitTimes, !all.isEmpty else { return nil }
+        guard let want = hitsOverride else { return countIsUncertain ? nil : all }
+        if want >= all.count { return all }
+        guard want > 0 else { return [] }
+        // Drop the quietest strikes first — those are the ones that came from
+        // somewhere else. Without levels, thin the list evenly so the counter
+        // still climbs across the whole rally.
+        if let str = hitStrengths, str.count == all.count {
+            let keep = Set(zip(all, str).sorted { $0.1 > $1.1 }.prefix(want).map(\.0))
+            return all.filter { keep.contains($0) }
+        }
+        let step = Double(all.count) / Double(want)
+        return (0..<want).map { all[min(all.count - 1, Int(Double($0) * step))] }
+    }
 
     /// Loud enough to badge. The detector's own scoring already normalises
     /// within a session; this absolute floor is for "the crowd actually
@@ -145,8 +194,8 @@ struct RallySegment: Codable, Equatable {
     /// when there is too little rally to say anything honest.
     var tempo: Double? {
         let played = duration - RallyDetector.padStartS - RallyDetector.padEndS
-        guard played >= 2, hits >= 2 else { return nil }
-        return Double(hits) / played * 60
+        guard played >= 2, effectiveHits >= 2 else { return nil }
+        return Double(effectiveHits) / played * 60
     }
 
     /// Who won the point, when the user has said. Scoring stays blank until

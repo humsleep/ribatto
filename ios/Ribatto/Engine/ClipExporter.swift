@@ -854,10 +854,12 @@ struct ShotCounter {
 
     static let popSeconds = 0.18
 
-    /// nil when the rally carries no strike times (detected before they were
-    /// kept) — the counter is simply skipped rather than drawn wrong.
+    /// nil when the rally carries no usable strike times: detected before they
+    /// were kept, or the count is in doubt because a second court is audible.
+    /// The counter is skipped rather than drawn wrong — a number burned into a
+    /// video cannot be taken back, and `segment.counterTimes` is what decides.
     static func make(for segment: RallySegment, label: String) -> ShotCounter? {
-        guard let all = segment.hitTimes, !all.isEmpty else { return nil }
+        guard let all = segment.counterTimes, !all.isEmpty else { return nil }
         let before = all.filter { $0 < segment.start }.count
         let inside = all.filter { $0 >= segment.start && $0 <= segment.end }
             .map { $0 - segment.start }

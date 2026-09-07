@@ -105,7 +105,7 @@ struct ClipCard: View {
     }
 
     private var subLabel: some View {
-        Text(showSession ?? (String(clip.segment.hits) + " " + L.s("shots_n", lang)))
+        Text(showSession ?? (String(clip.segment.effectiveHits) + " " + L.s("shots_n", lang)))
             .font(.caption2).foregroundStyle(.secondary)
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .lineLimit(1).minimumScaleFactor(0.7)
@@ -155,6 +155,12 @@ struct ClipPlayerSheet: View {
     private var isFavourite: Bool {
         session?.segments?[safe: clip.index]?.isFavourite ?? false
     }
+    /// `clip` is the snapshot the sheet opened with; anything the sheet edits
+    /// has to be read back from the store or the screen keeps showing the old
+    /// value — which is what a corrected shot count did.
+    private var segment: RallySegment {
+        session?.segments?[safe: clip.index] ?? clip.segment
+    }
 
     private var session: Session? {
         store.sessions.first { $0.id == clip.sessionID }
@@ -190,6 +196,45 @@ struct ClipPlayerSheet: View {
         // then dismissed player and sheet together, silently dropping the trim
         // the user was in the middle of.
         .allowsLandscape(!OutputFrame(clip.orientation).isPortrait && destination == nil)
+    }
+
+    /// The one detected number the user can check against the video, so it is
+    /// the one they can fix. On a court with a match next door the detector
+    /// hears both, and a count nobody can correct is what turns a wrong number
+    /// into a refund.
+    private var shotCountRow: some View {
+        let seg = segment
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                Text(L.s("shots", lang))
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Button { set(seg.effectiveHits - 1) } label: {
+                    Image(systemName: "minus.circle.fill")
+                }
+                .disabled(seg.effectiveHits <= 0)
+                Text(String(seg.effectiveHits))
+                    .font(.headline.monospacedDigit())
+                    .frame(minWidth: 34)
+                Button { set(seg.effectiveHits + 1) } label: {
+                    Image(systemName: "plus.circle.fill")
+                }
+            }
+            .font(.title3)
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.accent)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            if seg.countIsUncertain {
+                Text(L.s("count_uncertain", lang))
+                    .font(.caption2)
+                    .foregroundStyle(Theme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func set(_ count: Int) {
+        Task { await store.setHitCount(clip, count) }
     }
 
     private var landscapePlayer: some View {
@@ -263,6 +308,10 @@ struct ClipPlayerSheet: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 10)
+
+                shotCountRow
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
 
                 // one rally is the most common thing to post, so the route to a
                 // reel sits on the clip itself rather than only behind selection
@@ -443,7 +492,7 @@ struct AllClipsView: View {
             if let whenFilter, !whenFilter.contains(pair.session.playedAt) { return false }
             if let shapeFilter, pair.clip.orientation != shapeFilter { return false }
             if favesOnly && !pair.clip.segment.isFavourite { return false }
-            if pair.clip.segment.hits < minHits { return false }
+            if pair.clip.segment.effectiveHits < minHits { return false }
             if Int(pair.clip.duration) < minSeconds { return false }
             guard !search.isEmpty else { return true }
             let haystack = [L.s(pair.session.sport.rawValue, lang),

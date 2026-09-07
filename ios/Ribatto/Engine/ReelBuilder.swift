@@ -271,7 +271,7 @@ enum ReelBuilder {
             await progress(i, planned.count)
             let seg = RallySegment(start: entry.segment.start,
                                    end: entry.segment.start + entry.seconds,
-                                   hits: entry.segment.hits,
+                                   hits: entry.segment.effectiveHits,
                                    hitTimes: entry.item.segment.hitTimes)
             let part = work.appendingPathComponent(String(format: "part_%03d.mp4", i))
             try await ClipExporter.export(source: entry.item.asset,

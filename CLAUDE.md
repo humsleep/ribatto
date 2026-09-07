@@ -120,6 +120,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   그래서 워터마크 검증은 고정 사각형이 아니라 OCR로 읽는다. 자막 높이에 따라 위치가 달라져 고정 사각형은 빈 곳을 재게 된다.
 - PlayerTracker 2단계 재획득도 1단계와 같은 크기 검사를 거친다. 빼면 카메라 앞 다른 사람에게 붙잡혀 랠리 끝까지 못 돌아온다.
 - 내보내기 구간은 실제 에셋 길이로 자른다. 영상 밖에서 시작하면 AVAssetExportSession이 실패가 아니라 무한 대기한다.
+- 타구 수는 감지가 틀릴 수 있는 유일한 숫자다. 옆 코트 소리가 섞이면 세기가 두 무리로 갈리는데
+  (실측: 68~97 / 189~289, 1.95배 간격), 그때 `RallySegment.hitsUncertain`이 서고 **카운터를 굽지 않는다**.
+  틀린 숫자를 영상에 박으면 되돌릴 수 없다. 대신 세션에 배너를 띄우고, 클립에서 `setHitCount`로 고치게 한다.
+  보정값(`hitsOverride`)은 표시·통계·번인 모두를 덮고, 조용한 타구부터 버린다(`counterTimes`).
+  종목별 `minExchangeS`보다 가까운 두 타구는 같은 랠리일 수 없으므로 센 쪽만 남긴다.
 - 무료 횟수 환불은 세션당 1회(`importRefunded`). `process`는 재감지에서도 실행되므로 조건 없이 돌려주면 무료가 무제한이 된다.
 - 지원 언어는 `ios/Ribatto-Info.plist`의 `CFBundleLocalizations`에 선언한다. 빌드 설정
   `INFOPLIST_KEY_CFBundleLocalizations`로는 안 된다 — 생성기가 아는 키만 반영해서 조용히 사라진다.

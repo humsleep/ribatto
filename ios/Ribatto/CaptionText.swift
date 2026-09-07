@@ -43,7 +43,7 @@ enum CaptionText {
         func put(_ token: String, _ value: String) {
             out = out.replacingOccurrences(of: token, with: value)
         }
-        put("{shots}", String(format: L.s("tok_shots_fmt", lang), seg.hits))
+        put("{shots}", String(format: L.s("tok_shots_fmt", lang), seg.effectiveHits))
         put("{score}", TennisScore.line(for: segments, sport: session.sport,
                                         lang: lang)[index])
         put("{opponent}", session.opponent ?? "")

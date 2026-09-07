@@ -48,6 +48,7 @@ struct CaptionEditorView: View {
                         .frame(maxWidth: .infinity)
                     textField
                     autoText
+                    lookPicker
                     fontPicker
                     stylePicker
                     colorPicker
@@ -129,15 +130,23 @@ struct CaptionEditorView: View {
 
     /// Mirrors what ClipExporter burns in: 4.5% of frame height × multiplier.
     private func captionText(scaledTo height: CGFloat) -> some View {
-        let size = max(9, height * 0.045 * draft.size)
-        let text = Text(previewText)
-            .font(draft.font.font(size: size))
+        Self.styled(previewText, font: draft.font, color: draft.color,
+                    style: draft.style, size: max(9, height * 0.045 * draft.size))
+    }
+
+    /// One drawing of a caption, used by the live preview and by the preset
+    /// chips so a chip can't promise a look the export won't produce.
+    @ViewBuilder
+    static func styled(_ string: String, font: CaptionFont, color: CaptionColor,
+                       style: CaptionStyle, size: CGFloat) -> some View {
+        let text = Text(string)
+            .font(font.font(size: size))
             .lineLimit(1)
-        let tint = draft.color.swiftUI
-        let onFill: Color = draft.color.isLight ? Color(red: 0.05, green: 0.06, blue: 0.08) : .white
-        let edge: Color = draft.color.isLight ? .black : .white
-        return Group {
-            switch draft.style {
+        let tint = color.swiftUI
+        let onFill: Color = color.isLight ? Color(red: 0.05, green: 0.06, blue: 0.08) : .white
+        let edge: Color = color.isLight ? .black : .white
+        Group {
+            switch style {
             case .plain:
                 text.foregroundStyle(tint).shadow(radius: size * 0.35)
             case .bar:
@@ -160,6 +169,62 @@ struct CaptionEditorView: View {
                     .shadow(color: edge, radius: 0, x: 0, y: -size * 0.045)
             }
         }
+    }
+
+    // MARK: - Presets
+
+    /// A whole look in one tap. Font, colour and style travel together — those
+    /// three are what make a caption read like a broadcast graphic or a vlog
+    /// title, and picking them one control at a time is why the editor felt
+    /// like a form. Size and position are left alone: they are the two the
+    /// user has usually already set by dragging.
+    struct CaptionLook: Identifiable {
+        let id: String
+        let font: CaptionFont
+        let color: CaptionColor
+        let style: CaptionStyle
+    }
+
+    static let looks: [CaptionLook] = [
+        .init(id: "clean",     font: .rounded,   color: .white, style: .plain),
+        .init(id: "bar",       font: .rounded,   color: .white, style: .bar),
+        .init(id: "broadcast", font: .condensed, color: .white, style: .bar),
+        .init(id: "poster",    font: .anton,     color: .white, style: .outline),
+        .init(id: "volt",      font: .bebas,     color: .volt,  style: .accent),
+        .init(id: "score",     font: .mono,      color: .sun,   style: .outline),
+        .init(id: "editorial", font: .serif,     color: .white, style: .plain),
+        .init(id: "punch",     font: .anton,     color: .rose,  style: .accent),
+    ]
+
+    private var lookPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L.s("caption_presets", lang)).font(.caption).foregroundStyle(.secondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(Self.looks) { look in
+                        let picked = draft.font == look.font && draft.color == look.color
+                                     && draft.style == look.style
+                        Button {
+                            draft.font = look.font
+                            draft.color = look.color
+                            draft.style = look.style
+                        } label: {
+                            Self.styled("Aa", font: look.font, color: look.color,
+                                        style: look.style, size: 17)
+                                .frame(width: 66, height: 48)
+                                .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(picked ? Theme.accent : .clear, lineWidth: 2))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+        // The chips are samples, not text to read: at accessibility sizes they
+        // would each grow to the width of the screen.
+        .dynamicTypeSize(...DynamicTypeSize.large)
     }
 
     /// Swatches, drawn as themselves — the name of a colour tells you nothing.

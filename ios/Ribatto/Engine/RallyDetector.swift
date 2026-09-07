@@ -17,7 +17,6 @@ enum RallyDetector {
     static let hop = 160                    // 10 ms at 16 kHz
     static let voiceBand: (Float, Float) = (60, 1000)
     static let decayS = 0.15
-    static let minHitSpacingS = 0.12
     static let padStartS = 2.0
     static let padEndS = 3.5
     /// Window after the last hit to listen for a reaction in. It starts late
@@ -55,8 +54,7 @@ enum RallyDetector {
         // ── transient hit candidates ──
         let w = Int(0.05 / hopS)
         let decayW = Int(decayS / hopS)
-        var hits: [(t: Double, f: Float)] = []
-        var lastT = -1.0
+        var hits: [(t: Double, f: Float, pk: Float)] = []
         for i in 0..<nfrm where flux[i] > looseT {
             if i < w || i > nfrm - decayW - 3 { continue }
             var isMax = true
@@ -68,14 +66,19 @@ enum RallyDetector {
             let vpk = voiceE[max(0, i - 1)..<min(i + 2, nfrm)].max() ?? 0
             if pk < 0.8 * vpk { continue }                           // voice-dominated
             let t = Double(i) * hopS
-            if t - lastT < minHitSpacingS { continue }
-            hits.append((t, flux[i]))
-            lastT = t
+            // Two strikes closer than the ball can travel and come back are two
+            // sources, not one exchange. Keep the louder — the near court is
+            // the loud one — instead of whichever came first.
+            if let last = hits.last, t - last.t < sport.minExchangeS {
+                if flux[i] > last.f { hits[hits.count - 1] = (t, flux[i], pk) }
+                continue
+            }
+            hits.append((t, flux[i], pk))
         }
 
         // ── cluster hits into rallies ──
-        var groups: [[(t: Double, f: Float)]] = []
-        var cur: [(t: Double, f: Float)] = []
+        var groups: [[(t: Double, f: Float, pk: Float)]] = []
+        var cur: [(t: Double, f: Float, pk: Float)] = []
         for h in hits {
             if let last = cur.last, h.t - last.t > sport.gap {
                 groups.append(cur); cur = []
@@ -84,7 +87,7 @@ enum RallyDetector {
         }
         if !cur.isEmpty { groups.append(cur) }
 
-        var kept: [[(t: Double, f: Float)]] = []
+        var kept: [[(t: Double, f: Float, pk: Float)]] = []
         for g in groups {
             let span = g[g.count - 1].t - g[0].t
             let nStrong = g.filter { $0.f >= strongT }.count
@@ -99,7 +102,7 @@ enum RallyDetector {
             }
         }
 
-        var merged: [[(t: Double, f: Float)]] = []
+        var merged: [[(t: Double, f: Float, pk: Float)]] = []
         for g in kept {
             if let last = merged.last?.last, g[0].t - last.t < sport.mergeGap {
                 merged[merged.count - 1].append(contentsOf: g)
@@ -132,8 +135,36 @@ enum RallyDetector {
                                 hits: g.count,
                                 score: min(max(score, 0), 1),
                                 hitTimes: g.map { $0.t },
-                                cheer: cheers[i])
+                                cheer: cheers[i],
+                                hitStrengths: g.map { Double($0.pk) },
+                                hitsUncertain: mixedSources(g.map { $0.pk }))
         }
+    }
+
+    /// Whether a rally's strikes fall into two clearly separated loudness
+    /// groups, which is what another court audible in the recording does to
+    /// them: ours land in the loud group, theirs in the quiet one.
+    ///
+    /// Measured on a courtside tennis recording — the levels ran
+    /// 68 73 74 74 78 91 96 97 │ 189 212 253 275 289, a 1.95× step with
+    /// nothing inside it, and the burned-in counter read 13 for a rally of
+    /// about five. One source spreads smoothly; two leave a gap.
+    ///
+    /// This only raises a flag. It does not drop the quiet group, because a
+    /// doubles partner at the far baseline is quiet too — telling those apart
+    /// needs more than level, and guessing wrong deletes real strikes.
+    static let mixedRatio: Float = 1.8
+    static func mixedSources(_ peaks: [Float]) -> Bool {
+        guard peaks.count >= 4 else { return false }
+        let s = peaks.sorted()
+        var bestRatio: Float = 1
+        var bestIdx = 0
+        for i in 1..<s.count where s[i - 1] > 0 {
+            let r = s[i] / s[i - 1]
+            if r > bestRatio { bestRatio = r; bestIdx = i }
+        }
+        // Both sides need enough strikes to be a group rather than one odd hit.
+        return bestRatio >= mixedRatio && bestIdx >= 2 && s.count - bestIdx >= 2
     }
 
     // MARK: - Scoring

@@ -596,7 +596,7 @@ extension StatsView {
             s.matches += 1
             s.rallies += clips.count
             let secs = clips.reduce(0) { $0 + $1.duration }
-            let hits = clips.reduce(0) { $0 + $1.segment.hits }
+            let hits = clips.reduce(0) { $0 + $1.segment.effectiveHits }
             s.totalSeconds += secs
             s.shots += hits
 

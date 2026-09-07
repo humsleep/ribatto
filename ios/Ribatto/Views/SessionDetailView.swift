@@ -78,6 +78,9 @@ struct SessionDetailView: View {
                     if purchases.isPro && session.renderedPro != true {
                         upgradeBanner()
                     }
+                    if (session.segments ?? []).contains(where: { $0.countIsUncertain }) {
+                        mixedCourtsBanner(session, busy: busy)
+                    }
                     if session.hasHighlight { highlightCard(session) }
                     statsRow(clips)
                     toolbar(session, busy: busy)
@@ -713,6 +716,38 @@ struct SessionDetailView: View {
 
     // MARK: - Pro
 
+    /// Says out loud that the shot counts on this session are in doubt.
+    ///
+    /// The detector hears the court next door as well as this one, and when a
+    /// rally's strikes fall into two loudness groups there is no honest number
+    /// to burn in — so none was. Saying nothing would leave the user to find
+    /// the missing counter on their own; guessing would put a wrong number in
+    /// a video they are about to post.
+    private func mixedCourtsBanner(_ session: Session, busy: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "waveform.badge.exclamationmark")
+                .font(.title3).foregroundStyle(Theme.warning)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L.s("mixed_courts_t", lang)).font(.subheadline.bold())
+                Text(L.s("mixed_courts_d", lang))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                // Strict raises both thresholds, which is the one setting that
+                // reliably drops the quieter court.
+                Button(L.s("redetect_strict", lang)) {
+                    store.setSensitivity(session, .low)
+                    Task { await store.apply(sessionID: sessionID) }
+                }
+                .rcSecondary()
+                .disabled(busy)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
+    }
+
     private func upgradeBanner() -> some View {
         HStack(spacing: 12) {
             Image(systemName: "arrow.up.circle.fill")
@@ -866,7 +901,7 @@ struct SessionDetailView: View {
     private func statsRow(_ clips: [ClipInfo]) -> some View {
         let total = clips.reduce(0) { $0 + $1.duration }
         let longest = clips.map(\.duration).max() ?? 0
-        let hits = clips.reduce(0) { $0 + $1.segment.hits }
+        let hits = clips.reduce(0) { $0 + $1.segment.effectiveHits }
         return LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: 10),
                            count: statColumns),
