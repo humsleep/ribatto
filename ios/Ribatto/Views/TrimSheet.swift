@@ -127,11 +127,18 @@ struct TrimSheet: View {
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
                         Button {
+                            // A busy session (usually the previous clip's own
+                            // re-render) used to swallow the trim while the
+                            // sheet closed as if it had applied.
+                            if store.isBusy(clip.sessionID) {
+                                message = L.s("busy_wait", lang)
+                                return
+                            }
                             Task {
                                 working = true
-                                await store.trimClip(clip, start: start, end: end)
+                                let ok = await store.trimClip(clip, start: start, end: end)
                                 working = false
-                                dismiss()
+                                if ok { dismiss() } else { message = L.s("render_failed", lang) }
                             }
                         } label: {
                             Label(L.s("trim_apply", lang), systemImage: "scissors")

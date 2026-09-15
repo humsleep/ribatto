@@ -581,11 +581,15 @@ final class SessionStore: ObservableObject {
     /// Only one clip is re-encoded because only one changed — re-running the
     /// whole session for a single rally is minutes of work to redo seconds of
     /// it.
-    func setClipTarget(_ clip: ClipInfo, _ target: TargetPlayer?) async {
+    /// Returns false when the session was busy and nothing was changed — the
+    /// sheet used to dismiss as if it had saved. A render failure also returns
+    /// false, with the message left in `progress` for the session card.
+    @discardableResult
+    func setClipTarget(_ clip: ClipInfo, _ target: TargetPlayer?) async -> Bool {
         guard let session = sessions.first(where: { $0.id == clip.sessionID }),
               let segments = session.segments,
               clip.index < segments.count,
-              !isBusy(session.id) else { return }
+              !isBusy(session.id) else { return false }
         let key = String(clip.index)
         mutate(session.id) {
             var targets = $0.clipTargets ?? [:]
@@ -595,13 +599,13 @@ final class SessionStore: ObservableObject {
         }
         try? fm.removeItem(at: highlightURL(session))
         guard let updated = sessions.first(where: { $0.id == clip.sessionID }),
-              updated.renderedSmartCrop == true else { return }
+              updated.renderedSmartCrop == true else { return true }
 
         progress[session.id] = .render(done: clip.index, total: segments.count)
         defer { clearProgressUnlessFailed(session.id) }
         guard let source = await loadAsset(updated) else {
             progress[session.id] = .failed(missingSourceMessage)
-            return
+            return false
         }
         let base = String(format: "clip_%02d", clip.index + 1)
         let dir = clipsDir(updated)
@@ -631,8 +635,10 @@ final class SessionStore: ObservableObject {
                 $0.renderedClipTargets = rendered
             }
             objectWillChange.send()
+            return true
         } catch {
             progress[session.id] = .failed(error.localizedDescription)
+            return false
         }
     }
 
@@ -851,12 +857,16 @@ final class SessionStore: ObservableObject {
     /// Re-rendering the session for a trim would cost minutes to change one
     /// clip, so this writes the segment, drops the reel built from the old cut,
     /// and encodes the single file.
-    func trimClip(_ clip: ClipInfo, start: Double, end: Double) async {
+    /// Returns false when nothing was changed (the session was busy, most
+    /// often with the previous clip's re-render) or the re-render failed.
+    /// TrimSheet used to close on both as though the trim had taken.
+    @discardableResult
+    func trimClip(_ clip: ClipInfo, start: Double, end: Double) async -> Bool {
         guard let session = sessions.first(where: { $0.id == clip.sessionID }),
               var segments = session.segments,
               clip.index < segments.count,
               end - start >= minClipSeconds,
-              !isBusy(session.id) else { return }
+              !isBusy(session.id) else { return false }
         segments[clip.index].start = max(0, start)
         segments[clip.index].end = min(session.duration, end)
         segments[clip.index].trimmed = true
@@ -867,19 +877,20 @@ final class SessionStore: ObservableObject {
         }
         try? fm.removeItem(at: highlightURL(session))
 
-        await rerenderClip(session, segments: segments, index: clip.index)
+        return await rerenderClip(session, segments: segments, index: clip.index)
     }
 
     /// Renders one clip again with the settings the session was last rendered
     /// with. Every per-clip edit — a trim, a corrected shot count — ends here,
     /// because what the user changed lives in pixels.
-    private func rerenderClip(_ session: Session, segments: [RallySegment], index: Int) async {
+    @discardableResult
+    private func rerenderClip(_ session: Session, segments: [RallySegment], index: Int) async -> Bool {
         let segment = segments[index]
         progress[session.id] = .render(done: index, total: segments.count)
         defer { clearProgressUnlessFailed(session.id) }
         guard let source = await loadAsset(session) else {
             progress[session.id] = .failed(missingSourceMessage)
-            return
+            return false
         }
         let base = String(format: "clip_%02d", index + 1)
         let dir = clipsDir(session)
@@ -899,8 +910,10 @@ final class SessionStore: ObservableObject {
                     ? ShotCounter.make(for: segment, label: L.s("counter_label", lang)) : nil,
                 scoreboard: scoreboardLine(session, segments: segments, at: index))
             objectWillChange.send()
+            return true
         } catch {
             progress[session.id] = .failed(error.localizedDescription)
+            return false
         }
     }
 
@@ -910,23 +923,53 @@ final class SessionStore: ObservableObject {
     /// next door it hears both. This is the way out: the number the user can
     /// see in the clip wins, and everything downstream — the burned-in counter,
     /// a `{shots}` caption, the season totals — follows it.
-    func setHitCount(_ clip: ClipInfo, _ count: Int) async {
+    ///
+    /// The number is stored at once and the re-render is debounced per clip:
+    /// three taps on "+" used to count once, because the first tap's render
+    /// made the session busy and the guard then dropped the other two. Only
+    /// detection still refuses — it is about to overwrite `segments` wholesale.
+    func setHitCount(_ clip: ClipInfo, _ count: Int) {
         guard let session = sessions.first(where: { $0.id == clip.sessionID }),
               var segments = session.segments, clip.index < segments.count,
-              !isBusy(session.id) else { return }
+              !isDetecting(session.id) else { return }
         let clamped = max(0, min(count, 400))
         guard clamped != segments[clip.index].effectiveHits else { return }
         segments[clip.index].hitsOverride = clamped
         let segments2 = segments
         mutate(session.id) { $0.segments = segments2 }
+        objectWillChange.send()
         // Only worth a re-render when the number is actually in the picture.
         let burnsCount = (session.renderedShotCounter ?? false)
             || (session.renderedCaption?.text.contains("{shots}") ?? false)
-        guard burnsCount, fm.fileExists(atPath: clip.url.path) else {
-            objectWillChange.send()
-            return
+        guard burnsCount, fm.fileExists(atPath: clip.url.path) else { return }
+        hitRerenders[clip.id]?.cancel()
+        hitRerenders[clip.id] = Task { [weak self] in
+            // Settle first, so a run of taps renders once with the final value.
+            try? await Task.sleep(for: .milliseconds(800))
+            guard !Task.isCancelled, let self else { return }
+            // Then wait out whatever render is on this session — usually the
+            // previous tap's. `.failed` is not busy, so a broken session does
+            // not hold this forever.
+            while self.isBusy(clip.sessionID) {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+            }
+            guard let latest = self.sessions.first(where: { $0.id == clip.sessionID }),
+                  let segs = latest.segments, clip.index < segs.count else { return }
+            await self.rerenderClip(latest, segments: segs, index: clip.index)
         }
-        await rerenderClip(session, segments: segments2, index: clip.index)
+    }
+
+    /// Pending shot-count re-renders, one per clip, so the last tap wins.
+    private var hitRerenders: [String: Task<Void, Never>] = [:]
+
+    /// True while detection is rewriting the session's segments — the one
+    /// stage where a per-rally edit would be lost rather than merely delayed.
+    private func isDetecting(_ id: UUID) -> Bool {
+        switch progress[id] {
+        case .audio?, .detect?: return true
+        default: return false
+        }
     }
 
     /// Shortest clip worth making — below this there is no rally to watch,
@@ -1088,10 +1131,11 @@ final class SessionStore: ObservableObject {
                    pace: ReelPace = .full,
                    preset: ReelPreset? = nil,
                    caption: CaptionSettings? = nil) async -> (url: URL, plan: ReelPlan)? {
-        let ordered = pairs.sorted {
-            ($0.session.playedAt, $0.clip.segment.start)
-                < ($1.session.playedAt, $1.clip.segment.start)
-        }
+        // The order is the caller's. ReelSheet seeds it by timeline and lets
+        // the user drag rows around; sorting here again silently undid that
+        // drag while the screen still said "Drag to reorder". `sources` is
+        // recorded in this same order so a caption-only rebuild replays it.
+        let ordered = pairs
         guard !ordered.isEmpty else { return nil }
         let key = ordered[0].session.id
         guard !isBusy(key) else { return nil }
@@ -1287,11 +1331,15 @@ final class SessionStore: ObservableObject {
         } catch { return false }
     }
 
-    func deleteClip(_ clip: ClipInfo) {
+    /// Returns false when the session is busy and the clip was left alone —
+    /// the player sheet used to close anyway, showing a "deleted" clip still
+    /// in the list.
+    @discardableResult
+    func deleteClip(_ clip: ClipInfo) -> Bool {
         guard !isBusy(clip.sessionID),
               var s = sessions.first(where: { $0.id == clip.sessionID }),
               var segments = s.segments,
-              clip.index < segments.count else { return }
+              clip.index < segments.count else { return false }
         segments.remove(at: clip.index)
         s.segments = segments
         let kept = Array(0..<(segments.count + 1)).filter { $0 != clip.index }
@@ -1314,6 +1362,7 @@ final class SessionStore: ObservableObject {
             }
         }
         save(s)
+        return true
     }
 }
 

@@ -12,6 +12,7 @@ struct ReelRequest: Identifiable {
 /// it's going, then hands it off to Photos or the share sheet.
 struct ReelSheet: View {
     @EnvironmentObject var store: SessionStore
+    @EnvironmentObject var ads: AdsManager
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -88,6 +89,15 @@ struct ReelSheet: View {
         }
         .preferredColorScheme(.dark)
         .interactiveDismissDisabled(building)
+        // Same moment as the session render: the reel is done and on screen.
+        // Presented from the sheet itself, so it does not land behind it.
+        .onChange(of: done?.url) { _, url in
+            guard url != nil else { return }
+            Task {
+                try? await Task.sleep(for: .milliseconds(600))
+                ads.showInterstitialIfDue()
+            }
+        }
         .onAppear {
             guard entries.isEmpty else { return }
             entries = request.pairs
@@ -208,7 +218,10 @@ struct ReelSheet: View {
     }
 
     private var buildingLabel: String {
-        let key = request.pairs.first?.session.id
+        // The store keys progress on the first rally actually built, which is
+        // the first *included* row in the user's order — not the first of the
+        // original request, which may have been dragged down or switched off.
+        let key = chosen.first?.session.id
         if let key, case .reel(let d, let t)? = store.progress[key], t > 0 {
             return L.s("reel_building", lang) + "  \(d)/\(t)"
         }

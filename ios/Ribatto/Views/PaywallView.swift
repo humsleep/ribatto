@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PaywallView: View {
     @EnvironmentObject var purchases: PurchaseManager
+    @EnvironmentObject var ads: AdsManager
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -101,7 +102,7 @@ struct PaywallView: View {
                 .multilineTextAlignment(.center)
             // What the free tier actually is, so the list below reads as a
             // difference rather than a brochure.
-            Text(String(format: L.s("paywall_free_fmt", lang), PurchaseManager.freeLimit))
+            Text(L.s("paywall_free_ads", lang))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
@@ -109,7 +110,9 @@ struct PaywallView: View {
 
     private var features: some View {
         VStack(spacing: 14) {
-            row("infinity", L.s("feat_unlimited", lang), L.s("feat_unlimited_d", lang))
+            // First, because it is the one difference every free user has
+            // already met; imports are uncapped now, so that row is gone.
+            row("rectangle.badge.minus", L.s("feat_noads", lang), L.s("feat_noads_d", lang))
             row("4k.tv", L.s("feat_quality", lang), L.s("feat_quality_d", lang))
             row("drop.degreesign.slash", L.s("feat_nowm", lang), L.s("feat_nowm_d", lang))
             row("person.and.arrow.left.and.arrow.right",
@@ -197,6 +200,38 @@ struct PaywallView: View {
             if let err = purchases.errorMessage {
                 Text(err).font(.caption2).foregroundStyle(Theme.danger)
             }
+
+            // The other way in: sit through a rewarded ad and every Pro
+            // feature opens for an hour. It is the highest-paying format
+            // AdMob has, and unlike the banner it is the user's choice. The
+            // guide under it says exactly what is being traded, because a
+            // pass that ends silently mid-session reads as a broken purchase.
+            if purchases.passActive {
+                Label(String(format: L.s("pass_active_fmt", lang), purchases.passMinutesLeft),
+                      systemImage: "clock.badge.checkmark")
+                    .font(.footnote.bold())
+                    .foregroundStyle(accent)
+            } else if ads.showing {
+                Button {
+                    ads.showRewarded { purchases.grantPass() }
+                } label: {
+                    Label(ads.rewardedReady
+                          ? String(format: L.s("pass_watch_fmt", lang),
+                                   Int(PurchaseManager.passDuration / 60))
+                          : L.s("pass_loading", lang),
+                          systemImage: "play.rectangle.fill")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .rcSecondary()
+                .disabled(!ads.rewardedReady)
+                Text(L.s("pass_watch_d", lang))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Text(L.s("paywall_note", lang))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)

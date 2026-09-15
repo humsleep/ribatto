@@ -149,6 +149,7 @@ struct ClipPlayerSheet: View {
     @State private var player: AVPlayer?
     @State private var confirmDelete = false
     @State private var destination: Destination?
+    @State private var message: String?
     @Environment(\.verticalSizeClass) private var vSize
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -256,7 +257,7 @@ struct ClipPlayerSheet: View {
     }
 
     private func set(_ count: Int) {
-        Task { await store.setHitCount(clip, count) }
+        store.setHitCount(clip, count)
     }
 
     private var landscapePlayer: some View {
@@ -411,9 +412,14 @@ struct ClipPlayerSheet: View {
             }
             .confirmationDialog(L.s("delete_clip", lang), isPresented: $confirmDelete) {
                 Button(L.s("delete", lang), role: .destructive) {
-                    store.deleteClip(clip)
-                    dismiss()
+                    // A busy session keeps the clip; closing regardless left
+                    // a "deleted" clip in the list behind the sheet.
+                    if store.deleteClip(clip) { dismiss() } else { message = L.s("busy_wait", lang) }
                 }
+            }
+            .alert(message ?? "", isPresented: Binding(
+                get: { message != nil }, set: { if !$0 { message = nil } })) {
+                Button("OK", role: .cancel) { message = nil }
             }
             .sheet(item: $destination) { dest in
                 switch dest {
@@ -887,12 +893,17 @@ struct AllClipsView: View {
         let grouped = Dictionary(grouping: store.allClips().filter {
             selection.contains($0.clip.id)
         }, by: { $0.session.id })
+        var refused = false
         for (sessionID, pairs) in grouped {
             guard let session = store.sessions.first(where: { $0.id == sessionID }) else { continue }
-            store.deleteClips(Set(pairs.map(\.clip.id)), from: session)
+            if !store.deleteClips(Set(pairs.map(\.clip.id)), from: session) { refused = true }
         }
         selection.removeAll()
         selecting = false
+        // Unlike the session screen, this bar is not disabled while a session
+        // renders — the selection can span sessions — so a refusal has to be
+        // said rather than shown as clips that quietly stayed.
+        if refused { saveMessage = L.s("busy_wait", lang) }
     }
 
     private func saveSelected() async {

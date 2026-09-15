@@ -84,6 +84,22 @@
 - [ ] 심사용 스크린샷(페이월 화면)과 심사 메모 첨부
 - [ ] 이전에 `com.vollio.pro`로 만들어 둔 IAP가 있다면 **새로 만들어야 한다.** 제품 ID는 생성 후 변경 불가다.
 
+## 4-2. AdMob — 무료 등급 광고
+
+무료 등급은 광고로 운영한다(배너 + 렌더 완료 후 전면광고). Pro가 광고를 없앤다.
+코드는 `Ribatto/Store/AdsManager.swift`. Debug 빌드는 구글의 공개 테스트 ID로 돌아가므로 아래는 **Release 제출 전에만** 필요하다.
+
+- [ ] admob.google.com에서 앱 등록(iOS, 번들 `com.ribatto.app`) → 앱 ID `ca-app-pub-XXXX~YYYY`
+- [ ] 광고 단위 3개 생성: **배너**(적응형 앵커) · **전면광고** · **리워드**(보상 = Pro 패스, 수량 1 — 앱은 서버 검증 없이 완료 콜백만 본다)
+- [ ] `Ribatto.xcodeproj` Release 구성의 `GAD_APPLICATION_ID`에 앱 ID 입력 (Debug 쪽 테스트 ID는 그대로 둔다)
+- [ ] `AdsManager.Unit`의 `#else` 분기에 배너·전면·리워드 단위 ID 입력
+- [ ] Release 빌드에서 값이 비어 있으면 `AdsManager.configured`가 false라 **광고 없이 조용히 나간다.** 크래시는 아니지만 수익도 없다 — 제출 전 실기기 Release로 배너가 뜨는지 확인
+- [ ] AdMob 결제 정보·세금 정보는 앱 심사와 무관하다. 나중에 채워도 된다
+- [ ] App Store Connect ▸ 앱 개인정보: **"사용자를 추적하는 데 사용되는 데이터"에 기기 ID·광고 데이터**, "사용자와 연결되지 않는 데이터"에 대략적 위치(IP)·제품 상호작용. 광고 SDK 표준 항목이다
+- [ ] 추적 허용 프롬프트(ATT)는 온보딩 직후 한 번 뜬다. 문구는 `INFOPLIST_KEY_NSUserTrackingUsageDescription`
+- [ ] `docs/privacy.html`의 "추적하지 않습니다" 절은 광고 절로 바뀌었다. GitHub Pages에 다시 올린다
+- EU를 켜는 날에는 UMP(동의 폼)를 붙여야 한다. `GoogleUserMessagingPlatform`은 SDK 의존성으로 이미 들어와 있다
+
 ## 4-1. 판매 지역 — EU는 1차 출시에서 제외
 
 EU 27개국에 팔려면 DSA 30·31조에 따라 **거래자(trader) 신원 확인**을 받아야 하고, 확인이

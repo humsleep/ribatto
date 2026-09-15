@@ -4,8 +4,10 @@ import SwiftUI
 struct SessionDetailView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var purchases: PurchaseManager
+    @EnvironmentObject var ads: AdsManager
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.horizontalSizeClass) private var hSize
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     let sessionID: UUID
 
@@ -162,7 +164,17 @@ struct SessionDetailView: View {
                             isPresented: $confirmDeleteSession, titleVisibility: .visible) {
             Button(L.s("delete", lang), role: .destructive) {
                 store.deleteSession(session)
+                // The library pushes this screen with a value link and holds
+                // no path, so nothing pops it: without this the user was left
+                // on a blank screen after confirming.
+                dismiss()
             }
+        }
+        // The one place an ad interrupts: a render just finished and the user
+        // was watching the progress bar anyway. Only a completed render — a
+        // `.failed` stage is a message, not a result, and gets no ad on top.
+        .onChange(of: store.progress[sessionID]) { old, new in
+            if case .render? = old, new == nil { ads.showInterstitialIfDue() }
         }
         .sheet(item: $destination) { dest in
             switch dest {

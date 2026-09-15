@@ -23,6 +23,7 @@ struct TargetPlayerSheet: View {
     @State private var chosen: CGRect?
     @State private var dragStart: CGPoint?
     @State private var loading = true
+    @State private var message: String?
 
     var body: some View {
         NavigationStack {
@@ -57,6 +58,10 @@ struct TargetPlayerSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+        .alert(message ?? "", isPresented: Binding(
+            get: { message != nil }, set: { if !$0 { message = nil } })) {
+            Button("OK", role: .cancel) { message = nil }
+        }
         .task { await load() }
     }
 
@@ -188,20 +193,26 @@ struct TargetPlayerSheet: View {
         if let existing, range.contains(existing.pickedAt) {
             frameTime = existing.pickedAt
             chosen = existing.rect
+            // This is the frame the pick was made on, so the pick stays. The
+            // default `loadFrame` cleared it, which made every reopen look
+            // like nothing had been saved.
+            await loadFrame(keepPick: true)
         } else {
             frameTime = min(range.lowerBound + 1.0, range.upperBound)
+            await loadFrame()
         }
-        await loadFrame()
     }
 
-    private func loadFrame() async {
+    /// - Parameter keepPick: only for reopening on the frame the current pick
+    ///   was made on. A scrub must pass the default.
+    private func loadFrame(keepPick: Bool = false) async {
         loading = true
         let t = frameTime
         // The pick belongs to the frame it was made on. Keeping it across a
         // scrub saved a box from the old frame with the new frame's timestamp,
         // so the tracker seeded on whatever was at those coordinates later —
         // often empty court.
-        chosen = nil
+        if !keepPick { chosen = nil }
         guard let asset = await store.loadAsset(session) else { loading = false; return }
         let gen = AVAssetImageGenerator(asset: asset)
         gen.appliesPreferredTrackTransform = true
@@ -240,6 +251,12 @@ struct TargetPlayerSheet: View {
         guard let chosen else { return }
         let target = TargetPlayer(rect: chosen, pickedAt: frameTime)
         if let clip {
+            // The store refuses a per-clip re-target while the session is
+            // busy; closing anyway made it look saved.
+            if store.isBusy(clip.sessionID) {
+                message = L.s("busy_wait", lang)
+                return
+            }
             Task { await store.setClipTarget(clip, target) }
         } else {
             store.setTargetPlayer(session, target)

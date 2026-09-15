@@ -359,14 +359,15 @@ struct LibraryView: View {
     @ViewBuilder private var entitlementPill: some View {
         Group {
             if purchases.isPro {
-                Text(purchases.ownerMode ? L.s("owner_on", lang) : L.s("pro", lang))
+                Text(purchases.ownerMode ? L.s("owner_on", lang)
+                     : purchases.hasPurchased ? L.s("pro", lang) : L.s("pass_pill", lang))
                     .font(.caption2.bold())
                     .fixedSize()      // the toolbar squeezes this to nothing otherwise
                     .padding(.horizontal, 8).padding(.vertical, 3)
                     .background(.tint, in: Capsule())
                     .foregroundStyle(.black)
             } else {
-                Text(String(format: L.s("free_left_fmt", lang), purchases.remainingFree))
+                Text(L.s("tier_free", lang))
                     .font(.caption2.bold())
                     .fixedSize()
                     .padding(.horizontal, 8).padding(.vertical, 3)

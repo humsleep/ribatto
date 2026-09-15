@@ -49,6 +49,11 @@ ios/Ribatto/
   Store/
     SessionStore.swift     세션 영속화 + 처리 파이프라인 (process → render). 모든 상태의 소유자
     PurchaseManager.swift  StoreKit 2. isPro 판정. OwnerSheet용 passphrase 게이트
+    AdsManager.swift       AdMob(SPM 12.x). 무료 등급의 배너(탭 바 아래, RibattoApp) + 전면광고(렌더·릴스 완료 직후, 3분 간격)
+                           + 리워드 영상(페이월의 "광고 보기") → PurchaseManager.grantPass()로 1시간 Pro 패스
+                           ATT 프롬프트 → SDK 시작 순서. 온보딩·소유권 판정이 끝난 뒤에만 시작한다
+                           앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=빈값), 단위 ID는 Unit(Debug만 테스트값)
+                           `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다
                            소유권은 Apple ID에 있다(비소모성·가족공유). 기기변경·재설치는 자동 복원된다
                            rc_entitled에 마지막 응답을 캐시 — 스토어에 못 닿았을 때만 폴백하고, 닿았으면 그 답으로 덮는다
   Views/                   SessionDetailView(설정) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
@@ -62,8 +67,10 @@ ios/Ribatto/
 
 ## Pro 티어 경계 (isPro 로 게이팅)
 
-무료: 가져오기 3개 · 720p · 워터마크 · 중앙 고정 크롭
-Pro: 무제한 · 원본화질(가로4K/세로1080p) · 워터마크 없음 · 일괄저장 · 클립병합 · **스마트 세로 크롭**(SmartCrop) · **특정 인물 추적**(PlayerTracker, TargetPlayerSheet에서 선택) · **타구 카운터 번인**(Session.shotCounter) · **스코어보드 번인**(Session.scoreboard)
+무료: 광고(배너+전면) · 720p · 워터마크 · 중앙 고정 크롭. **리워드 광고를 끝까지 보면 `passDuration`(1시간) 동안 Pro 전체가 열린다**
+      (`PurchaseManager.passUntil`, 영속). `isPro = hasPurchased || passActive` — 렌더는 시작 시점의 tier를 굽는다.
+      페이월·알약은 `hasPurchased`로 구매와 패스를 구분한다("Pro" vs "Pro 체험"). 가져오기 횟수 제한은 2026-09-13에 풀었다(`canImport`는 항상 true, 카운터는 오너 패널 표시용으로만 남음)
+Pro: **광고 없음** · 원본화질(가로4K/세로1080p) · 워터마크 없음 · 일괄저장 · 클립병합 · **스마트 세로 크롭**(SmartCrop) · **특정 인물 추적**(PlayerTracker, TargetPlayerSheet에서 선택) · **타구 카운터 번인**(Session.shotCounter) · **스코어보드 번인**(Session.scoreboard)
 캡션 자동 문구(토큰)·환호 배지·즐겨찾기·포인트 태깅·상대 태그·랠리 추가/분할은 무료. 일괄저장은 2개 이상 선택 시 Pro.
 
 ## 마케팅 자산
@@ -166,3 +173,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - 화면의 유일한 내용이 플레이어라면 `AVPlayer`를 `onAppear`가 아니라 init에서 만든다.
   첫 레이아웃에서 nil이면 NavigationStack이 배치할 것이 없어 시트가 제목까지 통째로 빈 채로 뜨고, 플레이어가 생겨도 그대로 남는다.
 - "업로드 없음"이라고 쓰지 말 것. PlaceLookup이 좌표를 애플 지오코더로 보낸다. 문구는 "영상은 기기 밖으로 나가지 않는다"로.
+  "외부 SDK 없음·광고 없음"도 더는 사실이 아니다. AdMob이 광고 식별자·IP를 보낸다. PrivacyView의 p_ads_d와 docs/privacy.html이 이를 적는다.
+- 전면광고는 렌더가 **끝난 직후**만이다(SessionDetailView·ReelSheet의 onChange). 플레이어·편집 시트·가져오기 도중에는 넣지 않는다.
+  `.failed`는 결과가 아니라 메시지이므로 광고를 얹지 않는다.
+- 광고는 `waitForEntitlement` 뒤에 시작한다. 먼저 켜면 복원 중인 유료 사용자에게 배너가 먼저 보인다.

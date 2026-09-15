@@ -15,6 +15,12 @@ final class PurchaseManager: ObservableObject {
 #endif
     static let freeLimit = 3
     private static let counterKey = "rc_sessions_created"
+    /// How long a rewarded ad opens Pro for. One hour covers an import, a
+    /// review and a reel for a normal match; a longer video means a second
+    /// ad, which is the trade the user chose over buying. Renders bake the
+    /// tier at their start, so a pass ending mid-render changes nothing.
+    static let passDuration: TimeInterval = 60 * 60
+    private static let passKey = "rc_pro_pass_until"
     /// The last answer the App Store gave about this purchase.
     ///
     /// Ownership lives on the Apple ID, not the device, so `currentEntitlements`
@@ -46,6 +52,19 @@ final class PurchaseManager: ObservableObject {
     /// frame, then is confirmed or corrected once the App Store replies.
     @Published private(set) var isPro =
         UserDefaults.standard.bool(forKey: PurchaseManager.entitlementKey)
+        || PurchaseManager.storedPass().map { $0 > Date() } ?? false
+    /// End of the current rewarded-ad pass, if one was earned. Persisted so a
+    /// relaunch inside the hour keeps Pro; the pass is the only thing besides
+    /// a purchase that can make `isPro` true.
+    @Published private(set) var passUntil: Date? = PurchaseManager.storedPass()
+    /// The App Store's answer on its own — what the paywall means by
+    /// "bought", as opposed to a pass that is Pro for an hour.
+    @Published private(set) var hasPurchased = false
+    private var passExpiry: Task<Void, Never>?
+
+    private static func storedPass() -> Date? {
+        UserDefaults.standard.object(forKey: passKey) as? Date
+    }
     /// False until the App Store has answered once this launch. Anything that
     /// bakes the tier into a file — a render — waits for this.
     @Published private(set) var entitlementResolved = false
@@ -95,7 +114,45 @@ final class PurchaseManager: ObservableObject {
     deinit { updateTask?.cancel() }
 
     var remainingFree: Int { max(0, Self.freeLimit - sessionsCreated) }
-    var canImport: Bool { isPro || remainingFree > 0 }
+
+    // MARK: - Rewarded pass
+
+    var passActive: Bool { passUntil.map { $0 > Date() } ?? false }
+    /// Whole minutes left on the pass, never below one while it is active,
+    /// so the label does not read "0 min left" for the last 59 seconds.
+    var passMinutesLeft: Int {
+        guard let until = passUntil else { return 0 }
+        return max(1, Int((until.timeIntervalSinceNow / 60).rounded(.up)))
+    }
+
+    /// Called by AdsManager once the rewarded ad has played to the end. A
+    /// second ad inside the hour extends from the current end, so watching
+    /// early never throws minutes away.
+    func grantPass() {
+        let from = max(Date(), passUntil ?? Date())
+        passUntil = from.addingTimeInterval(Self.passDuration)
+        UserDefaults.standard.set(passUntil, forKey: Self.passKey)
+        recomputePro()
+    }
+
+    /// `isPro` is a stored value so a paying customer is Pro from the first
+    /// frame; this is the one place it is derived, and the pass expiry timer
+    /// re-runs it so the tier drops the minute the hour is up.
+    private func recomputePro() {
+        isPro = hasPurchased || passActive
+        passExpiry?.cancel()
+        guard !hasPurchased, let until = passUntil, until > Date() else { return }
+        passExpiry = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(until.timeIntervalSinceNow + 1))
+            guard !Task.isCancelled else { return }
+            self?.recomputePro()
+        }
+    }
+    /// Imports are not capped any more: the free tier is paid for by ads
+    /// (`AdsManager`), and a cap on a tool that is opened once a week mostly
+    /// produced uninstalls. The counter is still kept — it is what the owner
+    /// panel reports — but nothing reads it as a gate.
+    var canImport: Bool { true }
     /// Only StoreKit knows the price in the viewer's storefront. A hard-coded
     /// fallback would show the wrong currency to most of the world and a stale
     /// number to everyone, so an unloaded product shows a placeholder instead —
@@ -264,6 +321,7 @@ final class PurchaseManager: ObservableObject {
 #if DEBUG
         if ownerMode { owned = ownerPro }
 #endif
-        isPro = owned
+        hasPurchased = owned
+        recomputePro()
     }
 }

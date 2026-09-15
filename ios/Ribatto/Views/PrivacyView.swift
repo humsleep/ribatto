@@ -6,7 +6,8 @@ import SwiftUI
 /// publish; this is the version a user can read without leaving the app, and
 /// it is written to match what the code actually does — including the one
 /// thing that does leave the device, the coordinate sent to Apple's geocoder
-/// in `PlaceLookup`. If that ever changes, this screen changes with it.
+/// in `PlaceLookup`, and the ad SDK in `AdsManager` that the free tier runs.
+/// If either ever changes, this screen changes with it.
 struct PrivacyView: View {
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dismiss) private var dismiss
@@ -16,6 +17,7 @@ struct PrivacyView: View {
         ("person.crop.circle.badge.xmark", "p_account_t", "p_account_d"),
         ("mappin.and.ellipse", "p_place_t", "p_place_d"),
         ("creditcard", "p_purchase_t", "p_purchase_d"),
+        ("rectangle.badge.plus", "p_ads_t", "p_ads_d"),
         ("eye.slash", "p_analytics_t", "p_analytics_d"),
     ]
 

@@ -46,8 +46,16 @@ extension View {
     /// Lets this screen rotate, and pins the app back to portrait when it goes
     /// away. Paired with `onDisappear` so a dismissed player cannot leave the
     /// rest of the app sideways.
+    ///
+    /// `enabled` is live, not a one-time flag: the clip player passes
+    /// `destination == nil`, and reading it only in `onAppear` left the gate
+    /// open after a trim sheet came up. Rotating then swapped the player to its
+    /// landscape variant, which does not host the sheet, and the trim in
+    /// progress vanished with it. `onChange` closes the gate the moment a
+    /// sheet opens and reopens it when the sheet goes away.
     func allowsLandscape(_ enabled: Bool = true) -> some View {
         onAppear { if enabled { OrientationGate.allowsLandscape = true } }
+            .onChange(of: enabled) { _, on in OrientationGate.allowsLandscape = on }
             .onDisappear { OrientationGate.allowsLandscape = false }
     }
 }

@@ -65,7 +65,13 @@ struct AddRallySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
+                    // `addRally` re-renders the whole session. Cancelling the
+                    // sheet did not cancel that: the session screen then
+                    // watched every clip vanish and come back with no sheet
+                    // left to say why, and the failure alert went to a view
+                    // that no longer existed.
                     Button(L.s("cancel", lang)) { dismiss() }
+                        .disabled(working)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(L.s("add_rally", lang)) { add() }
@@ -78,6 +84,7 @@ struct AddRallySheet: View {
             }
         }
         .preferredColorScheme(.dark)
+        .interactiveDismissDisabled(working)
         .task { await load() }
     }
 

@@ -8,6 +8,7 @@ struct RibattoApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = SessionStore()
     @StateObject private var purchases = PurchaseManager()
+    @StateObject private var ads = AdsManager()
     @AppStorage("rc_lang") private var lang = "en"
     @AppStorage("rc_onboarded") private var onboarded = false
 
@@ -20,6 +21,11 @@ struct RibattoApp: App {
         WindowGroup {
             Group {
                 if onboarded {
+                    // The banner sits under the tab bar, outside every tab,
+                    // so the four tabs share one ad view and the 62pt tab-bar
+                    // clearance the lists already keep stays correct. Sheets
+                    // cover it, which is the point: no ad next to a player.
+                    VStack(spacing: 0) {
                     TabView {
                         LibraryView()
                             .tabItem {
@@ -42,12 +48,29 @@ struct RibattoApp: App {
                                 Label(L.s("season", lang), systemImage: "chart.bar.fill")
                             }
                     }
+                    if ads.showing {
+                        AdBannerView()
+                            .frame(height: ads.bannerHeight)
+                            .frame(maxWidth: .infinity)
+                            .background(Theme.background)
+                    }
+                    }
                 } else {
                     OnboardingView(done: $onboarded)
                 }
             }
             .environmentObject(store)
             .environmentObject(purchases)
+            .environmentObject(ads)
+            // Ads wait for onboarding (the tracking prompt on top of the
+            // welcome pages would be the first thing a new user sees) and for
+            // the entitlement answer, for the same reason a render does: a
+            // paying customer restoring a phone must not get a banner first.
+            .task(id: onboarded) {
+                guard onboarded else { return }
+                await purchases.waitForEntitlement()
+                await ads.start(isPro: purchases.isPro)
+            }
             .task {
                 store.isPro = purchases.isPro
                 store.onSessionRegistered = { purchases.noteSessionCreated() }
@@ -77,7 +100,10 @@ struct RibattoApp: App {
             .onChange(of: store.busyCount) { _, busy in
                 UIApplication.shared.isIdleTimerDisabled = busy > 0
             }
-            .onChange(of: purchases.isPro) { _, pro in store.isPro = pro }
+            .onChange(of: purchases.isPro) { _, pro in
+                store.isPro = pro
+                ads.setPro(pro)
+            }
             .preferredColorScheme(.dark)
             .background(Theme.background)
             .tint(Theme.accent)

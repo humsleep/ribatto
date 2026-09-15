@@ -214,6 +214,10 @@ struct ReelPlayerSheet: View {
                             .frame(maxWidth: .infinity, minHeight: 24)
                     }
                     .rcSecondary()
+                    // The file being shared is the one the rebuild deletes on
+                    // success; handing it to another app mid-rebuild shares a
+                    // reel that is about to disappear.
+                    .disabled(rebuilding)
                 }
                 .padding(16)
             }
@@ -224,11 +228,16 @@ struct ReelPlayerSheet: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
                         .tint(.secondary)
+                        .disabled(rebuilding)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    // Deleting during a rebuild removed the old reel, then the
+                    // rebuild finished and a "deleted" reel reappeared as a new
+                    // one — with the old file's caption already burned over.
                     Button(role: .destructive) { confirmDelete = true } label: {
                         Image(systemName: "trash")
                     }
+                    .disabled(rebuilding)
                 }
             }
             .confirmationDialog(L.s("reel_delete", lang), isPresented: $confirmDelete) {
@@ -243,6 +252,11 @@ struct ReelPlayerSheet: View {
             .onAppear { if player == nil { player = AVPlayer(url: shown.url) } }
         }
         .preferredColorScheme(.dark)
+        // Same rule as ReelSheet while it builds: a recaption that outlives
+        // its sheet writes its failure alert to a view that is gone, and the
+        // Reels tab has no progress row to tell the user why the old reel
+        // vanished minutes later.
+        .interactiveDismissDisabled(rebuilding)
     }
 
     /// Renders the reel again with a new caption and swaps the player over to
