@@ -58,19 +58,6 @@ struct ClipCard: View {
                                             in: RoundedRectangle(cornerRadius: 6))
                                 .padding(6)
                             Spacer()
-                            // Which clip the session banner is talking about.
-                            // A count left off the video is invisible in a
-                            // grid, and the banner cannot say "this one".
-                            if clip.segment.countIsUncertain {
-                                Image(systemName: "waveform.badge.exclamationmark")
-                                    .font(.caption2)
-                                    .foregroundStyle(Theme.warning)
-                                    .padding(.horizontal, 6).padding(.vertical, 4)
-                                    .background(.black.opacity(0.65),
-                                                in: RoundedRectangle(cornerRadius: 6))
-                                    .padding(6)
-                                    .accessibilityLabel(L.s("count_uncertain", lang))
-                            }
                             if clip.segment.isFavourite {
                                 Image(systemName: "star.fill")
                                     .font(.caption2)
@@ -123,12 +110,9 @@ struct ClipCard: View {
     }
 
     private var subLabel: some View {
-        // The count is the part in doubt, so it is the part that changes
-        // colour — the session name next to it in All Clips is not.
-        let doubtful = showSession == nil && clip.segment.countIsUncertain
-        return Text(showSession ?? (String(clip.segment.effectiveHits) + " " + L.s("shots_n", lang)))
+        Text(showSession ?? (String(clip.segment.hits) + " " + L.s("shots_n", lang)))
             .font(.caption2)
-            .foregroundStyle(doubtful ? AnyShapeStyle(Theme.warning) : AnyShapeStyle(.secondary))
+            .foregroundStyle(.secondary)
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .lineLimit(1).minimumScaleFactor(0.7)
     }
@@ -142,7 +126,7 @@ struct ClipCard: View {
 
 struct ClipPlayerSheet: View {
     @EnvironmentObject var store: SessionStore
-    @EnvironmentObject var purchases: PurchaseManager
+    @EnvironmentObject var pass: ProPass
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dismiss) private var dismiss
     let clip: ClipInfo
@@ -170,19 +154,10 @@ struct ClipPlayerSheet: View {
         }
     }
 
-    /// The winner of this rally as currently stored — read back from the store
-    /// rather than held locally, so tagging updates every screen at once.
-    private var winner: PointWinner? {
-        session?.segments?[safe: clip.index]?.winner
-    }
+    /// Read back from the store rather than `clip`, which is the snapshot the
+    /// sheet opened with — otherwise starring would not show until reopening.
     private var isFavourite: Bool {
         session?.segments?[safe: clip.index]?.isFavourite ?? false
-    }
-    /// `clip` is the snapshot the sheet opened with; anything the sheet edits
-    /// has to be read back from the store or the screen keeps showing the old
-    /// value — which is what a corrected shot count did.
-    private var segment: RallySegment {
-        session?.segments?[safe: clip.index] ?? clip.segment
     }
 
     private var session: Session? {
@@ -191,7 +166,7 @@ struct ClipPlayerSheet: View {
     /// Re-pointing only means anything where the crop can move: a portrait
     /// clip that was rendered with smart crop on, on a Pro entitlement.
     private var canRetarget: Bool {
-        purchases.isPro && OutputFrame(clip.orientation).isPortrait
+        pass.isPro && OutputFrame(clip.orientation).isPortrait
             && (session?.renderedSmartCrop ?? false)
     }
     private var hasOwnTarget: Bool {
@@ -200,7 +175,7 @@ struct ClipPlayerSheet: View {
 
     var body: some View {
         // On an iPhone in landscape the vertical size class is compact. That is
-        // the cue to give the whole screen to the video: the tagging and reel
+        // the cue to give the whole screen to the video: the tracking and reel
         // controls are portrait work, and shrinking the rally to make room for
         // them is exactly what made rotating pointless.
         Group {
@@ -219,45 +194,6 @@ struct ClipPlayerSheet: View {
         // then dismissed player and sheet together, silently dropping the trim
         // the user was in the middle of.
         .allowsLandscape(!OutputFrame(clip.orientation).isPortrait && destination == nil)
-    }
-
-    /// The one detected number the user can check against the video, so it is
-    /// the one they can fix. On a court with a match next door the detector
-    /// hears both, and a count nobody can correct is what turns a wrong number
-    /// into a refund.
-    private var shotCountRow: some View {
-        let seg = segment
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 12) {
-                Text(L.s("shots", lang))
-                    .font(.caption).foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-                Button { set(seg.effectiveHits - 1) } label: {
-                    Image(systemName: "minus.circle.fill")
-                }
-                .disabled(seg.effectiveHits <= 0)
-                Text(String(seg.effectiveHits))
-                    .font(.headline.monospacedDigit())
-                    .frame(minWidth: 34)
-                Button { set(seg.effectiveHits + 1) } label: {
-                    Image(systemName: "plus.circle.fill")
-                }
-            }
-            .font(.title3)
-            .buttonStyle(.plain)
-            .foregroundStyle(Theme.accent)
-            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-            if seg.countIsUncertain {
-                Text(L.s("count_uncertain", lang))
-                    .font(.caption2)
-                    .foregroundStyle(Theme.warning)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private func set(_ count: Int) {
-        store.setHitCount(clip, count)
     }
 
     private var landscapePlayer: some View {
@@ -324,32 +260,6 @@ struct ClipPlayerSheet: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
                 }
-
-                // Who won this point. The score is only ever what the user
-                // says: tagging here is the whole input to the scoreboard.
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L.s("who_won", lang))
-                        .font(.caption).foregroundStyle(.secondary)
-                    AdaptiveButtonRow {
-                        ForEach(PointWinner.allCases) { side in
-                            Button {
-                                store.setWinner(clip, winner == side ? nil : side)
-                            } label: {
-                                Text(L.s(side.key, lang))
-                                    .multilineTextAlignment(.center)
-                                    .frame(maxWidth: .infinity)
-                                    .chip(active: winner == side)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 10)
-
-                shotCountRow
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 10)
 
                 // one rally is the most common thing to post, so the route to a
                 // reel sits on the clip itself rather than only behind selection
@@ -479,7 +389,7 @@ struct HighlightPlayerSheet: View {
 struct AllClipsView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @EnvironmentObject var store: SessionStore
-    @EnvironmentObject var purchases: PurchaseManager
+    @EnvironmentObject var pass: ProPass
     @AppStorage("rc_lang") private var lang = "en"
     @State private var sort: ClipSort = .time
     @State private var playing: ClipInfo?
@@ -536,7 +446,7 @@ struct AllClipsView: View {
             if let whenFilter, !whenFilter.contains(pair.session.playedAt) { return false }
             if let shapeFilter, pair.clip.orientation != shapeFilter { return false }
             if favesOnly && !pair.clip.segment.isFavourite { return false }
-            if pair.clip.segment.effectiveHits < minHits { return false }
+            if pair.clip.segment.hits < minHits { return false }
             if Int(pair.clip.duration) < minSeconds { return false }
             guard !search.isEmpty else { return true }
             let haystack = [L.s(pair.session.sport.rawValue, lang),
@@ -662,7 +572,7 @@ struct AllClipsView: View {
                 Button(L.s("delete", lang), role: .destructive) { deleteSelected() }
             }
             .sheet(isPresented: $showPaywall) {
-                PaywallView(feature: L.s("feat_saveall", lang))
+                ProPassView(feature: L.s("feat_saveall", lang))
             }
             .alert(saveMessage ?? "", isPresented: Binding(
                 get: { saveMessage != nil }, set: { if !$0 { saveMessage = nil } })) {
@@ -859,16 +769,16 @@ struct AllClipsView: View {
 
             HStack(spacing: 10) {
                 Button {
-                    guard purchases.isPro || selection.count <= 1 else {
+                    guard pass.isPro || selection.count <= 1 else {
                         showPaywall = true; return
                     }
                     Task { await saveSelected() }
                 } label: {
                     HStack(spacing: 6) {
                         Label(L.s("save", lang),
-                              systemImage: purchases.isPro || selection.count <= 1
+                              systemImage: pass.isPro || selection.count <= 1
                                   ? "square.and.arrow.down" : "lock.fill")
-                        if !purchases.isPro && selection.count > 1 { ProBadge() }
+                        if !pass.isPro && selection.count > 1 { ProBadge() }
                     }
                     .frame(maxWidth: .infinity)
                 }

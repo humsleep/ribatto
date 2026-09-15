@@ -93,7 +93,7 @@ enum ReelPace: String, Codable, CaseIterable, Identifiable {
 /// trying a different look costs one tap and loses nothing.
 enum ReelPreset: String, CaseIterable, Identifiable {
     case clean          // the rally, plainly
-    case broadcast      // scoreboard bar up top
+    case broadcast      // caption as a bar up top
     case highlight      // the finish, shouted
     case teaser         // hook first, feed-shaped
 
@@ -152,10 +152,6 @@ struct ReelItem {
     let caption: CaptionSettings?
     let smartCrop: Bool
     let targetPlayer: TargetPlayer?
-    /// The word after the number in the burned-in shot counter; nil = no counter.
-    var counterLabel: String? = nil
-    /// Running score to burn top-left; nil or empty = none.
-    var scoreboard: String? = nil
 }
 
 /// What actually made it in, so the UI can be honest about a cap that bit.
@@ -271,7 +267,7 @@ enum ReelBuilder {
             await progress(i, planned.count)
             let seg = RallySegment(start: entry.segment.start,
                                    end: entry.segment.start + entry.seconds,
-                                   hits: entry.segment.effectiveHits,
+                                   hits: entry.segment.hits,
                                    hitTimes: entry.item.segment.hitTimes)
             let part = work.appendingPathComponent(String(format: "part_%03d.mp4", i))
             try await ClipExporter.export(source: entry.item.asset,
@@ -282,10 +278,7 @@ enum ReelBuilder {
                                           smartCrop: entry.item.smartCrop,
                                           clipURL: part,
                                           thumbURL: nil,
-                                          targetPlayer: entry.item.targetPlayer,
-                                          counter: entry.item.counterLabel.flatMap {
-                                              ShotCounter.make(for: seg, label: $0) },
-                                          scoreboard: entry.item.scoreboard)
+                                          targetPlayer: entry.item.targetPlayer)
             parts.append(part)
         }
         await progress(planned.count, planned.count)

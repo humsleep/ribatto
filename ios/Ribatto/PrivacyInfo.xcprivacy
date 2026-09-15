@@ -5,10 +5,9 @@
 	<!-- Ribatto does not track. Every frame and every sample is analysed on
 	     the device: the video and its audio are never uploaded, there is no
 	     analytics SDK, no advertising, and no account.
-	     The app does make two network calls, neither of which is tracking and
-	     neither of which reaches a server of ours: StoreKit for the one-time
-	     purchase, and CLGeocoder in PlaceLookup, which sends a video's own GPS
-	     coordinate to Apple once to name the court. Keep this in step with the
+	     The app's own code makes one network call, which is not tracking and
+	     does not reach a server of ours: CLGeocoder in PlaceLookup, which sends
+	     a video's own GPS coordinate to Apple once to name the court. Keep this in step with the
 	     in-app Privacy screen (Views/PrivacyView.swift). -->
 	<key>NSPrivacyTracking</key>
 	<false/>
@@ -25,7 +24,7 @@
 	<!-- Two required-reason APIs, both on the app's own files and settings.
 
 	     UserDefaults backs @AppStorage (language, onboarding flag) and
-	     PurchaseManager's entitlement counters — all of it this app's own
+	     ProPass's end time — all of it this app's own
 	     data, never shared with or read from another app or a device-wide
 	     identifier.
 

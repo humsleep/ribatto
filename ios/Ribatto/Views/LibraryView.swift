@@ -18,15 +18,14 @@ struct MovieFile: Transferable {
 
 struct LibraryView: View {
     @EnvironmentObject var store: SessionStore
-    @EnvironmentObject var purchases: PurchaseManager
+    @EnvironmentObject var pass: ProPass
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showLicenses = false
     @State private var showPrivacy = false
     @State private var pickerItem: PhotosPickerItem?
     @State private var importing = false
-    @State private var showPaywall = false
-    @State private var paywallFeature: String?
+    @State private var showPro = false
     @State private var recording = false
     @State private var cameraAlert = false
     @State private var importError: String?
@@ -36,7 +35,7 @@ struct LibraryView: View {
     @State private var search = ""
     @State private var sportFilter: Sport?
     @State private var placeFilter: String?
-    @State private var showOwner = false
+    @State private var showDebug = false
 
     /// Text match on the sport and the date shown on the card, plus the
     /// sport chip — enough to find "that badminton match last week".
@@ -131,8 +130,10 @@ struct LibraryView: View {
             .navigationDestination(for: UUID.self) { id in
                 SessionDetailView(sessionID: id)
             }
-            .sheet(isPresented: $showPaywall) { PaywallView(feature: paywallFeature) }
-            .sheet(isPresented: $showOwner) { OwnerSheet() }
+            .sheet(isPresented: $showPro) { ProPassView() }
+#if DEBUG
+            .sheet(isPresented: $showDebug) { DebugProSheet() }
+#endif
             .sheet(isPresented: $showLicenses) { LicensesView() }
             .sheet(isPresented: $showPrivacy) { PrivacyView() }
             .fullScreenCover(isPresented: $recording) {
@@ -207,16 +208,9 @@ struct LibraryView: View {
                 .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             VStack(spacing: 10) {
-                Group {
-                    if purchases.canImport {
-                        PhotosPicker(selection: $pickerItem, matching: .videos,
-                                 photoLibrary: .shared()) { bigImportLabel }
-                    } else {
-                        Button { showPaywall = true } label: { bigImportLabel }
-                    }
-                }
+                PhotosPicker(selection: $pickerItem, matching: .videos,
+                             photoLibrary: .shared()) { bigImportLabel }
                 Button {
-                    guard purchases.canImport else { showPaywall = true; return }
                     guard VideoRecorder.isAvailable else { cameraAlert = true; return }
                     recording = true
                 } label: {
@@ -224,29 +218,10 @@ struct LibraryView: View {
                         .font(.subheadline.bold())
                 }
                 .rcSecondary()
-                if !purchases.isPro {
-                    Button {
-                        Task { await purchases.restore() }
-                    } label: {
-                        Text(L.s("restore_hint", lang))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .underline()
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 4)
-                }
             }
             .padding(.top, 8)
         }
         .padding(32)
-        // Restore reports failure through the same channel the paywall uses;
-        // here there is no paywall on screen to show it.
-        .alert(purchases.errorMessage ?? "", isPresented: Binding(
-            get: { purchases.errorMessage != nil },
-            set: { if !$0 { purchases.errorMessage = nil } })) {
-            Button("OK", role: .cancel) { purchases.errorMessage = nil }
-        }
     }
 
     private var sportFilterBar: some View {
@@ -330,7 +305,6 @@ struct LibraryView: View {
     /// Shoot a match in-app; the recording goes straight into detection.
     @ViewBuilder private var recordButton: some View {
         Button {
-            guard purchases.canImport else { showPaywall = true; return }
             guard VideoRecorder.isAvailable else { cameraAlert = true; return }
             recording = true
         } label: {
@@ -338,60 +312,46 @@ struct LibraryView: View {
         }
     }
 
-    @ViewBuilder private var importButton: some View {
-        if purchases.canImport {
-            PhotosPicker(selection: $pickerItem, matching: .videos,
-                         photoLibrary: .shared()) {
-                Label(L.s("import_video", lang), systemImage: "plus")
-            }
-        } else {
-            Button {
-                paywallFeature = L.s("feat_unlimited", lang)
-                showPaywall = true
-            } label: {
-                Label(L.s("import_video", lang), systemImage: "lock.fill")
-            }
+    private var importButton: some View {
+        PhotosPicker(selection: $pickerItem, matching: .videos,
+                     photoLibrary: .shared()) {
+            Label(L.s("import_video", lang), systemImage: "plus")
         }
     }
 
-    /// Long-pressing this opens the owner panel. There is nothing to see for
-    /// anyone without the passphrase, and no affordance hints at it.
-    @ViewBuilder private var entitlementPill: some View {
+    /// Pro while a pass runs, with the minutes left; otherwise the way in.
+    /// Debug builds also open the tier switch on a long press.
+    private var entitlementPill: some View {
         Group {
-            if purchases.isPro {
-                Text(purchases.ownerMode ? L.s("owner_on", lang)
-                     : purchases.hasPurchased ? L.s("pro", lang) : L.s("pass_pill", lang))
+            if pass.isPro {
+                Text(pass.active ? String(format: L.s("pass_pill_fmt", lang), pass.minutesLeft)
+                                 : L.s("pro", lang))
                     .font(.caption2.bold())
                     .fixedSize()      // the toolbar squeezes this to nothing otherwise
                     .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(.tint, in: Capsule())
-                    .foregroundStyle(.black)
+                    .background(Theme.surfaceHigh, in: Capsule())
+                    .foregroundStyle(.primary)
             } else {
-                Text(L.s("tier_free", lang))
+                Label(L.s("pass_get", lang), systemImage: "play.rectangle.fill")
                     .font(.caption2.bold())
                     .fixedSize()
                     .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(purchases.ownerMode ? Theme.warning.opacity(0.25)
-                                                    : Theme.surfaceHigh, in: Capsule())
-                    .foregroundStyle(.secondary)
+                    .background(.tint, in: Capsule())
+                    .foregroundStyle(Theme.onAccent)
             }
         }
         // Plain gestures rather than a Button: a Button consumes the touch on
-        // press, so the long press never got a chance to fire.
+        // press, so the debug long press never got a chance to fire.
         .contentShape(Capsule())
         .accessibilityAddTraits(.isButton)
-        .accessibilityLabel(purchases.isPro ? L.s("pro", lang)
-                                            : L.s("paywall_title", lang))
-        // Debug-only: a passphrase-gated switch that grants the paid
-        // entitlement is undocumented functionality in a shipped build, which
-        // App Review rejects under 2.3.1.
+        .accessibilityLabel(pass.isPro ? L.s("pro", lang) : L.s("paywall_title", lang))
 #if DEBUG
         .onLongPressGesture(minimumDuration: 1.2) {
-            showOwner = true
+            showDebug = true
         } onPressingChanged: { _ in }
 #endif
         .onTapGesture {
-            if !purchases.isPro { showPaywall = true }
+            if !pass.isPro { showPro = true }
         }
     }
 

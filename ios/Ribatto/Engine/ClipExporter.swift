@@ -199,14 +199,11 @@ enum ClipExporter {
     static func export(source: URL, segment: RallySegment, orientation: String,
                        pro: Bool, caption: CaptionSettings?, smartCrop: Bool,
                        clipURL: URL, thumbURL: URL?,
-                       targetPlayer: TargetPlayer? = nil,
-                       counter: ShotCounter? = nil,
-                       scoreboard: String? = nil) async throws {
+                       targetPlayer: TargetPlayer? = nil) async throws {
         try await export(source: AVURLAsset(url: source), segment: segment,
                          orientation: orientation, pro: pro, caption: caption,
                          smartCrop: smartCrop, clipURL: clipURL, thumbURL: thumbURL,
-                         targetPlayer: targetPlayer, counter: counter,
-                         scoreboard: scoreboard)
+                         targetPlayer: targetPlayer)
     }
 
     static func export(source asset: AVAsset,
@@ -217,9 +214,7 @@ enum ClipExporter {
                        smartCrop: Bool,
                        clipURL: URL,
                        thumbURL: URL?,
-                       targetPlayer: TargetPlayer? = nil,
-                       counter: ShotCounter? = nil,
-                       scoreboard: String? = nil) async throws {
+                       targetPlayer: TargetPlayer? = nil) async throws {
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
             throw NSError(domain: "Ribatto", code: 10,
                           userInfo: [NSLocalizedDescriptionKey: "No video track"])
@@ -389,8 +384,7 @@ enum ClipExporter {
             duration: CMTime(seconds: dur, preferredTimescale: 600))
         do {
             try await export(session: session, to: staging)
-            try await burnOverlays(into: staging, watermark: !pro, caption: caption,
-                                   counter: counter, scoreboard: scoreboard)
+            try await burnOverlays(into: staging, watermark: !pro, caption: caption)
         } catch {
             try? FileManager.default.removeItem(at: staging)
             throw error
@@ -473,31 +467,12 @@ enum ClipExporter {
 
     private static func burnOverlays(into url: URL,
                                      watermark: Bool,
-                                     caption: CaptionSettings?,
-                                     counter: ShotCounter? = nil,
-                                     scoreboard: String? = nil) async throws {
-        let wantsCaption = caption?.isVisible ?? false
-        let score = scoreboard?.trimmingCharacters(in: .whitespaces)
-        let wantsScore = !(score ?? "").isEmpty
-        guard watermark || wantsCaption || counter != nil || wantsScore else { return }
+                                     caption: CaptionSettings?) async throws {
+        guard watermark || (caption?.isVisible ?? false) else { return }
 
         let asset = AVURLAsset(url: url)
         guard let track = try await asset.loadTracks(withMediaType: .video).first else { return }
         let size = try await track.load(.naturalSize)
-
-        // Drawn before the counter so the counter knows what room is left.
-        // Named apart from `scoreBitmap(_:in:)` — a local of the same name
-        // shadows the function inside its own initializer.
-        let scoreImg = wantsScore ? score.flatMap { scoreBitmap($0, in: size) } : nil
-        let scoreExtent: CGSize? = scoreImg.map {
-            CGSize(width: CGFloat($0.width), height: CGFloat($0.height))
-        }
-        let scoreLayer: CIImage? = scoreImg.map {
-            let margin = size.height * 0.045
-            return CIImage(cgImage: $0).transformed(
-                by: CGAffineTransform(translationX: margin,
-                                      y: size.height - margin - CGFloat($0.height)))
-        }
 
         var overlay: CIImage?
         func add(_ image: CIImage?) {
@@ -514,67 +489,10 @@ enum ClipExporter {
         // bottom-right corner it landed on top of a default caption and the two
         // read as one run-on word.
         if watermark { add(watermarkImage(for: size, clearOf: captionLayer?.extent)) }
-        if let scoreLayer { add(scoreLayer) }
-
-        // One bitmap per count, drawn up front; the per-frame handler only
-        // picks which one to show and how big.
-        //
-        // Placement is worked out here rather than per image: on a 9:16 crop
-        // the score pill and a centred counter overlapped, so the counter goes
-        // to whatever room the score leaves, and drops to a second row when
-        // there isn't any.
-        let bitmaps: [CGImage] = counter.map { c in
-            (0...c.times.count).compactMap {
-                counterBitmap(count: c.initial + $0, label: c.label, in: size)
-            }
-        } ?? []
-        let counterFrames: [CIImage] = {
-            guard let widest = bitmaps.map({ CGFloat($0.width) }).max() else { return [] }
-            let h = CGFloat(bitmaps[0].height)
-            let margin = size.height * 0.045
-            let scoreW = scoreExtent?.width ?? 0
-            let gap = size.width * 0.02
-            let centredX = (size.width - widest) / 2
-            let clearsScore = scoreW == 0 || centredX > margin + scoreW + gap
-            let x = clearsScore ? centredX
-                                : max(margin, size.width - widest - margin)
-            let fitsBeside = scoreW == 0 || x > margin + scoreW + gap
-            let top = fitsBeside ? margin : margin + (scoreExtent?.height ?? 0) + gap * 0.6
-            return bitmaps.map {
-                CIImage(cgImage: $0).transformed(
-                    by: CGAffineTransform(translationX: x, y: size.height - top - h))
-            }
-        }()
-        guard overlay != nil || !counterFrames.isEmpty else { return }
+        guard let overlay else { return }
 
         let comp = AVMutableVideoComposition(asset: asset) { request in
-            var out = request.sourceImage
-            if let counter, !counterFrames.isEmpty {
-                let t = request.compositionTime.seconds
-                let n = counter.times.filter { $0 <= t }.count
-                // Nothing to count yet: "0 SHOTS" over the serve toss reads as
-                // a bug, and it is the frame the poster is cut from.
-                guard n > 0 || counter.initial > 0 else {
-                    request.finish(with: overlay.map { $0.composited(over: out) } ?? out,
-                                   context: nil)
-                    return
-                }
-                var img = counterFrames[min(n, counterFrames.count - 1)]
-                // a short pop on each strike so the tick is felt, not just read
-                if n > 0 {
-                    let since = t - counter.times[n - 1]
-                    if since < ShotCounter.popSeconds {
-                        let s = 1 + 0.25 * (1 - since / ShotCounter.popSeconds)
-                        let c = CGPoint(x: img.extent.midX, y: img.extent.midY)
-                        img = img.transformed(by: CGAffineTransform(translationX: c.x, y: c.y)
-                            .scaledBy(x: s, y: s)
-                            .translatedBy(x: -c.x, y: -c.y))
-                    }
-                }
-                out = img.composited(over: out)
-            }
-            if let overlay { out = overlay.composited(over: out) }
-            request.finish(with: out, context: nil)
+            request.finish(with: overlay.composited(over: request.sourceImage), context: nil)
         }
         comp.renderSize = size
 
@@ -596,7 +514,7 @@ enum ClipExporter {
             throw error
         }
         // Not `try?`: if the promotion fails, the overlaid file is the only one
-        // carrying the watermark, caption, scoreboard and counter. Swallowing
+        // carrying the watermark and caption. Swallowing
         // the error and then deleting it shipped a free clip with no watermark.
         guard (try? FileManager.default.replaceItemAt(url, withItemAt: tmp)) != nil else {
             try? FileManager.default.removeItem(at: tmp)
@@ -656,24 +574,6 @@ enum ClipExporter {
         // CoreImage counts y from the bottom
         let y = size.height - yTop - h
         return CIImage(cgImage: image).transformed(by: CGAffineTransform(translationX: x, y: y))
-    }
-
-    /// The running game score, drawn once — a rally's score is the score it
-    /// ended on. Placed by the caller, which also has to fit the counter.
-    private static func scoreBitmap(_ text: String, in size: CGSize) -> CGImage? {
-        let fontSize = max(14, size.height * 0.042)
-        return textImage(text, font: .bebas, fontSize: fontSize,
-                         color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.98),
-                         bar: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55))
-    }
-
-    /// "12 SHOTS" in a dark pill, top centre — clear of the caption's default
-    /// spot at the bottom and the watermark in the corner.
-    private static func counterBitmap(count: Int, label: String, in size: CGSize) -> CGImage? {
-        let fontSize = max(16, size.height * 0.05)
-        return textImage("\(count) \(label)", font: .bebas, fontSize: fontSize,
-                         color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.98),
-                         bar: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55))
     }
 
     /// "Ribatto" drawn once into a small bitmap, placed bottom-right.
@@ -840,29 +740,5 @@ enum ClipExporter {
         CGImageDestinationAddImage(dest, img,
             [kCGImageDestinationLossyCompressionQuality: 0.75] as CFDictionary)
         CGImageDestinationFinalize(dest)
-    }
-}
-
-
-/// A running strike count burned into one clip. Times are relative to the
-/// clip's own start; `initial` is how many strikes landed before it, so a
-/// reel part that opens mid-rally does not restart from zero.
-struct ShotCounter {
-    var times: [Double]
-    var initial: Int
-    var label: String
-
-    static let popSeconds = 0.18
-
-    /// nil when the rally carries no usable strike times: detected before they
-    /// were kept, or the count is in doubt because a second court is audible.
-    /// The counter is skipped rather than drawn wrong — a number burned into a
-    /// video cannot be taken back, and `segment.counterTimes` is what decides.
-    static func make(for segment: RallySegment, label: String) -> ShotCounter? {
-        guard let all = segment.counterTimes, !all.isEmpty else { return nil }
-        let before = all.filter { $0 < segment.start }.count
-        let inside = all.filter { $0 >= segment.start && $0 <= segment.end }
-            .map { $0 - segment.start }
-        return ShotCounter(times: inside, initial: before, label: label)
     }
 }

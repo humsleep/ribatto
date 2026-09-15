@@ -2,8 +2,7 @@
 
 **기준일 2026-09-07.** 이 문서가 출시까지의 단일 순서표다. 세부 절차는 기존 문서로 연결한다
 (계정·정산 절차는 [SUBMIT_GUIDE.md](SUBMIT_GUIDE.md), 메타데이터 원문은
-[../marketing/app-store-copy.md](../marketing/app-store-copy.md), IAP 문구는
-[../marketing/iap-setup.md](../marketing/iap-setup.md), 홍보 계획은 [LAUNCH.md](LAUNCH.md)).
+[../marketing/app-store-copy.md](../marketing/app-store-copy.md), 홍보 계획은 [LAUNCH.md](LAUNCH.md)).
 
 ---
 
@@ -13,7 +12,7 @@
 |---|---|
 | 앱 이름 | **Ribatto** (이탈리아어 "되받아친다") |
 | 번들 ID | `com.ribatto.app` |
-| IAP | `com.ribatto.pro` · 비소모품 · 가족 공유 켬 · ₩4,400 기준 |
+| 수익 | 광고(AdMob) 전용 · 인앱 구입 없음 · 리워드 광고를 끝까지 보면 1시간 Pro 패스 (2026-09-15 구매 제거) |
 | 지원 언어 | en ko ja es pt de fr it zh-Hans (9종) |
 | 최소 iOS | 17.0 |
 | 스크린샷 | `marketing/01~05_*.png` · 1320×2868 (6.9인치) |
@@ -44,7 +43,7 @@
 - [ ] 옛 `/vollio/privacy` 페이지가 아직 살아 있다면 내린다 (새 주소가 뜬 뒤에)
 - [ ] 문구는 코드와 일치해야 한다. **"업로드 없음"이라고 쓰지 말 것** — `PlaceLookup`이 영상의 GPS
       태그를 애플 지오코더로 보내 코트 이름을 받아온다. 올바른 표현은 "영상은 기기 밖으로 나가지 않는다"다.
-      (앱 내 개인정보 화면·스토어 문구·IAP 설명은 이미 이 표현으로 통일해 뒀다.)
+      (앱 내 개인정보 화면·스토어 문구는 이미 이 표현으로 통일해 뒀다.)
 
 ### 개인정보 페이지 올리기 (GitHub Pages, 무료)
 
@@ -72,21 +71,12 @@
 - [ ] **현지화 9개 언어 추가.** 이걸 해야 제품 페이지에 9개 언어가 표시된다.
       (앱 번들 쪽 선언은 `Ribatto-Info.plist`의 `CFBundleLocalizations`로 이미 처리돼 있다.)
 - [ ] 카테고리: 스포츠 / 사진 및 비디오
-- [ ] 연령 등급 설문 — 전 연령. 사용자 생성 콘텐츠·웹 접근·광고 모두 없음
-
-## 4. App Store Connect — 인앱 구입
-
-문구 원문은 [../marketing/iap-setup.md](../marketing/iap-setup.md)에 9개 언어로 정리돼 있다.
-
-- [ ] 제품 ID **`com.ribatto.pro`** — 코드의 `PurchaseManager.productID`와 **글자 하나까지 같아야 한다.**
-      다르면 페이월이 영원히 "가격 불러오는 중"에 머문다.
-- [ ] 유형 비소모품 · 가족 공유 **켬**
-- [ ] 심사용 스크린샷(페이월 화면)과 심사 메모 첨부
-- [ ] 이전에 `com.vollio.pro`로 만들어 둔 IAP가 있다면 **새로 만들어야 한다.** 제품 ID는 생성 후 변경 불가다.
+- [ ] 연령 등급 설문 — 전 연령. 사용자 생성 콘텐츠·웹 접근 없음
 
 ## 4-2. AdMob — 무료 등급 광고
 
-무료 등급은 광고로 운영한다(배너 + 렌더 완료 후 전면광고). Pro가 광고를 없앤다.
+앱은 광고로만 운영한다(배너 + 렌더 완료 후 전면광고). 리워드 광고를 끝까지 보면 1시간 Pro 패스가 열리고, 그동안 광고도 사라진다.
+인앱 구입은 2026-09-15에 코드에서 걷어냈다. 되살릴 때는 태그 `pro-iap-snapshot`에서 가져온다.
 코드는 `Ribatto/Store/AdsManager.swift`. Debug 빌드는 구글의 공개 테스트 ID로 돌아가므로 아래는 **Release 제출 전에만** 필요하다.
 
 - [ ] admob.google.com에서 앱 등록(iOS, 번들 `com.ribatto.app`) → 앱 ID `ca-app-pub-XXXX~YYYY`
@@ -117,7 +107,7 @@ EU 27개국에 팔려면 DSA 30·31조에 따라 **거래자(trader) 신원 확�
 - [ ] **키워드에 `VLLO`·`블로`를 넣지 말 것.** 상표 분쟁은 대개 여기서 시작된다.
 - [ ] 스크린샷 5장 업로드 (`marketing/01_hero.png` … `05_s4_clips.png`)
 - [ ] 개인정보 URL: 2번에서 만든 새 주소 (원문은 저장소의 `docs/privacy.html`)
-- [ ] App Privacy 설문: **Data Not Collected**. 번들의 `PrivacyInfo.xcprivacy`와 답이 일치해야 한다.
+- [ ] App Privacy 설문: 4-2의 광고 항목대로. 번들의 `PrivacyInfo.xcprivacy`와 답이 일치해야 한다.
 
 ## 6. 빌드 업로드 · 제출
 
@@ -131,8 +121,6 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
       타구음 감지 품질, 긴 영상 렌더 시간, 저장 공간)은 여기서만 보인다. [DEVICE_TESTING.md](DEVICE_TESTING.md)
 - [ ] 심사 정보 메모: [APP_STORE.md 4-1](APP_STORE.md) 문단을 그대로 복사.
       영상 없이는 앱이 비어 보이므로 **심사자용 샘플 영상 링크를 반드시 넣는다.**
-      한 줄 더 넣을 것: **"옆 코트 소리가 섞인 랠리에서는 타구 카운터를 일부러 넣지 않습니다"** —
-      Pro를 켜고 카운터가 안 보이면 심사자가 버그로 신고할 수 있다.
 
 ---
 
@@ -145,14 +133,13 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - `CFBundleLocalizations` 9개 언어가 **빌드된** Info.plist에 실제로 들어감
 - 개인정보 매니페스트: `UserDefaults(CA92.1)` + `FileTimestamp(C617.1)` 선언 — 코드의 실제 API 사용과 일치
 - 9개 언어 × 373키 전수 대조: 누락 0 · 자리표시자 불일치 0
-- StoreKit 설정 파일의 상품 ID가 코드와 일치, 9개 로케일 문구 존재
 - 접근성 최대 글씨(AX5) + 소형 화면(iPhone SE)에서 4개 탭 레이아웃 확인
 - 시즌 공유 카드·클립 워터마크·파일명까지 새 이름으로 렌더되는 것 확인
 
 ### 사람만 할 수 있는 것
 
 - [ ] 실기기에서 실제 경기 영상 1개 전체 흐름 (가져오기 → 감지 → 클립 → 릴스 → 사진 앱 저장)
-- [ ] 샌드박스 테스터 계정으로 실제 결제·복원 (시뮬레이터의 StoreKit 설정으로는 확인 불가)
+- [ ] 실기기 Release 빌드에서 리워드 광고 → Pro 패스가 열리고 1시간 뒤 닫히는지
 - [ ] 스크린샷 속 문구가 실제 화면과 어긋나지 않는지 눈으로 대조
 
 ---
@@ -161,21 +148,18 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 
 | 사유 | 상태 | 대비 |
 |---|---|---|
-| **2.3.1 숨은 기능** | 대응됨 | 오너 패널 진입은 `#if DEBUG`. 릴리스 바이너리에 `rc_test_pro` 문자열 없음을 확인 |
+| **2.3.1 숨은 기능** | 대응됨 | Pro 강제 스위치(`DebugProSheet`)는 파일 전체가 `#if DEBUG`. 제출 전 릴리스 바이너리에 `rc_debug_pro` 문자열이 없는지 확인 |
 | **ITMS-91053 API 선언 누락** | 대응됨 | `FileTimestamp` 카테고리를 매니페스트에 추가함 (누락 상태였음) |
 | **5.1.1 / 2.1 콘텐츠 없음** | 대비 필요 | 심사자는 영상이 없어 빈 앱을 본다. 심사 노트에 샘플 영상 링크 필수 |
 | **2.3.10 부정확한 메타데이터** | 대응됨 | "업로드 없음" 류의 포괄 주장을 영상 기준 표현으로 교체함 |
-| **3.1.1 결제 우회** | 해당 없음 | 외부 결제 유도 없음, 단일 비소모품 |
+| **3.1.1 결제 우회** | 해당 없음 | 결제 자체가 없음. Pro는 리워드 광고로만 열린다 |
 
-## Pro 테스트 방법 (헷갈리기 쉬움)
+## Pro 테스트 방법
 
-- **Xcode에서 Run** → 스킴에 `Ribatto.storekit`이 붙어 있어 가격이 뜨고 결제가 로컬에서 무료로 완결된다.
-  되돌리려면 Debug ▸ StoreKit ▸ Manage Transactions에서 거래 삭제.
-- **`xcrun simctl launch`로 띄우면** 스킴을 안 거쳐 상품이 없다. 이 경우 페이월은 "가격 불러오는 중"에
-  머물지만, **Debug 빌드에서는 잠금 해제 버튼이 눌린다** — 눌러서 로컬로 Pro가 켜진다(2026-09-07 수정).
-- **오너 패널**(등급 알약 1.2초 길게 누르기 + 패스프레이즈)은 **Debug 전용이다.**
-  TestFlight·App Store 빌드는 Release라 진입도, 등급 전환도 되지 않는다. 실기기에서 무료↔Pro를
-  오가며 보려면 Xcode로 Debug 빌드를 설치해야 한다.
+- **Debug 빌드**: 등급 알약을 1.2초 길게 누르면 `DebugProSheet`가 열린다. "Force Pro"로 광고 없이 Pro를 켜고,
+  "Grant a pass" / "End pass"로 패스 시작·종료를 확인한다.
+- **리워드 광고 흐름**: Debug 빌드는 구글 테스트 단위라 시뮬레이터에서도 끝까지 보면 패스가 열린다.
+- TestFlight·App Store 빌드는 Release라 디버그 스위치가 없다. 실기기에서는 실제 리워드 광고로만 Pro가 열린다.
 
 ## 알아둘 것
 

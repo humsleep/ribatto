@@ -7,7 +7,7 @@ struct RibattoApp: App {
     // screens flip the switch it reads.
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = SessionStore()
-    @StateObject private var purchases = PurchaseManager()
+    @StateObject private var pass = ProPass()
     @StateObject private var ads = AdsManager()
     @AppStorage("rc_lang") private var lang = "en"
     @AppStorage("rc_onboarded") private var onboarded = false
@@ -60,24 +60,16 @@ struct RibattoApp: App {
                 }
             }
             .environmentObject(store)
-            .environmentObject(purchases)
+            .environmentObject(pass)
             .environmentObject(ads)
-            // Ads wait for onboarding (the tracking prompt on top of the
-            // welcome pages would be the first thing a new user sees) and for
-            // the entitlement answer, for the same reason a render does: a
-            // paying customer restoring a phone must not get a banner first.
+            // Ads wait for onboarding: the tracking prompt on top of the
+            // welcome pages would be the first thing a new user sees.
             .task(id: onboarded) {
                 guard onboarded else { return }
-                await purchases.waitForEntitlement()
-                await ads.start(isPro: purchases.isPro)
+                await ads.start(isPro: pass.isPro)
             }
             .task {
-                store.isPro = purchases.isPro
-                store.onSessionRegistered = { purchases.noteSessionCreated() }
-                purchases.unavailableMessage = L.s("store_unavailable", lang)
-                purchases.nothingToRestoreMessage = L.s("restore_none", lang)
-                store.awaitEntitlement = { await purchases.waitForEntitlement() }
-                store.onDetectionFoundNothing = { purchases.refundSessionCreated() }
+                store.isPro = pass.isPro
                 store.missingSourceMessage = L.s("source_missing", lang)
                 store.interruptedMessage = L.s("interrupted", lang)
                 store.placeLocale = L.locale(lang)
@@ -85,8 +77,6 @@ struct RibattoApp: App {
                 store.backfillCaptureDates()
             }
             .onChange(of: lang) { _, l in
-                purchases.unavailableMessage = L.s("store_unavailable", l)
-                purchases.nothingToRestoreMessage = L.s("restore_none", l)
                 store.missingSourceMessage = L.s("source_missing", l)
                 store.interruptedMessage = L.s("interrupted", l)
                 store.placeLocale = L.locale(l)
@@ -100,7 +90,7 @@ struct RibattoApp: App {
             .onChange(of: store.busyCount) { _, busy in
                 UIApplication.shared.isIdleTimerDisabled = busy > 0
             }
-            .onChange(of: purchases.isPro) { _, pro in
+            .onChange(of: pass.isPro) { _, pro in
                 store.isPro = pro
                 ads.setPro(pro)
             }

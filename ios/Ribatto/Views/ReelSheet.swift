@@ -280,7 +280,7 @@ struct ReelSheet: View {
                             Text("#\(entry.clip.index + 1) · "
                                  + fmtDur(pace.estimatedLength(of: entry.clip.segment)))
                                 .font(.subheadline.weight(.medium))
-                            Text(String(entry.clip.segment.effectiveHits) + " " + L.s("shots_n", lang)
+                            Text(String(entry.clip.segment.hits) + " " + L.s("shots_n", lang)
                                  + (entry.clip.segment.score.map {
                                      " · ★ " + String(format: "%.2f", $0) } ?? ""))
                                 .font(.caption2).foregroundStyle(.secondary)

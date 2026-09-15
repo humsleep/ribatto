@@ -4,8 +4,11 @@ import Foundation
 /// found — one caption that reads differently on every rally, instead of the
 /// user typing fourteen of them before posting.
 enum CaptionText {
-    static let tokens = ["{score}", "{rank}", "{shots}", "{tempo}", "{duration}",
-                         "{rally}", "{opponent}", "{place}", "{date}", "{sport}"]
+    static let tokens = ["{rank}", "{shots}", "{tempo}", "{duration}",
+                         "{rally}", "{place}", "{date}", "{sport}"]
+    /// Tokens the app no longer fills. A caption saved while they existed still
+    /// carries them, and left in place they would burn in as literal braces.
+    private static let retired = ["{score}", "{opponent}"]
     static let example = "{rank} · {shots} · {place}"
 
     /// L10n key for the chip that inserts a token.
@@ -13,7 +16,9 @@ enum CaptionText {
         "tok_" + token.trimmingCharacters(in: CharacterSet(charactersIn: "{}"))
     }
 
-    static func hasTokens(_ text: String) -> Bool { tokens.contains { text.contains($0) } }
+    static func hasTokens(_ text: String) -> Bool {
+        (tokens + retired).contains { text.contains($0) }
+    }
 
     static func removing(_ token: String, from text: String) -> String {
         tidy(text.replacingOccurrences(of: token, with: ""))
@@ -43,10 +48,8 @@ enum CaptionText {
         func put(_ token: String, _ value: String) {
             out = out.replacingOccurrences(of: token, with: value)
         }
-        put("{shots}", String(format: L.s("tok_shots_fmt", lang), seg.effectiveHits))
-        put("{score}", TennisScore.line(for: segments, sport: session.sport,
-                                        lang: lang)[index])
-        put("{opponent}", session.opponent ?? "")
+        put("{shots}", String(format: L.s("tok_shots_fmt", lang), seg.hits))
+        for token in retired { put(token, "") }
         put("{tempo}", seg.tempo.map {
             String(format: L.s("tempo_fmt", lang), Int($0.rounded())) } ?? "")
         put("{duration}", String(format: L.s("tok_duration_fmt", lang), Int(seg.duration.rounded())))

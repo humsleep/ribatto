@@ -23,19 +23,8 @@ struct ClipInfo: Identifiable, Equatable {
 final class SessionStore: ObservableObject {
     @Published var sessions: [Session] = []
     @Published var progress: [UUID: ProcessingStage] = [:]
-    /// Mirrored from PurchaseManager so the export path knows the tier.
+    /// Mirrored from ProPass so the export path knows the tier.
     @Published var isPro = false
-    /// Called once a new session exists on disk, so the free allowance is spent
-    /// even if processing is interrupted.
-    var onSessionRegistered: (() -> Void)?
-    /// Called when a detection produced no rallies, so the free import that
-    /// paid for it can be returned.
-    var onDetectionFoundNothing: (() -> Void)?
-    /// Set by the app: suspends until the App Store has said whether this user
-    /// owns Pro. A render bakes the tier into the file, so starting one before
-    /// the answer lands is how a paying customer gets watermarked 720p clips on
-    /// a phone they just restored.
-    var awaitEntitlement: (() async -> Void)?
 
     private let fm = FileManager.default
     /// Shown when iOS stopped a render because the app was in the background
@@ -350,12 +339,6 @@ final class SessionStore: ObservableObject {
             // match's poster.
             let at = sessions.firstIndex { $0.playedAt < s.playedAt } ?? sessions.count
             sessions.insert(s, at: at)
-            // Counted here, not after processing: a force-quit mid-detect used
-            // to leave the session on disk with the free allowance untouched.
-            // `process` hands it back if the video turned out to have no
-            // rallies in it — charging for a failed detection is how a new user
-            // burns the free tier without ever seeing a clip.
-            onSessionRegistered?()
             resolvePlaceName(for: id)             // needs the network; don't block
             await process(sessionID: id)          // auto-detect on import
             return true
@@ -414,28 +397,6 @@ final class SessionStore: ObservableObject {
     func setSmartCrop(_ s: Session, _ on: Bool) {
         var v = s; v.smartCrop = on; save(v)
     }
-    func setShotCounter(_ s: Session, _ on: Bool) {
-        var v = s; v.shotCounter = on; save(v)
-    }
-    func setScoreboard(_ s: Session, _ on: Bool) {
-        var v = s; v.scoreboard = on; save(v)
-    }
-    func setOpponent(_ s: Session, _ name: String) {
-        var v = s
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        v.opponent = trimmed.isEmpty ? nil : trimmed
-        save(v)
-    }
-
-    /// Who won one rally. Tagging changes the score on every rally after it,
-    /// which is why the whole session is marked for a re-render rather than
-    /// just this clip.
-    func setWinner(_ clip: ClipInfo, _ winner: PointWinner?) {
-        guard let s = sessions.first(where: { $0.id == clip.sessionID }),
-              var segments = s.segments, clip.index < segments.count else { return }
-        segments[clip.index].winner = winner
-        mutate(s.id) { $0.segments = segments }
-    }
 
     /// Starring is a library affordance, not an export setting: it must never
     /// mark the session as needing a re-render.
@@ -487,35 +448,19 @@ final class SessionStore: ObservableObject {
               seg.end - time >= minClipSeconds else { return false }
         // Strikes and the crowd reaction belong to whichever half they land in;
         // the score is no longer meaningful for either, so both are unscored.
-        let paired = zip(seg.hitTimes ?? [], seg.hitStrengths ?? [])
         let firstHits = (seg.hitTimes ?? []).filter { $0 < time }
         let secondHits = (seg.hitTimes ?? []).filter { $0 >= time }
-        // Levels travel with their strikes so a corrected count still knows
-        // which of them were the quiet ones.
-        let firstStr = seg.hitStrengths?.count == seg.hitTimes?.count
-            ? paired.filter { $0.0 < time }.map(\.1) : nil
-        let secondStr = seg.hitStrengths?.count == seg.hitTimes?.count
-            ? paired.filter { $0.0 >= time }.map(\.1) : nil
         let first = RallySegment(start: seg.start, end: time,
                                  hits: firstHits.isEmpty ? seg.hits / 2 : firstHits.count,
                                  score: nil, trimmed: true,
-                                 hitTimes: seg.hitTimes == nil ? nil : firstHits,
-                                 hitStrengths: firstStr,
-                                 hitsUncertain: firstStr.map {
-                                     RallyDetector.mixedSources($0.map(Float.init)) })
+                                 hitTimes: seg.hitTimes == nil ? nil : firstHits)
         var second = RallySegment(start: time, end: seg.end,
                                   hits: secondHits.isEmpty ? seg.hits - seg.hits / 2 : secondHits.count,
                                   score: nil, trimmed: true,
                                   hitTimes: seg.hitTimes == nil ? nil : secondHits,
-                                  cheer: seg.cheer,
-                                  hitStrengths: secondStr,
-                                  hitsUncertain: secondStr.map {
-                                      RallyDetector.mixedSources($0.map(Float.init)) })
-        // Both tags describe the point the user was looking at, and that point
+                                  cheer: seg.cheer)
+        // The star describes the point the user was looking at, and that point
         // is the one that ends where the original ended — the second half.
-        // Splitting them across the two halves put the winner on a point the
-        // user never judged.
-        second.winner = seg.winner
         second.favourite = seg.favourite
         segments.replaceSubrange(clip.index...clip.index, with: [first, second])
         mutate(session.id) {
@@ -541,13 +486,6 @@ final class SessionStore: ObservableObject {
         }
         return out
     }
-    /// The burned-in score for one clip, matching what the last full render
-    /// used. Every path that re-encodes a single clip has to pass this or the
-    /// clip silently comes back without the scoreboard.
-    private func scoreboardLine(_ s: Session, segments: [RallySegment], at index: Int) -> String? {
-        guard s.renderedScoreboard ?? false else { return nil }
-        return TennisScore.line(for: segments, sport: s.sport, lang: lang)[safe: index]
-    }
 
     /// Rebuilds per-clip overrides after a delete: `survivors` lists the old
     /// indices that remain, in order, so each override moves to the position
@@ -563,8 +501,8 @@ final class SessionStore: ObservableObject {
         return out
     }
 
-    /// The in-app language, for strings burned into video (the counter's
-    /// label, a caption's "Best #1").
+    /// The in-app language, for strings burned into video (a caption's
+    /// "Best #1").
     var lang: String { UserDefaults.standard.string(forKey: "rc_lang") ?? "en" }
     /// Picking a player only matters through the smart-crop path, so turn that
     /// on with it; clearing the player leaves smart crop as the user had it.
@@ -619,13 +557,7 @@ final class SessionStore: ObservableObject {
                 smartCrop: true,
                 clipURL: dir.appendingPathComponent("\(base).mp4"),
                 thumbURL: dir.appendingPathComponent("\(base).jpg"),
-                targetPlayer: updated.target(forClip: clip.index),
-                counter: (updated.renderedShotCounter ?? false)
-                    ? ShotCounter.make(for: segments[clip.index],
-                                       label: L.s("counter_label", lang)) : nil,
-                // Without this the re-cut clip comes back with no score while
-                // every other clip in the session still carries one.
-                scoreboard: scoreboardLine(updated, segments: segments, at: clip.index))
+                targetPlayer: updated.target(forClip: clip.index))
             // Only this clip was re-cut, so only this clip's record moves —
             // leaving the rest of `renderedClipTargets` alone keeps the
             // "settings changed" hint honest about the clips still stale.
@@ -646,16 +578,12 @@ final class SessionStore: ObservableObject {
     /// moved, otherwise just re-render at the new aspect.
     func apply(sessionID: UUID) async {
         guard let s = sessions.first(where: { $0.id == sessionID }) else { return }
-        // Sessions detected before strike times were kept have nothing for the
-        // counter to draw; a re-detect fills them in (trims are preserved).
-        let lacksHitTimes = isPro && s.shotCounterEnabled
-            && (s.segments ?? []).contains { $0.hitTimes == nil }
         // An empty result is not a finished job. Without the isEmpty case,
         // pressing Detect again on a session that found nothing did nothing at
         // all — the settings were unchanged, so neither branch fired and the
         // button looked dead exactly where the user most needs it to work.
         let foundNothing = s.segments?.isEmpty ?? false
-        if s.segments == nil || foundNothing || s.needsRedetect || lacksHitTimes {
+        if s.segments == nil || foundNothing || s.needsRedetect {
             await process(sessionID: sessionID)
         } else if s.needsRerender {
             await render(sessionID: sessionID)
@@ -694,17 +622,6 @@ final class SessionStore: ObservableObject {
                 $0.detectedSport = sport
                 $0.detectedSensitivity = sens
                 $0.detectionFoundNothing = segments.isEmpty
-            }
-            // Nothing found means nothing to show, so the import is handed
-            // back. Otherwise two unusable videos cost a new user two thirds of
-            // the free tier before they have ever seen a clip.
-            // Once per import, not once per detect: `process` also runs from
-            // Apply, so refunding here unconditionally handed back an import
-            // every time the user pressed Re-detect on a quiet video.
-            if segments.isEmpty,
-               sessions.first(where: { $0.id == sessionID })?.importRefunded != true {
-                mutate(sessionID) { $0.importRefunded = true }
-                onDetectionFoundNothing?()
             }
             await render(sessionID: sessionID, alreadyRunning: true)
         } catch {
@@ -779,8 +696,6 @@ final class SessionStore: ObservableObject {
             progress[sessionID] = .failed(missingSourceMessage)
             return
         }
-        await awaitEntitlement?()
-
         do {
             let cdir = clipsDir(s)
             try? fm.removeItem(at: cdir)
@@ -792,11 +707,6 @@ final class SessionStore: ObservableObject {
             let pro = isPro
             let caption = s.caption
             let useSmartCrop = isPro && s.effectiveSmartCrop
-            let counterLabel = isPro && s.shotCounterEnabled ? L.s("counter_label", lang) : nil
-            let scores = isPro && s.scoreboardEnabled
-                ? TennisScore.line(for: segments, sport: s.sport, lang: lang)
-                : []
-            let winners = s.winnerTags
             let target = useSmartCrop ? s.targetPlayer : nil
             let perClip = useSmartCrop ? (s.clipTargets ?? [:]) : [:]
             // `renderedOrientation` is the record of a finished render, so it
@@ -829,18 +739,13 @@ final class SessionStore: ObservableObject {
                     // portrait clip kept a 16:9 still, and the card had to
                     // stretch to hold it.
                     thumbURL: cdir.appendingPathComponent("\(base).jpg"),
-                    targetPlayer: useSmartCrop ? s.target(forClip: i) : nil,
-                    counter: counterLabel.flatMap { ShotCounter.make(for: seg, label: $0) },
-                    scoreboard: i < scores.count ? scores[i] : nil)
+                    targetPlayer: useSmartCrop ? s.target(forClip: i) : nil)
             }
             mutate(sessionID) {
                 $0.renderedOrientation = orient
                 $0.renderedPro = pro
                 $0.renderedCaption = caption
                 $0.renderedSmartCrop = useSmartCrop
-                $0.renderedShotCounter = counterLabel != nil
-                $0.renderedScoreboard = !scores.isEmpty
-                $0.renderedWinners = winners
                 $0.renderedTargetPlayer = target
                 $0.renderedClipTargets = perClip
             }
@@ -881,7 +786,7 @@ final class SessionStore: ObservableObject {
     }
 
     /// Renders one clip again with the settings the session was last rendered
-    /// with. Every per-clip edit — a trim, a corrected shot count — ends here,
+    /// with. Every per-clip edit ends here,
     /// because what the user changed lives in pixels.
     @discardableResult
     private func rerenderClip(_ session: Session, segments: [RallySegment], index: Int) async -> Bool {
@@ -905,70 +810,12 @@ final class SessionStore: ObservableObject {
                 clipURL: dir.appendingPathComponent("\(base).mp4"),
                 thumbURL: dir.appendingPathComponent("\(base).jpg"),
                 targetPlayer: (session.renderedSmartCrop ?? false)
-                    ? session.target(forClip: index) : nil,
-                counter: (session.renderedShotCounter ?? false)
-                    ? ShotCounter.make(for: segment, label: L.s("counter_label", lang)) : nil,
-                scoreboard: scoreboardLine(session, segments: segments, at: index))
+                    ? session.target(forClip: index) : nil)
             objectWillChange.send()
             return true
         } catch {
             progress[session.id] = .failed(error.localizedDescription)
             return false
-        }
-    }
-
-    /// Corrects the strike count of one rally.
-    ///
-    /// Detection counts what it hears, and on a court with a match going on
-    /// next door it hears both. This is the way out: the number the user can
-    /// see in the clip wins, and everything downstream — the burned-in counter,
-    /// a `{shots}` caption, the season totals — follows it.
-    ///
-    /// The number is stored at once and the re-render is debounced per clip:
-    /// three taps on "+" used to count once, because the first tap's render
-    /// made the session busy and the guard then dropped the other two. Only
-    /// detection still refuses — it is about to overwrite `segments` wholesale.
-    func setHitCount(_ clip: ClipInfo, _ count: Int) {
-        guard let session = sessions.first(where: { $0.id == clip.sessionID }),
-              var segments = session.segments, clip.index < segments.count,
-              !isDetecting(session.id) else { return }
-        let clamped = max(0, min(count, 400))
-        guard clamped != segments[clip.index].effectiveHits else { return }
-        segments[clip.index].hitsOverride = clamped
-        let segments2 = segments
-        mutate(session.id) { $0.segments = segments2 }
-        objectWillChange.send()
-        // Only worth a re-render when the number is actually in the picture.
-        let burnsCount = (session.renderedShotCounter ?? false)
-            || (session.renderedCaption?.text.contains("{shots}") ?? false)
-        guard burnsCount, fm.fileExists(atPath: clip.url.path) else { return }
-        hitRerenders[clip.id]?.cancel()
-        hitRerenders[clip.id] = Task { [weak self] in
-            // Settle first, so a run of taps renders once with the final value.
-            try? await Task.sleep(for: .milliseconds(800))
-            guard !Task.isCancelled, let self else { return }
-            // Then wait out whatever render is on this session — usually the
-            // previous tap's. `.failed` is not busy, so a broken session does
-            // not hold this forever.
-            while self.isBusy(clip.sessionID) {
-                try? await Task.sleep(for: .milliseconds(250))
-                guard !Task.isCancelled else { return }
-            }
-            guard let latest = self.sessions.first(where: { $0.id == clip.sessionID }),
-                  let segs = latest.segments, clip.index < segs.count else { return }
-            await self.rerenderClip(latest, segments: segs, index: clip.index)
-        }
-    }
-
-    /// Pending shot-count re-renders, one per clip, so the last tap wins.
-    private var hitRerenders: [String: Task<Void, Never>] = [:]
-
-    /// True while detection is rewriting the session's segments — the one
-    /// stage where a per-rally edit would be lost rather than merely delayed.
-    private func isDetecting(_ id: UUID) -> Bool {
-        switch progress[id] {
-        case .audio?, .detect?: return true
-        default: return false
         }
     }
 
@@ -1139,10 +986,6 @@ final class SessionStore: ObservableObject {
         guard !ordered.isEmpty else { return nil }
         let key = ordered[0].session.id
         guard !isBusy(key) else { return nil }
-        // Same reason `render` waits: a reel started in the first seconds after
-        // launch on a new device would otherwise bake a watermark into the best
-        // thing a paying customer owns.
-        await awaitEntitlement?()
         progress[key] = .reel(done: 0, total: ordered.count)
         // A reel re-renders every rally from its original, so it is the longest
         // job the app runs — and the one a user is most likely to walk away
@@ -1174,14 +1017,7 @@ final class SessionStore: ObservableObject {
                                       index: pair.clip.index, lang: lang),
                                   smartCrop: useSmartCrop,
                                   targetPlayer: useSmartCrop
-                                      ? pair.session.target(forClip: pair.clip.index) : nil,
-                                  counterLabel: isPro && pair.session.shotCounterEnabled
-                                      ? L.s("counter_label", lang) : nil,
-                                  scoreboard: isPro && pair.session.scoreboardEnabled
-                                      ? TennisScore.line(for: pair.session.segments ?? [],
-                                                         sport: pair.session.sport,
-                                                         lang: lang)[safe: pair.clip.index]
-                                      : nil))
+                                      ? pair.session.target(forClip: pair.clip.index) : nil))
         }
         guard !items.isEmpty else {
             progress[key] = .failed(missingSourceMessage)

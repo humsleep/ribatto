@@ -23,9 +23,6 @@ struct SeasonStats {
     var places: [(name: String, visits: Int, rallies: Int)] = []
     /// Rallies per month, oldest first, always 6 entries.
     var monthly: [(month: Date, rallies: Int, matches: Int)] = []
-    /// Points won and lost against each named opponent, most played first.
-    /// Only sessions where points were actually tagged appear.
-    var opponents: [(name: String, won: Int, lost: Int, matches: Int)] = []
     /// Strikes per minute of play, all time.
     var tempo: Double = 0
 
@@ -108,31 +105,6 @@ struct StatsView: View {
                                                                           : s.avgShots),
                                s.avgTrend == 0 ? "" :
                                    String(format: "%@%.1f", s.avgTrend > 0 ? "+" : "", s.avgTrend))
-                    }
-                }
-
-                // Head-to-head only appears once points have been tagged; an
-                // empty card would read as a broken feature.
-                if !s.opponents.isEmpty {
-                    card {
-                        Text(L.s("opponent", lang)).font(.caption).foregroundStyle(.secondary)
-                        ForEach(s.opponents.prefix(6), id: \.name) { o in
-                            // Same treatment as the record rows: side by side,
-                            // the score wrapped to "4– / 0 / poi / nts" and took
-                            // the width the name needed, leaving "Cl…" — and
-                            // pinning the score to one line squeezed the name
-                            // out entirely.
-                            statRow(icon: "person.2.fill", name: o.name) {
-                                Text(String(format: L.s("record_fmt", lang), o.won, o.lost))
-                                    .font(.subheadline.bold())
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-                                Text(String(format: L.s(o.matches == 1 ? "matches_one" : "matches_n", lang), o.matches))
-                                    .font(.caption).foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-                            }
-                        }
                     }
                 }
 
@@ -572,9 +544,6 @@ extension StatsView {
         var monthShots = 0, monthRallyCount = 0
         var prevShots = 0, prevRallyCount = 0
 
-        // value carries the first-seen spelling, so the row still reads the way
-        // the user typed it
-        var opponentTotals: [String: (won: Int, lost: Int, matches: Int, name: String)] = [:]
         var tempoSum = 0.0, tempoCount = 0
 
         for session in store.sessions {
@@ -583,20 +552,10 @@ extension StatsView {
             for t in clips.compactMap(\.segment.tempo) {
                 tempoSum += t; tempoCount += 1
             }
-            if let name = session.opponent, session.taggedPoints > 0 {
-                // Keyed case-insensitively: iOS autocapitalises the first
-                // typing and a later paste often does not, which split one
-                // person's head-to-head into two half-records.
-                let key = name.lowercased()
-                let r = TennisScore.record(session.segments ?? [])
-                var entry = opponentTotals[key] ?? (0, 0, 0, name)
-                entry.won += r.me; entry.lost += r.them; entry.matches += 1
-                opponentTotals[key] = entry
-            }
             s.matches += 1
             s.rallies += clips.count
             let secs = clips.reduce(0) { $0 + $1.duration }
-            let hits = clips.reduce(0) { $0 + $1.segment.effectiveHits }
+            let hits = clips.reduce(0) { $0 + $1.segment.hits }
             s.totalSeconds += secs
             s.shots += hits
 
@@ -654,10 +613,6 @@ extension StatsView {
         s.monthAvgShots = monthRallyCount > 0 ? Double(monthShots) / Double(monthRallyCount) : 0
         s.prevAvgShots = prevRallyCount > 0 ? Double(prevShots) / Double(prevRallyCount) : 0
         s.tempo = tempoCount > 0 ? tempoSum / Double(tempoCount) : 0
-        s.opponents = opponentTotals
-            .map { (name: $0.value.name, won: $0.value.won, lost: $0.value.lost,
-                    matches: $0.value.matches) }
-            .sorted { $0.matches > $1.matches }
         return s
     }
 }

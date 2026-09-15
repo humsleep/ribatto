@@ -26,7 +26,7 @@ Do not repeat words already in the name or subtitle — Apple indexes those sepa
 
 **Promotional text** (max 170, editable without a new build) — 138 chars
 ```
-Pay once, keep it forever. No subscription, no account, and your video never leaves your iPhone. Your match is analysed right on the device, even offline.
+Free, no account, and your video never leaves your iPhone. Your match is analysed right on the device, even offline.
 ```
 
 **Description** (max 4000)
@@ -45,18 +45,18 @@ FOLLOW ONE PLAYER
 Pick yourself once and every vertical clip stays centred on you, even as you move across the court.
 
 THE STORY ON THE CLIP
-A live shot counter ticks up as the rally plays. Tag who won each point and the running score is burned in. Captions fill themselves in from what was detected — shot count, rank, court, opponent.
+Captions fill themselves in from what was detected — shot count, rank, court, date. One caption reads differently on every rally.
 
 YOUR SEASON
-Rallies, courts, longest point, shots per rally, and a head-to-head record against everyone you tagged.
+Rallies, courts, longest point and shots per rally, month by month.
 
 IT ALL RUNS ON YOUR IPHONE
 No account. No sign-up. No server. Your video and its audio never leave the phone, and the whole thing works offline at the court. The only thing that ever leaves is a coordinate sent to Apple to name a court, and only if your video carries GPS.
 
-PAY ONCE
-Ribatto Pro is a one-time purchase, not a subscription. Unlimited imports, export at source quality with no watermark, smart vertical crop, player tracking, shot counter and scoreboard. Buy it once and it is yours on every iPhone signed into your Apple ID.
+FREE, WITH PRO ON DEMAND
+Ribatto is free and supported by ads. Watch one short ad and every Pro feature opens for an hour: no ads, source quality with no watermark, smart vertical crop and player tracking. Clips and reels you make in that hour keep their quality.
 
-Free: three imports, 720p, watermark. Enough to run a real match through it before you decide.
+Free: unlimited imports, 720p, watermark.
 ```
 
 **What's New (1.0)**
@@ -85,7 +85,7 @@ Ribatto: 랠리 클립
 
 **프로모션 문구** (170자)
 ```
-한 번 결제하면 평생 사용합니다. 구독도 계정도 없고, 영상은 아이폰 밖으로 나가지 않습니다. 경기 영상은 아이폰 안에서 분석되며, 오프라인에서도 동작합니다.
+무료, 계정 없음. 영상은 아이폰 밖으로 나가지 않습니다. 경기 영상은 아이폰 안에서 분석되며, 오프라인에서도 동작합니다.
 ```
 
 **설명** (4000자)
@@ -104,18 +104,18 @@ Ribatto: 랠리 클립
 본인을 한 번만 지정하면 코트를 옮겨 다녀도 모든 세로 클립이 본인을 중심으로 잡힙니다.
 
 클립이 스스로 설명합니다
-랠리가 진행되는 동안 타구 수가 화면에서 올라갑니다. 포인트마다 승자를 지정하면 진행 점수가 영상에 새겨집니다. 자막은 감지된 정보로 알아서 채워집니다 — 타구 수, 순위, 코트, 상대.
+자막은 감지된 정보로 알아서 채워집니다 — 타구 수, 순위, 코트, 날짜. 자막 하나가 랠리마다 다르게 읽힙니다.
 
 시즌 기록
-랠리 수, 코트, 최장 랠리, 랠리당 타구 수, 그리고 지정한 상대별 상대 전적까지 남습니다.
+랠리 수, 코트, 최장 랠리, 랠리당 타구 수가 달마다 쌓입니다.
 
 전부 아이폰에서 처리됩니다
 계정도 가입도 서버도 없습니다. 영상과 소리는 폰을 벗어나지 않고, 코트에서 오프라인으로도 전부 동작합니다. 밖으로 나가는 것은 코트 이름을 붙일 때 애플에 보내는 좌표뿐이며, 그것도 영상에 GPS 정보가 있을 때만입니다.
 
-한 번만 결제
-Ribatto Pro는 구독이 아니라 1회 결제입니다. 무제한 가져오기, 워터마크 없는 원본 화질 저장, 스마트 세로 크롭, 선수 추적, 타구 카운터와 점수판. 한 번 사면 같은 Apple ID의 모든 아이폰에서 쓸 수 있습니다.
+무료, Pro는 필요할 때만
+Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 보면 1시간 동안 모든 Pro 기능이 열립니다 — 광고 없음, 워터마크 없는 원본 화질, 스마트 세로 크롭, 선수 추적. 그 사이 만든 클립과 릴스는 품질이 그대로 남습니다.
 
-무료: 영상 3개, 720p, 워터마크. 결정하기 전에 실제 경기 한 판을 끝까지 돌려보기에 충분합니다.
+무료: 가져오기 무제한, 720p, 워터마크.
 ```
 
 ---
@@ -124,18 +124,18 @@ Ribatto Pro는 구독이 아니라 1회 결제입니다. 무제한 가져오기,
 
 | # | 화면 | 헤드라인 | 보조 문구 |
 |---|---|---|---|
-| 1 | 세로 클립 결과 | ONE TAP, MATCH TO REEL | Rallies found automatically. Score and shot count burned in. |
+| 1 | 세로 클립 결과 | ONE TAP, MATCH TO REEL | Rallies found automatically, framed for Reels. |
 | 2 | 라이브러리 | SKIP THE DEAD TIME | A 30-minute match becomes the rallies worth watching. |
 | 3 | 세션 설정 | FOUND BY SOUND | No tripod, no mount, no fixed angle. It listens for the strike. |
-| 4 | 시즌 | YOUR SEASON, COUNTED | Every rally, every court, every opponent you tagged. |
-| 5 | 모든 클립 | PAY ONCE. NO ACCOUNT. | Everything runs on your iPhone. Your video never leaves it. |
+| 4 | 시즌 | YOUR SEASON, COUNTED | Every rally, every court, month by month. |
+| 5 | 모든 클립 | FREE. NO ACCOUNT. | Everything runs on your iPhone. Your video never leaves it. |
 
 한국어판 헤드라인
-1. 한 번에, 경기에서 릴스로 — 랠리는 자동으로 찾고 점수와 타구 수를 새깁니다.
+1. 한 번에, 경기에서 릴스로 — 랠리는 자동으로 찾고 릴스에 맞게 잡습니다.
 2. 빈 시간은 건너뛰기 — 30분 경기가 볼 만한 랠리만 남습니다.
 3. 소리로 찾습니다 — 삼각대도, 거치도, 각도 맞추기도 필요 없습니다.
-4. 시즌이 쌓입니다 — 랠리, 코트, 상대별 전적까지.
-5. 한 번 결제, 계정 없음 — 전부 아이폰에서 처리되고 업로드는 없습니다.
+4. 시즌이 쌓입니다 — 랠리, 코트, 달마다.
+5. 무료, 계정 없음 — 전부 아이폰에서 처리되고 영상은 기기 밖으로 나가지 않습니다.
 
 ---
 
@@ -154,9 +154,9 @@ Steps:
 
 Notes:
 - Everything is processed on-device. There is no account and no login.
-- Ribatto Pro is a single non-consumable IAP (com.ribatto.pro). The free tier
-  allows three imports at 720p with a watermark, which is enough to review the
-  whole flow without purchasing.
+- There is no in-app purchase. The app is ad-supported (Google AdMob). Watching
+  a rewarded ad to the end opens Pro features for one hour; the free tier runs
+  the whole flow at 720p with a watermark.
 - Detection works from the sound of racket impacts, so footage without racket
   strikes will correctly report that no rallies were found.
 ```

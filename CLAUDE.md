@@ -23,20 +23,18 @@ ios/Ribatto/
   Models.swift             Sport·Sensitivity·AspectSetting·Session·RallySegment·CaptionSettings
   L10n.swift               인앱 다국어 9종 (en 기본 / ko ja es pt de fr it zh-Hans) — 문자열은 9곳 모두 추가
                            s()는 없는 키를 영어로 폴백한다. 키 누락 검사는 세션 기록의 파서 스크립트 참고
-  CaptionText.swift        캡션 토큰 {score} {rank} {shots} {tempo} {duration} {rally} {opponent} {place} {date} {sport} → 렌더 직전 클립별 문구로 치환(SessionStore)
-  TennisScore.swift        태그된 승자 → 스코어라인. 테니스·파델은 15/30/40 + 게임/세트, 배드민턴·피클볼은 랠리포인트(21/11)
+  CaptionText.swift        캡션 토큰 {rank} {shots} {tempo} {duration} {rally} {place} {date} {sport} → 렌더 직전 클립별 문구로 치환(SessionStore)
+                           없앤 토큰 {score} {opponent}는 옛 캡션에 남아 있을 수 있어 빈 문자열로 지운다(`retired`)
   Engine/                  ★ 핵심 로직, 실측 검증됨
     AudioLoader.swift      영상 → 16kHz 모노 샘플
     RallyDetector.swift    타구음 감지 (vDSP FFT + 2단 임계값)
                            + 랠리 점수화: 타구수 0.40 / 환호(voiceE 급등) 0.35 / 길이 0.25
                            RallySegment.hitTimes(타구 시각)·cheer(환호 비율, 3.5↑이면 🔥 배지·"환호 큰 순" 정렬)도 보존
-                           승자·즐겨찾기는 감지가 아니라 사용자 입력(RallySegment.winner/favourite)
+                           즐겨찾기는 감지가 아니라 사용자 입력(RallySegment.favourite)
     SmartCrop.swift        세로 크롭용 관심영역 추적 — 모션 기반(사람 인식 아님). 설계 이유는 파일 주석 참고
     PlayerTracker.swift    특정 인물 추적 — Vision 시드 추적 + 재획득 + SmartCrop 모션 폴백. Session.targetPlayer 있을 때 사용
                            Keyframe.box(디스플레이 좌표)를 채워 ClipExporter의 재프레이밍 입력이 됨
     ClipExporter.swift     클립 컷 · 화면비 · 페이드 · 워터마크/캡션 번인
-                           + 타구 카운터(ShotCounter, Pro): 프레임 시각별로 타구 수 픽셀 번인. 타구 시각은 RallySegment.hitTimes
-                           + 스코어보드 번인(좌상단). 카운터와 겹치면 카운터가 아랫줄로 내려간다
                            워터마크(무료)는 Bebas 대문자 + 얇은 검정 외곽선. 흰 글자만으로는 밝은 하늘에서 사라진다
                            크롭은 `transform(window:)` 하나로 통일 — 소스의 사각 영역을 출력 프레임에 매핑
                            `reframed(...)`: 추적 박스가 있으면 피사체에 맞춰 축소·이동(최대 2배 줌), 없으면 기존 전체높이 창
@@ -48,17 +46,16 @@ ios/Ribatto/
     VideoProbe.swift       메타데이터 + 포스터
   Store/
     SessionStore.swift     세션 영속화 + 처리 파이프라인 (process → render). 모든 상태의 소유자
-    PurchaseManager.swift  StoreKit 2. isPro 판정. OwnerSheet용 passphrase 게이트
+    ProPass.swift          isPro 판정. 리워드 광고를 끝까지 보면 grant()로 1시간 패스(passUntil 영속, 만료 타이머로 즉시 강등)
+                           Debug 전용 debugPro 스위치(DebugProSheet). 구매는 없다
     AdsManager.swift       AdMob(SPM 12.x). 무료 등급의 배너(탭 바 아래, RibattoApp) + 전면광고(렌더·릴스 완료 직후, 3분 간격)
-                           + 리워드 영상(페이월의 "광고 보기") → PurchaseManager.grantPass()로 1시간 Pro 패스
-                           ATT 프롬프트 → SDK 시작 순서. 온보딩·소유권 판정이 끝난 뒤에만 시작한다
+                           + 리워드 영상(ProPassView의 "광고 보기") → ProPass.grant()로 1시간 Pro 패스
+                           ATT 프롬프트 → SDK 시작 순서. 온보딩이 끝난 뒤에만 시작한다
                            앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=빈값), 단위 ID는 Unit(Debug만 테스트값)
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다
-                           소유권은 Apple ID에 있다(비소모성·가족공유). 기기변경·재설치는 자동 복원된다
-                           rc_entitled에 마지막 응답을 캐시 — 스토어에 못 닿았을 때만 폴백하고, 닿았으면 그 답으로 덮는다
   Views/                   SessionDetailView(설정) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더) · TargetPlayerSheet(추적 대상 선택)
-                           LibraryView · StatsView · CaptionEditorView · PaywallView 등
+                           LibraryView · StatsView · CaptionEditorView · ProPassView(Pro 안내 + 리워드 광고 버튼) 등
                            SortMenu.swift: ClipSort(6종 정렬) + 정렬 메뉴 — 세션 화면·모든클립 탭 공용
                            AddRallySheet(놓친 랠리 수동 추가) · PrivacyView(앱 내 개인정보 설명 — 코드 동작과 항상 일치시킬 것)
                            ReelsView: 완성된 릴스 보관함. 파일은 sessions/reels/ 에 id.mp4 + id.jpg + id.json(ReelInfo)
@@ -67,11 +64,16 @@ ios/Ribatto/
 
 ## Pro 티어 경계 (isPro 로 게이팅)
 
-무료: 광고(배너+전면) · 720p · 워터마크 · 중앙 고정 크롭. **리워드 광고를 끝까지 보면 `passDuration`(1시간) 동안 Pro 전체가 열린다**
-      (`PurchaseManager.passUntil`, 영속). `isPro = hasPurchased || passActive` — 렌더는 시작 시점의 tier를 굽는다.
-      페이월·알약은 `hasPurchased`로 구매와 패스를 구분한다("Pro" vs "Pro 체험"). 가져오기 횟수 제한은 2026-09-13에 풀었다(`canImport`는 항상 true, 카운터는 오너 패널 표시용으로만 남음)
-Pro: **광고 없음** · 원본화질(가로4K/세로1080p) · 워터마크 없음 · 일괄저장 · 클립병합 · **스마트 세로 크롭**(SmartCrop) · **특정 인물 추적**(PlayerTracker, TargetPlayerSheet에서 선택) · **타구 카운터 번인**(Session.shotCounter) · **스코어보드 번인**(Session.scoreboard)
-캡션 자동 문구(토큰)·환호 배지·즐겨찾기·포인트 태깅·상대 태그·랠리 추가/분할은 무료. 일괄저장은 2개 이상 선택 시 Pro.
+**인앱 구입은 없다.** 2026-09-15에 StoreKit·페이월·복원·오너 패스프레이즈를 코드에서 걷어냈다(광고 전용 운영).
+나중에 구매를 되살릴 때는 git 태그 `pro-iap-snapshot`의 `PurchaseManager.swift`·`PaywallView.swift`·`Ribatto.storekit`에서 가져온다.
+
+무료: 광고(배너+전면) · 720p · 워터마크 · 중앙 고정 크롭.
+Pro: **리워드 광고를 끝까지 보면 `ProPass.duration`(1시간) 동안** 열린다. `isPro = pass.active`(Debug는 `debugPro`도).
+     렌더는 시작 시점의 tier를 굽는다 — 패스 중 만든 클립은 끝난 뒤에도 원본화질·워터마크 없음 그대로다.
+     광고 없음 · 원본화질(가로4K/세로1080p) · 워터마크 없음 · 일괄저장 · 클립병합 · **스마트 세로 크롭**(SmartCrop) · **특정 인물 추적**(PlayerTracker, TargetPlayerSheet에서 선택)
+캡션 자동 문구(토큰)·환호 배지·즐겨찾기·랠리 추가/분할은 무료. 일괄저장은 2개 이상 선택 시 Pro.
+점수 기능(스코어보드·승자 태깅·타구 카운터 번인·타구 수 보정·상대 태그/전적)은 2026-09-15에 UI 정리로 삭제했다.
+옛 세션 JSON의 해당 키는 디코딩 때 무시된다.
 
 ## 마케팅 자산
 
@@ -83,16 +85,13 @@ Pro: **광고 없음** · 원본화질(가로4K/세로1080p) · 워터마크 없
 swift Tools/make_screenshots.swift <캡처폴더> <출력폴더>   # ios/ 에서 실행
 ```
 
-스크린샷 속 세션 이름·코트·상대는 데모용으로 채운 값이다. 실제 사용자 데이터가 아니다.
+스크린샷 속 세션 이름·코트는 데모용으로 채운 값이다. 실제 사용자 데이터가 아니다.
+**현재 스크린샷에는 삭제한 점수판·타구 카운터·"PAY ONCE"가 찍혀 있다.** 제출 전에 다시 만들어야 한다.
 
-## Pro 결제 테스트
+## Pro 테스트
 
-`ios/Ribatto.storekit`(상품 `com.ribatto.pro`, 비소모성)이 공유 스킴에 연결돼 있다.
-**Xcode에서 Run하면** 이 설정이 적용돼 결제가 로컬에서 무료로 완결된다. Debug ▸ StoreKit ▸ Manage Transactions에서
-거래를 지우면 다시 무료 등급으로 돌아온다. `xcrun simctl launch`로 띄우면 스킴을 거치지 않아 적용되지 않는다 —
-페이월이 "가격 불러오는 중"에 머무는 건 이 경우다.
-실기기·TestFlight에서는 OwnerSheet(등급 알약 길게 누르기 + 패스프레이즈)로 등급을 바꾼다. 진짜 결제·복원 흐름은
-App Store Connect의 샌드박스 테스터 계정으로만 확인할 수 있다.
+Debug 빌드에서 등급 알약을 1.2초 길게 누르면 `DebugProSheet`(Force Pro · 패스 부여/종료)가 열린다.
+리워드 광고는 Debug에서 구글 테스트 단위라 시뮬레이터에서도 끝까지 보면 실제로 패스가 열린다.
 
 ## 빌드 / 실행
 
@@ -107,10 +106,9 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - 코드 삭제·수정 전에 **반드시 사용자에게 확인**받는다.
 - git 저장소다(main). 커밋은 사용자가 요청할 때만 한다.
 - 문자열 추가 시 L10n.swift의 9개 언어 모두. %d·%@ 자리표시자는 원문과 개수·순서가 같아야 한다.
-- 오너 패널(OwnerSheet) 진입은 `#if DEBUG`. 릴리스에 숨은 기능이 있으면 심사 2.3.1 거절 사유다.
+- `DebugProSheet`는 파일 전체가 `#if DEBUG`. 릴리스에 숨은 기능이 있으면 심사 2.3.1 거절 사유다.
 - 긴 렌더는 `beginBackgroundTask`로 보호된다. `.failed`는 진행 중이 아니라 메시지이므로 busy 판정은 `isBusy`를 쓴다.
 - 재렌더는 원본을 먼저 확보한 뒤 기존 클립을 지운다. 순서를 되돌리면 원본이 사라진 세션의 클립이 전부 날아간다.
-- 렌더는 `awaitEntitlement`로 소유권 판정을 기다린 뒤 tier를 확정한다. 먼저 시작하면 결제한 사용자 클립에 워터마크가 박힌다.
 - 감지 결과가 0개인 것은 "완료"가 아니다. `apply`는 빈 배열도 재감지 대상으로 본다. 빼면 재감지 버튼이 죽는다.
 - 릴스 파일명은 UUID다. 설정 조합으로 이름을 만들면 같은 설정의 다음 릴스가 이전 것을 덮어쓴다.
 - 릴스 사이드카는 자기 랠리의 출처(`ReelInfo.sources`)를 적어 둔다. 그래야 완성된 릴스를 자막만 바꿔 다시 만들 수 있다.
@@ -127,12 +125,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   그래서 워터마크 검증은 고정 사각형이 아니라 OCR로 읽는다. 자막 높이에 따라 위치가 달라져 고정 사각형은 빈 곳을 재게 된다.
 - PlayerTracker 2단계 재획득도 1단계와 같은 크기 검사를 거친다. 빼면 카메라 앞 다른 사람에게 붙잡혀 랠리 끝까지 못 돌아온다.
 - 내보내기 구간은 실제 에셋 길이로 자른다. 영상 밖에서 시작하면 AVAssetExportSession이 실패가 아니라 무한 대기한다.
-- 타구 수는 감지가 틀릴 수 있는 유일한 숫자다. 옆 코트 소리가 섞이면 세기가 두 무리로 갈리는데
-  (실측: 68~97 / 189~289, 1.95배 간격), 그때 `RallySegment.hitsUncertain`이 서고 **카운터를 굽지 않는다**.
-  틀린 숫자를 영상에 박으면 되돌릴 수 없다. 대신 세션에 배너를 띄우고, 클립에서 `setHitCount`로 고치게 한다.
-  보정값(`hitsOverride`)은 표시·통계·번인 모두를 덮고, 조용한 타구부터 버린다(`counterTimes`).
-  종목별 `minExchangeS`보다 가까운 두 타구는 같은 랠리일 수 없으므로 센 쪽만 남긴다.
-- 무료 횟수 환불은 세션당 1회(`importRefunded`). `process`는 재감지에서도 실행되므로 조건 없이 돌려주면 무료가 무제한이 된다.
+- 타구 수는 표시·정렬·통계·{shots} 자막용이다. 옆 코트 소리가 섞이면 틀릴 수 있어서 영상에 숫자를 굽는 기능(카운터)은 없앴다.
 - 지원 언어는 `ios/Ribatto-Info.plist`의 `CFBundleLocalizations`에 선언한다. 빌드 설정
   `INFOPLIST_KEY_CFBundleLocalizations`로는 안 된다 — 생성기가 아는 키만 반영해서 조용히 사라진다.
   실제로 두 configuration 모두 선언돼 있었는데 빌드된 Info.plist에는 없었다. 선언이 빠지면 App Store
@@ -144,9 +137,9 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   하이라이트·병합 재생도 세션의 `renderedOrientation`을 받아 같은 판정을 한다. 무조건 허용하면 세로 하이라이트가 옆으로 눕는다.
   `.allowsLandscape()`는 시트 최상위에 붙인다. 세로/가로 레이아웃 분기 안쪽에 붙이면 전환 순간 사라지는 쪽의 onDisappear가 권한을 도로 거둔다.
   시트가 떠 있을 때는 최상위 presented VC에 setNeedsUpdateOfSupportedInterfaceOrientations를 보내야 한다. 루트만 갱신하면 반영되지 않는다.
-- 페이월 가격 블록은 접근성 크기에서 하단 고정을 풀고 스크롤에 넣는다. 고정하면 바가 화면을 통째로 먹어 기능 목록에 닿지 못한다.
+- Pro 시트(ProPassView)의 광고 버튼 블록은 접근성 크기에서 하단 고정을 풀고 스크롤에 넣는다. 고정하면 바가 화면을 통째로 먹어 기능 목록에 닿지 못한다.
 - 접근성 큰 글씨에서는 설정 행이 세로로 쌓인다(`settingRows`). 가로 배치를 강제하면 AX5에서 종목명이 한 글자로 잘린다.
-  같은 규칙이 시즌 기록·상대·코트 행에도 적용된다(`statRow`). 좌우 배치를 고집하면 아이콘이 글자를 덮거나 이름이 두 글자로 잘린다.
+  같은 규칙이 시즌 기록·코트 행에도 적용된다(`statRow`). 좌우 배치를 고집하면 아이콘이 글자를 덮거나 이름이 두 글자로 잘린다.
 - 장식 요소(정렬 칩, 썸네일 배지, 차트 축 라벨)는 `dynamicTypeSize(...)`로 상한을 둔다. 두면 한 글자씩 줄바꿈되어 화면을 삼킨다.
   클립 카드의 시각·타구수도 같다. 격자가 폭을 고정하므로 상한이 없으면 "00:02–0…"으로 잘린다.
   행 앞의 SF Symbol도 마찬가지다. 글리프는 Dynamic Type을 따라 커지는데 `frame(width:)` 칸은 안 커져서,
@@ -176,4 +169,4 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   "외부 SDK 없음·광고 없음"도 더는 사실이 아니다. AdMob이 광고 식별자·IP를 보낸다. PrivacyView의 p_ads_d와 docs/privacy.html이 이를 적는다.
 - 전면광고는 렌더가 **끝난 직후**만이다(SessionDetailView·ReelSheet의 onChange). 플레이어·편집 시트·가져오기 도중에는 넣지 않는다.
   `.failed`는 결과가 아니라 메시지이므로 광고를 얹지 않는다.
-- 광고는 `waitForEntitlement` 뒤에 시작한다. 먼저 켜면 복원 중인 유료 사용자에게 배너가 먼저 보인다.
+- 리워드 광고를 못 불러오는 빌드(Release에 광고 ID 없음)에서는 ProPassView가 버튼 대신 "지금은 광고를 불러올 수 없음"을 보여준다.

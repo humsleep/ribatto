@@ -135,52 +135,14 @@ struct RallySegment: Codable, Equatable {
     /// not to quietly throw their edit away.
     var trimmed: Bool? = nil
     /// When each strike landed, in source seconds. nil on rallies detected
-    /// before this was kept. Drives the burned-in shot counter and survives a
-    /// trim, which only moves `start`/`end`.
+    /// before this was kept. Survives a trim, which only moves `start`/`end`.
     var hitTimes: [Double]? = nil
     /// Crowd reaction right after the point: peak voice-band energy over the
     /// rally's own median, so 1 is silence and 2 is a clear shout. nil before
     /// it was kept.
     var cheer: Double? = nil
-    /// Peak band level of each strike, parallel to `hitTimes`. Kept so a count
-    /// the user corrects drops the quietest strikes rather than the last ones.
-    var hitStrengths: [Double]? = nil
-    /// Set when the strikes fall into two clearly separated loudness groups.
-    /// That is what a second court audible in the recording looks like: our own
-    /// strikes in one group, theirs — quieter, from further away — in the
-    /// other. The count is not trustworthy while it holds.
-    var hitsUncertain: Bool? = nil
-    /// The count the user typed after checking the clip. It wins over anything
-    /// detection has to say, and settles the uncertainty above.
-    var hitsOverride: Int? = nil
 
     var duration: Double { end - start }
-
-    /// What the app should show and burn in: what the user said, else what was
-    /// detected.
-    var effectiveHits: Int { hitsOverride ?? hits }
-
-    /// True while the detector's count is in doubt and nobody has corrected it.
-    var countIsUncertain: Bool { (hitsUncertain ?? false) && hitsOverride == nil }
-
-    /// Strike times to drive the burned-in counter with, or nil to leave the
-    /// counter off. Two sources mixed together means a wrong number, and a
-    /// wrong number burned into a video is worse than no number.
-    var counterTimes: [Double]? {
-        guard let all = hitTimes, !all.isEmpty else { return nil }
-        guard let want = hitsOverride else { return countIsUncertain ? nil : all }
-        if want >= all.count { return all }
-        guard want > 0 else { return [] }
-        // Drop the quietest strikes first — those are the ones that came from
-        // somewhere else. Without levels, thin the list evenly so the counter
-        // still climbs across the whole rally.
-        if let str = hitStrengths, str.count == all.count {
-            let keep = Set(zip(all, str).sorted { $0.1 > $1.1 }.prefix(want).map(\.0))
-            return all.filter { keep.contains($0) }
-        }
-        let step = Double(all.count) / Double(want)
-        return (0..<want).map { all[min(all.count - 1, Int(Double($0) * step))] }
-    }
 
     /// Loud enough to badge. The detector's own scoring already normalises
     /// within a session; this absolute floor is for "the crowd actually
@@ -194,31 +156,15 @@ struct RallySegment: Codable, Equatable {
     /// when there is too little rally to say anything honest.
     var tempo: Double? {
         let played = duration - RallyDetector.padStartS - RallyDetector.padEndS
-        guard played >= 2, effectiveHits >= 2 else { return nil }
-        return Double(effectiveHits) / played * 60
+        guard played >= 2, hits >= 2 else { return nil }
+        return Double(hits) / played * 60
     }
 
-    /// Who won the point, when the user has said. Scoring stays blank until
-    /// then rather than guessing: a wrong score is worse than no score.
-    var winner: PointWinner? {
-        get { PointWinner(rawValue: winnerRaw ?? "") }
-        set { winnerRaw = newValue?.rawValue }
-    }
-    /// Stored as a string so a future value can't fail to decode.
-    var winnerRaw: String? = nil
     /// Starred by the user, for the one clip out of forty worth finding again.
     var favourite: Bool? = nil
     var isFavourite: Bool { favourite ?? false }
 }
 
-/// Which side took the point. "Me" is whoever is holding the phone's session —
-/// doubles teams count as one side, which is what a shared reel needs.
-enum PointWinner: String, Codable, CaseIterable, Identifiable {
-    case me, them
-    var id: String { rawValue }
-    var key: String { self == .me ? "winner_me" : "winner_them" }
-    var other: PointWinner { self == .me ? .them : .me }
-}
 
 // MARK: - Target player
 
@@ -295,10 +241,10 @@ enum CaptionFont: String, Codable, CaseIterable, Identifiable {
     case system     // SF Pro Heavy — neutral
     case condensed  // narrow and loud, the broadcast-graphic look
     case rounded    // SF Rounded — friendly, reads well on video
-    case mono       // SF Mono — good for times and scores
+    case mono       // SF Mono — good for times and numbers
     case serif      // New York — editorial
     case anton      // Anton — the poster-weight sans reels are built on
-    case bebas      // Bebas Neue — tall condensed caps, scoreboard energy
+    case bebas      // Bebas Neue — tall condensed caps, broadcast energy
     var id: String { rawValue }
 
     /// PostScript name of the bundled face, or nil for a system one.
@@ -393,17 +339,6 @@ struct Session: Identifiable, Codable, Equatable {
     /// Pro: follow the players when cropping to vertical. nil = on by default.
     var smartCrop: Bool? = nil
     var renderedSmartCrop: Bool? = nil
-    /// Pro: burn a running strike count into every clip. nil = off.
-    var shotCounter: Bool? = nil
-    var renderedShotCounter: Bool? = nil
-    /// Who the match was against, as the user typed it. Free text rather than a
-    /// contact: no account, no permissions, and "Wednesday group" is a real
-    /// answer. Powers per-opponent stats and the {opponent} caption token.
-    var opponent: String? = nil
-    /// Burn a running game score into the clips. Needs at least one tagged
-    /// point to show anything.
-    var scoreboard: Bool? = nil
-    var renderedScoreboard: Bool? = nil
     /// Pro: one specific person to keep centred in the vertical crop. nil means
     /// use SmartCrop's aggregate-motion framing. Only takes effect on a vertical
     /// crop of a wider source, with smart crop on.
@@ -421,10 +356,6 @@ struct Session: Identifiable, Codable, Equatable {
     /// the whole session, exactly as `CaptionSettings` warns.
     var clipTargets: [String: TargetPlayer]?
     var renderedClipTargets: [String: TargetPlayer]?
-    /// The winner tags as they were when the clips were last rendered, so
-    /// re-tagging a point is recognised as a change that needs a re-render.
-    /// Raw strings, empty for an untagged rally.
-    var renderedWinners: [String]? = nil
 
     /// The player to follow in one clip: its own override, else the session's.
     func target(forClip index: Int) -> TargetPlayer? {
@@ -436,17 +367,8 @@ struct Session: Identifiable, Codable, Equatable {
     /// two need different empty states — one is advice about detection, the
     /// other is not.
     var detectionFoundNothing: Bool? = nil
-    /// True once a failed detection has handed its free import back, so a
-    /// re-detect on the same session cannot claim another one.
-    var importRefunded: Bool? = nil
 
     var smartCropEnabled: Bool { smartCrop ?? true }
-    var shotCounterEnabled: Bool { shotCounter ?? false }
-    var scoreboardEnabled: Bool { scoreboard ?? false }
-    /// Points the user has actually judged. The scoreboard needs one before it
-    /// can say anything.
-    var taggedPoints: Int { (segments ?? []).filter { $0.winner != nil }.count }
-    var winnerTags: [String] { (segments ?? []).map { $0.winnerRaw ?? "" } }
 
     /// 1-based place of a clip when the session's rallies are ranked by score;
     /// nil when the rally was detected before scoring existed.
@@ -490,9 +412,6 @@ struct Session: Identifiable, Codable, Equatable {
             // left every free session permanently claiming unapplied changes
             // and re-encoding on every press.
             || (proRendered && (renderedSmartCrop ?? false) != effectiveSmartCrop)
-            || (proRendered && (renderedShotCounter ?? false) != shotCounterEnabled)
-            || (proRendered && (renderedScoreboard ?? false) != scoreboardEnabled)
-            || (proRendered && scoreboardEnabled && renderedWinners != winnerTags)
             || (proRendered && effectiveSmartCrop && renderedTargetPlayer != targetPlayer)
             || (proRendered && effectiveSmartCrop
                 && (renderedClipTargets ?? [:]) != (clipTargets ?? [:]))
@@ -517,9 +436,7 @@ struct Session: Identifiable, Codable, Equatable {
              renderedPro, detectedSport, detectedSensitivity,
              assetIdentifier, latitude, longitude, placeName,
              caption, renderedCaption,
-             smartCrop, renderedSmartCrop, detectionFoundNothing, importRefunded,
-             shotCounter, renderedShotCounter,
-             opponent, scoreboard, renderedScoreboard, renderedWinners,
+             smartCrop, renderedSmartCrop, detectionFoundNothing,
              targetPlayer, renderedTargetPlayer,
              clipTargets, renderedClipTargets, hasHighlight
     }

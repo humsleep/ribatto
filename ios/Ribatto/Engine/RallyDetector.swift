@@ -135,36 +135,8 @@ enum RallyDetector {
                                 hits: g.count,
                                 score: min(max(score, 0), 1),
                                 hitTimes: g.map { $0.t },
-                                cheer: cheers[i],
-                                hitStrengths: g.map { Double($0.pk) },
-                                hitsUncertain: mixedSources(g.map { $0.pk }))
+                                cheer: cheers[i])
         }
-    }
-
-    /// Whether a rally's strikes fall into two clearly separated loudness
-    /// groups, which is what another court audible in the recording does to
-    /// them: ours land in the loud group, theirs in the quiet one.
-    ///
-    /// Measured on a courtside tennis recording — the levels ran
-    /// 68 73 74 74 78 91 96 97 │ 189 212 253 275 289, a 1.95× step with
-    /// nothing inside it, and the burned-in counter read 13 for a rally of
-    /// about five. One source spreads smoothly; two leave a gap.
-    ///
-    /// This only raises a flag. It does not drop the quiet group, because a
-    /// doubles partner at the far baseline is quiet too — telling those apart
-    /// needs more than level, and guessing wrong deletes real strikes.
-    static let mixedRatio: Float = 1.8
-    static func mixedSources(_ peaks: [Float]) -> Bool {
-        guard peaks.count >= 4 else { return false }
-        let s = peaks.sorted()
-        var bestRatio: Float = 1
-        var bestIdx = 0
-        for i in 1..<s.count where s[i - 1] > 0 {
-            let r = s[i] / s[i - 1]
-            if r > bestRatio { bestRatio = r; bestIdx = i }
-        }
-        // Both sides need enough strikes to be a group rather than one odd hit.
-        return bestRatio >= mixedRatio && bestIdx >= 2 && s.count - bestIdx >= 2
     }
 
     // MARK: - Scoring

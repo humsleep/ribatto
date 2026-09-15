@@ -16,7 +16,6 @@ struct PrivacyView: View {
         ("iphone.gen3", "p_video_t", "p_video_d"),
         ("person.crop.circle.badge.xmark", "p_account_t", "p_account_d"),
         ("mappin.and.ellipse", "p_place_t", "p_place_d"),
-        ("creditcard", "p_purchase_t", "p_purchase_d"),
         ("rectangle.badge.plus", "p_ads_t", "p_ads_d"),
         ("eye.slash", "p_analytics_t", "p_analytics_d"),
     ]

@@ -130,21 +130,13 @@ enum L {
             "empty_clips": "Press Detect Rallies and clips will appear here.",
             "all_clips_empty": "Clips from your matches show up here.",
             "paywall_title": "Unlock Ribatto Pro",
-            "paywall_sub": "You've used your free imports. Unlock once, keep it forever.",
-            "paywall_note": "One-time purchase. No subscription and no account. Your video is analysed on this iPhone and never uploaded.",
-            "feat_unlimited": "Unlimited imports",
-            "feat_unlimited_d": "Turn every match into clips, as many as you play.",
-            "feat_sports": "Every racket sport",
-            "feat_sports_d": "Tennis, badminton, pickleball and padel presets.",
-            "feat_highlight": "Highlight reels",
-            "feat_highlight_d": "Merge rallies into one reel, wide or vertical for Shorts.",
-            "feat_offline": "Runs on your iPhone",
-            "feat_offline_d": "Your video never leaves the phone. Works offline, even courtside.",
-            "once": "once",
-            "no_subscription": "No subscription — pay once, own it",
-            "unlock": "Unlock Pro",
-            "restore": "Restore",
-            "free_left_fmt": "%d free",
+            
+            
+            
+            
+            
+            
+            
             "reels": "Reels",
             "reels_empty": "Reels you build are kept here, ready to post again.",
             "reels_count_fmt": "%d reels",
@@ -221,32 +213,22 @@ enum L {
             "target_switch_msg": "Player tracking works on vertical clips. The aspect will switch to 9:16, then you pick a player.",
             "target_switch_ok": "Switch and pick",
             "feat_nowm": "No watermark", "feat_nowm_d": "Clean clips, ready to post.",
-            "paywall_free_fmt": "Free: %d imports · 720p · watermark",
-            "price_loading": "Loading price\u{2026}",
+            
             "clips_title": "Clips",
             "clip_one": "clip",
-            "retry": "Retry",
-            "feat_counter_d": "A live shot count ticks up on the clip as the rally plays.",
-            "sc_sets": "sets", "sc_deuce": "Deuce", "sc_ad_in": "Ad in", "sc_ad_out": "Ad out",
-            "sc_games": "games",
-            "winner_me": "Me", "winner_them": "Them", "who_won": "Who won the point?",
-            "scoreboard": "Score", "scoreboard_d": "Tag who won each rally; the running score is burned into the clips.",
-            "tag_points": "Tag points", "tagged_fmt": "%d of %d tagged", "untagged": "Not tagged",
-            "opponent": "Opponent", "opponent_ph": "Name or group",
-            "tok_score": "Score", "tok_opponent": "Opponent",
+            
+            
+            
+            
             "tempo": "Tempo", "tempo_fmt": "%d/min", "tok_tempo": "Tempo",
             "favourite": "Favourite", "sort_fav": "Favourites first", "f_fav": "Favourites only",
             "add_rally": "Add a rally", "split_rally": "Split here",
             "add_rally_d": "Drag to where the missed rally was, then add it.",
             "rally_added": "Rally added", "split_hint": "Splits this clip in two at the playhead.",
             "split_failed": "That clip is too short to split. Make it longer first.",
-            "score_needs_tags": "Tag at least one rally to show a score.",
-            "record_fmt": "%d–%d points",
-            "paywall_sub_open": "Unlock once, keep every Pro feature forever.",
-            "no_sub_pitch": "No subscription · No account · Video stays on your phone",
-            "store_unavailable": "The App Store is unreachable. Check your connection and try again.",
-            "restore_none": "No purchase found on this Apple ID. Make sure you are signed in with the Apple ID you bought Pro with.",
-            "restore_hint": "Already bought Pro? Restore",
+            
+            
+            
             "no_rallies": "No rallies found in this video.",
             "no_rallies_hint": "Try Loose sensitivity and detect again, check the sport is right, or add a rally by hand. Detection listens for racket impacts, so a very quiet or very noisy recording can come back empty.",
             "privacy": "Privacy",
@@ -257,28 +239,25 @@ enum L {
             "p_account_d": "There is nothing to sign up for and no profile. Your clips live in this app and in Photos when you save them.",
             "p_place_t": "Court names",
             "p_place_d": "If a video carries GPS metadata, the coordinate is sent to Apple's geocoder once to turn it into a court name. That is the only thing that leaves the phone, it is not stored by this app's developer, and you can edit or clear the name yourself.",
-            "p_purchase_t": "Purchases",
-            "p_purchase_d": "Pro is handled by the App Store. This app never sees your payment details, and it stores only whether the purchase is active.",
+            
             "p_analytics_t": "No analytics",
             "p_analytics_d": "No analytics and no crash reporting. Apart from the ad SDK described above, nothing leaves the phone.",
             "p_ads_t": "Ads",
             "p_ads_d": "The free version shows ads from Google AdMob: a banner and, after a render, a full-screen ad. The ad SDK receives your device's advertising identifier and IP address to serve and measure ads — never your video, your clips or your match data. iOS asks before the identifier is shared; declining shows less relevant ads instead. Pro removes all ads. A rewarded video is also offered on the Pro screen: watching it to the end opens Pro for an hour.",
             "pass_watch_fmt": "Watch an ad · Pro for %d min",
-            "pass_watch_d": "The ad has to play to the end. Then every Pro feature opens right away — full quality, no watermark, smart crop, tracking, counters, no ads — and the clips and reels you make in that time stay yours after it ends. Watch again any time.",
+            "pass_watch_d": "Clips and reels you make during the pass keep Pro quality after it ends.",
             "pass_active_fmt": "Pro trial · %d min left",
-            "pass_pill": "Pro trial",
             "pass_loading": "Loading ad…",
+            "pass_sub_fmt": "Watch one ad to the end and every Pro feature opens for %d minutes.",
+            "pass_unavailable": "Ads aren't available right now. Try again in a moment.",
+            "pass_pill_fmt": "PRO · %dm", "pass_get": "Unlock Pro",
             "feat_noads": "No ads",
             "feat_noads_d": "Pro removes the banner and the ads between renders.",
             "paywall_free_ads": "Free: ads · 720p · watermark",
-            "tier_free": "Free",
-            "shot_counter": "Shot counter",
-            "shot_counter_d": "A live count that ticks up on every strike, burned into the clip.",
-            "counter_label": "SHOTS",
-            "count_uncertain": "Another court may be mixed in — check the clip and correct this.",
-            "mixed_courts_t": "Shot counts may be off",
-            "mixed_courts_d": "Strikes from another court seem to be mixed into some rallies. The shot counter was left off those clips. Correct a count on the clip, or detect again with Strict.",
-            "redetect_strict": "Detect again, strict",
+            
+            
+            
+            
             "sort_cheer": "Loudest crowd", "cheer_badge": "Crowd",
             "auto_text": "Auto text", "auto_example": "Try an example",
             "auto_text_d": "Filled in per clip from what was detected — shot count, rank, court.",
@@ -293,7 +272,6 @@ enum L {
             "crop_zoomed": "Framed close on the player you picked",
             "record": "Record", "camera_unavailable": "No camera on this device.",
             "import_failed": "Couldn't read that video. Nothing was imported.",
-            "owner_wrong": "Incorrect passphrase",
             "drag_hint": "Drag the caption to place it",
             "font": "Font", "font_system": "Sans", "font_condensed": "Impact", "font_rounded": "Round",
             "font_mono": "Mono", "font_serif": "Serif",
@@ -325,9 +303,7 @@ enum L {
             "quality_720": "720p", "quality_source": "Up to 4K",
             "quality_1080": "1080p", "apply_changes": "Apply changes",
             "place": "Place", "add_place": "Add a place", "place_placeholder": "Court or club name",
-            "paywall_sub_feature": "Unlock once and keep every Pro feature.",
             "courts": "Where you played", "visits_fmt": "%d visits", "rallies_n": "%d rallies",
-            "matches_one": "%d match", "matches_n": "%d matches",
             "activity": "Last 6 months",
             "next": "Next",
             "get_started": "Get Started",
@@ -374,14 +350,10 @@ enum L {
             "f_hits": "Shots",
             "hits_fmt": "%d+ shots",
             // Owner mode
-            "owner_title": "Owner mode",
-            "owner_sub": "This device only. Switch tiers freely while testing.",
-            "owner_pass": "Passphrase",
-            "owner_enter": "Enter",
-            "owner_pro": "Pro unlocked",
-            "owner_reset": "Reset free imports",
-            "owner_exit": "Leave owner mode",
-            "owner_on": "OWNER",
+            
+            
+            
+            
         ],
         "ko": [
             "library": "라이브러리", "all_clips": "모든 클립",
@@ -422,21 +394,13 @@ enum L {
             "empty_clips": "랠리 감지를 누르면 클립이 여기 정리됩니다.",
             "all_clips_empty": "경기에서 만든 클립이 여기에 모입니다.",
             "paywall_title": "Ribatto Pro 잠금 해제",
-            "paywall_sub": "무료 사용을 모두 쓰셨습니다. 한 번만 결제하면 계속 쓸 수 있어요.",
-            "paywall_note": "1회 결제입니다. 구독도 계정도 없고, 영상은 이 아이폰에서 분석되며 업로드되지 않습니다.",
-            "feat_unlimited": "영상 무제한",
-            "feat_unlimited_d": "경기 때마다 몇 개든 클립으로 만드세요.",
-            "feat_sports": "모든 라켓 스포츠",
-            "feat_sports_d": "테니스·배드민턴·피클볼·파델 전용 설정.",
-            "feat_highlight": "하이라이트 합본",
-            "feat_highlight_d": "랠리를 한 영상으로, 쇼츠용 세로도 지원.",
-            "feat_offline": "아이폰에서 바로 처리",
-            "feat_offline_d": "영상이 기기 밖으로 나가지 않습니다. 코트에서 오프라인으로도 동작합니다.",
-            "once": "한 번",
-            "no_subscription": "구독 아님 — 한 번 사면 끝",
-            "unlock": "Pro 잠금 해제",
-            "restore": "구매 복원",
-            "free_left_fmt": "무료 %d회",
+            
+            
+            
+            
+            
+            
+            
             "reels": "릴스",
             "reels_empty": "만든 릴스가 여기 모입니다. 언제든 다시 올릴 수 있어요.",
             "reels_count_fmt": "릴스 %d개",
@@ -513,32 +477,22 @@ enum L {
             "target_switch_msg": "선수 추적은 세로 클립에서 동작합니다. 방향을 9:16으로 전환한 뒤 선수를 고를 수 있어요.",
             "target_switch_ok": "전환하고 선택",
             "feat_nowm": "워터마크 없음", "feat_nowm_d": "깨끗한 클립 그대로 올리세요.",
-            "paywall_free_fmt": "무료: 영상 %d개 · 720p · 워터마크",
-            "price_loading": "가격 불러오는 중…",
+            
             "clips_title": "클립",
             "clip_one": "클립",
-            "retry": "다시 시도",
-            "feat_counter_d": "랠리가 진행되는 동안 타구 수가 클립 위에서 올라갑니다.",
-            "sc_sets": "세트", "sc_deuce": "듀스", "sc_ad_in": "애드 인", "sc_ad_out": "애드 아웃",
-            "sc_games": "게임",
-            "winner_me": "나", "winner_them": "상대", "who_won": "이 포인트는 누가 땄나요?",
-            "scoreboard": "점수판", "scoreboard_d": "랠리마다 승자를 지정하면 진행 점수가 클립에 새겨집니다.",
-            "tag_points": "포인트 지정", "tagged_fmt": "%d / %d 지정됨", "untagged": "미지정",
-            "opponent": "상대", "opponent_ph": "이름 또는 모임 이름",
-            "tok_score": "점수", "tok_opponent": "상대",
+            
+            
+            
+            
             "tempo": "템포", "tempo_fmt": "분당 %d타", "tok_tempo": "템포",
             "favourite": "즐겨찾기", "sort_fav": "즐겨찾기 먼저", "f_fav": "즐겨찾기만",
             "add_rally": "랠리 추가", "split_rally": "여기서 분할",
             "add_rally_d": "놓친 랠리 위치로 이동한 뒤 추가하세요.",
             "rally_added": "랠리를 추가했습니다", "split_hint": "재생 위치에서 이 클립을 둘로 나눕니다.",
             "split_failed": "이 클립은 나누기에 너무 짧습니다. 길이를 늘린 뒤 시도해 주세요.",
-            "score_needs_tags": "랠리를 하나 이상 지정해야 점수가 표시됩니다.",
-            "record_fmt": "%d–%d 포인트",
-            "paywall_sub_open": "한 번만 결제하면 모든 Pro 기능을 평생 씁니다.",
-            "no_sub_pitch": "구독 없음 · 계정 없음 · 영상은 기기에만",
-            "store_unavailable": "App Store에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도해 주세요.",
-            "restore_none": "이 Apple ID에서 구매 내역을 찾지 못했습니다. Pro를 구매한 Apple ID로 로그인되어 있는지 확인해 주세요.",
-            "restore_hint": "이미 Pro를 구매하셨나요? 복원하기",
+            
+            
+            
             "no_rallies": "이 영상에서 랠리를 찾지 못했습니다.",
             "no_rallies_hint": "민감도를 '느슨하게'로 바꿔 다시 감지하거나, 종목이 맞는지 확인하거나, 랠리를 직접 추가해 보세요. 타구음을 듣는 방식이라 소리가 아주 작거나 주변이 시끄러우면 결과가 비어 있을 수 있습니다.",
             "privacy": "개인정보",
@@ -549,28 +503,25 @@ enum L {
             "p_account_d": "가입할 것도 프로필도 없습니다. 클립은 이 앱과, 저장하신 경우 사진 앱에만 있습니다.",
             "p_place_t": "코트 이름",
             "p_place_d": "영상에 GPS 정보가 있으면 좌표를 애플 지오코더에 한 번 보내 코트 이름으로 바꿉니다. 기기를 벗어나는 것은 이것뿐이고, 개발자가 보관하지 않으며, 이름은 직접 수정하거나 지울 수 있습니다.",
-            "p_purchase_t": "결제",
-            "p_purchase_d": "Pro 결제는 App Store가 처리합니다. 이 앱은 결제 정보를 볼 수 없고, 구매가 유효한지 여부만 저장합니다.",
+            
             "p_analytics_t": "분석 도구 없음",
             "p_analytics_d": "분석 도구도 오류 보고도 없습니다. 위에 설명한 광고 SDK 외에는 아무것도 기기 밖으로 나가지 않습니다.",
             "p_ads_t": "광고",
             "p_ads_d": "무료 버전은 Google AdMob 광고를 표시합니다. 하단 배너와 렌더가 끝난 뒤의 전면 광고입니다. 광고 SDK는 광고 표시·측정을 위해 기기의 광고 식별자와 IP 주소를 받습니다. 영상·클립·경기 데이터는 절대 받지 않습니다. 식별자 공유 전에 iOS가 허락을 묻고, 거부하면 덜 맞춤화된 광고가 나옵니다. Pro는 모든 광고를 없앱니다. Pro 화면에서는 리워드 영상도 제공합니다. 끝까지 보면 한 시간 동안 Pro가 열립니다.",
             "pass_watch_fmt": "광고 보기 · %d분 동안 Pro",
-            "pass_watch_d": "광고를 끝까지 봐야 합니다. 그러면 원본 화질, 워터마크 없음, 스마트 크롭, 인물 추적, 카운터, 광고 없음까지 모든 Pro 기능이 바로 열립니다. 그 사이 만든 클립과 릴스는 시간이 끝나도 그대로 남습니다. 언제든 다시 볼 수 있습니다.",
+            "pass_watch_d": "패스 동안 만든 클립과 릴스는 시간이 끝나도 Pro 품질 그대로 남습니다.",
             "pass_active_fmt": "Pro 체험 중 · %d분 남음",
-            "pass_pill": "Pro 체험",
             "pass_loading": "광고 준비 중…",
+            "pass_sub_fmt": "광고 한 편을 끝까지 보면 %d분 동안 모든 Pro 기능이 열립니다.",
+            "pass_unavailable": "지금은 광고를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+            "pass_pill_fmt": "PRO · %d분", "pass_get": "Pro 열기",
             "feat_noads": "광고 없음",
             "feat_noads_d": "Pro는 배너와 렌더 사이의 광고를 없앱니다.",
             "paywall_free_ads": "무료: 광고 · 720p · 워터마크",
-            "tier_free": "무료",
-            "shot_counter": "타구 카운터",
-            "shot_counter_d": "타구가 날 때마다 숫자가 올라가는 카운터를 클립에 새깁니다.",
-            "counter_label": "타구",
-            "count_uncertain": "옆 코트 소리가 섞인 것 같아요 — 클립을 보고 고쳐 주세요.",
-            "mixed_courts_t": "타구 수가 틀렸을 수 있어요",
-            "mixed_courts_d": "일부 랠리에 옆 코트 타구음이 섞인 것 같습니다. 그 클립에는 타구 카운터를 넣지 않았어요. 클립에서 타구 수를 직접 고치거나, 보수 감도로 다시 감지해 보세요.",
-            "redetect_strict": "보수 감도로 다시 감지",
+            
+            
+            
+            
             "sort_cheer": "환호 큰 순", "cheer_badge": "환호",
             "auto_text": "자동 문구", "auto_example": "예시 넣기",
             "auto_text_d": "타구 수·순위·코트 등 감지된 정보로 클립마다 자동으로 채워집니다.",
@@ -585,7 +536,6 @@ enum L {
             "crop_zoomed": "지정한 선수 중심으로 확대해서 잡습니다",
             "record": "촬영", "camera_unavailable": "이 기기에는 카메라가 없습니다.",
             "import_failed": "영상을 읽지 못했습니다. 가져오지 않았어요.",
-            "owner_wrong": "암구호가 올바르지 않습니다",
             "drag_hint": "자막을 끌어서 원하는 위치에 놓으세요",
             "font": "글꼴", "font_system": "고딕", "font_condensed": "임팩트", "font_rounded": "둥근",
             "font_mono": "모노", "font_serif": "명조",
@@ -617,9 +567,7 @@ enum L {
             "quality_720": "720p", "quality_source": "최대 4K",
             "quality_1080": "1080p", "apply_changes": "변경 사항 적용",
             "place": "장소", "add_place": "장소 추가", "place_placeholder": "코트·클럽 이름",
-            "paywall_sub_feature": "한 번만 결제하면 모든 Pro 기능을 계속 쓸 수 있어요.",
             "courts": "다녀온 코트", "visits_fmt": "%d회", "rallies_n": "랠리 %d개",
-            "matches_one": "%d경기", "matches_n": "%d경기",
             "activity": "최근 6개월",
             "next": "다음",
             "get_started": "시작하기",
@@ -666,14 +614,10 @@ enum L {
             "f_hits": "타구",
             "hits_fmt": "%d타 이상",
             // 소유자 모드
-            "owner_title": "소유자 모드",
-            "owner_sub": "이 기기에서만 적용됩니다. 테스트 중 자유롭게 전환하세요.",
-            "owner_pass": "암구호",
-            "owner_enter": "확인",
-            "owner_pro": "Pro 켜기",
-            "owner_reset": "무료 횟수 초기화",
-            "owner_exit": "소유자 모드 끄기",
-            "owner_on": "소유자",
+            
+            
+            
+            
         ],
         "ja": [
             "library": "ライブラリ", "all_clips": "すべてのクリップ",
@@ -714,21 +658,13 @@ enum L {
             "empty_clips": "ラリー検出を押すとクリップがここに並びます。",
             "all_clips_empty": "試合から作ったクリップがここに並びます。",
             "paywall_title": "Ribatto Pro を解除",
-            "paywall_sub": "無料分を使い切りました。一度の購入でずっと使えます。",
-            "paywall_note": "買い切りです。サブスクもアカウントもなく、映像はこの iPhone で解析され、アップロードされません。",
-            "feat_unlimited": "読み込み無制限",
-            "feat_unlimited_d": "試合のたびに、何本でもクリップに。",
-            "feat_sports": "すべてのラケット競技",
-            "feat_sports_d": "テニス・バドミントン・ピックルボール・パデル対応。",
-            "feat_highlight": "ハイライト作成",
-            "feat_highlight_d": "ラリーを1本にまとめ、縦型ショートにも対応。",
-            "feat_offline": "iPhone だけで処理",
-            "feat_offline_d": "映像が端末から出ることはありません。コートでオフラインでも動きます。",
-            "once": "買い切り",
-            "no_subscription": "サブスクなし — 一度だけの購入",
-            "unlock": "Pro を解除",
-            "restore": "購入を復元",
-            "free_left_fmt": "無料 %d回",
+            
+            
+            
+            
+            
+            
+            
             "reels": "リール",
             "reels_empty": "作ったリールはここに残ります。いつでもまた投稿できます。",
             "reels_count_fmt": "リール %d本",
@@ -805,32 +741,22 @@ enum L {
             "target_switch_msg": "選手追跡は縦クリップで動作します。向きを 9:16 に切り替えてから選手を選べます。",
             "target_switch_ok": "切り替えて選ぶ",
             "feat_nowm": "ウォーターマークなし", "feat_nowm_d": "そのまま投稿できるクリーンなクリップ。",
-            "paywall_free_fmt": "無料: %d本 · 720p · ウォーターマーク",
-            "price_loading": "価格を読み込み中…",
+            
             "clips_title": "クリップ",
             "clip_one": "クリップ",
-            "retry": "再試行",
-            "feat_counter_d": "ラリー中、打球数がクリップ上で増えていきます。",
-            "sc_sets": "セット", "sc_deuce": "デュース", "sc_ad_in": "アドバンテージ", "sc_ad_out": "アドバンテージ相手",
-            "sc_games": "ゲーム",
-            "winner_me": "自分", "winner_them": "相手", "who_won": "このポイントは誰が取りましたか？",
-            "scoreboard": "スコア", "scoreboard_d": "ラリーごとに勝者を指定すると、進行スコアがクリップに焼き込まれます。",
-            "tag_points": "ポイント指定", "tagged_fmt": "%d / %d 指定済み", "untagged": "未指定",
-            "opponent": "対戦相手", "opponent_ph": "名前またはグループ名",
-            "tok_score": "スコア", "tok_opponent": "対戦相手",
+            
+            
+            
+            
             "tempo": "テンポ", "tempo_fmt": "毎分 %d 打", "tok_tempo": "テンポ",
             "favourite": "お気に入り", "sort_fav": "お気に入り優先", "f_fav": "お気に入りのみ",
             "add_rally": "ラリーを追加", "split_rally": "ここで分割",
             "add_rally_d": "見逃したラリーの位置に移動してから追加してください。",
             "rally_added": "ラリーを追加しました", "split_hint": "再生位置でこのクリップを2つに分けます。",
             "split_failed": "このクリップは分割するには短すぎます。長さを伸ばしてからお試しください。",
-            "score_needs_tags": "スコアを表示するにはラリーを1つ以上指定してください。",
-            "record_fmt": "%d–%d ポイント",
-            "paywall_sub_open": "一度の購入で Pro 機能をずっと使えます。",
-            "no_sub_pitch": "サブスクなし · アカウントなし · 映像は端末内のみ",
-            "store_unavailable": "App Store に接続できません。通信を確認して再試行してください。",
-            "restore_none": "この Apple ID では購入履歴が見つかりませんでした。Pro を購入した Apple ID でサインインしているか確認してください。",
-            "restore_hint": "すでに Pro をご購入ですか？ 復元する",
+            
+            
+            
             "no_rallies": "この映像からラリーを検出できませんでした。",
             "no_rallies_hint": "感度を「ゆるめ」にして再検出する、種目が合っているか確認する、またはラリーを手動で追加してみてください。打球音を聞き取る方式のため、音が小さすぎたり騒がしいと結果が空になることがあります。",
             "privacy": "プライバシー",
@@ -841,28 +767,25 @@ enum L {
             "p_account_d": "登録もプロフィールもありません。クリップはこのアプリ内と、保存した場合は写真アプリにのみ残ります。",
             "p_place_t": "コート名",
             "p_place_d": "映像に GPS 情報があるときだけ、座標を Apple のジオコーダーに一度送ってコート名に変換します。端末から出るのはこれだけで、開発者が保存することはなく、名前はご自身で編集・削除できます。",
-            "p_purchase_t": "購入",
-            "p_purchase_d": "Pro の購入は App Store が処理します。このアプリが支払い情報を見ることはなく、購入が有効かどうかだけを保存します。",
+            
             "p_analytics_t": "解析なし",
             "p_analytics_d": "解析ツールもクラッシュ報告もありません。上記の広告 SDK 以外に端末の外へ出るものはありません。",
             "p_ads_t": "広告",
             "p_ads_d": "無料版では Google AdMob の広告を表示します。下部のバナーと、書き出し後の全画面広告です。広告 SDK は配信と計測のために端末の広告識別子と IP アドレスを受け取ります。動画・クリップ・試合データは一切送られません。識別子の共有前に iOS が許可を求め、拒否すると関連性の低い広告になります。Pro ではすべての広告が消えます。 Pro 画面ではリワード動画も用意しています。最後まで見ると1時間 Pro が使えます。",
             "pass_watch_fmt": "広告を見る · %d分間 Pro",
-            "pass_watch_d": "広告は最後まで再生する必要があります。その後は元画質、ウォーターマークなし、スマートクロップ、追跡、カウンター、広告なしまで、すべての Pro 機能がすぐに使えます。その間に作ったクリップとリールは時間が過ぎても残ります。何度でも見られます。",
+            "pass_watch_d": "パス中に作ったクリップとリールは、終了後も Pro 画質のまま残ります。",
             "pass_active_fmt": "Pro お試し中 · 残り %d分",
-            "pass_pill": "Pro お試し",
             "pass_loading": "広告を読み込み中…",
+            "pass_sub_fmt": "広告を1本最後まで見ると、%d分間すべての Pro 機能が使えます。",
+            "pass_unavailable": "現在広告を読み込めません。しばらくしてからもう一度お試しください。",
+            "pass_pill_fmt": "PRO · %d分", "pass_get": "Pro を解放",
             "feat_noads": "広告なし",
             "feat_noads_d": "Pro はバナーと書き出し後の広告をなくします。",
             "paywall_free_ads": "無料: 広告 · 720p · ウォーターマーク",
-            "tier_free": "無料",
-            "shot_counter": "打球カウンター",
-            "shot_counter_d": "打球のたびに増えるカウンターをクリップに焼き込みます。",
-            "counter_label": "打球",
-            "count_uncertain": "隣のコートの音が混ざっているようです — クリップを見て直してください。",
-            "mixed_courts_t": "打球数が正しくない可能性があります",
-            "mixed_courts_d": "一部のラリーに隣のコートの打球音が混ざっているようです。そのクリップにはカウンターを入れていません。クリップで打球数を直すか、厳しめで再検出してください。",
-            "redetect_strict": "厳しめで再検出",
+            
+            
+            
+            
             "sort_cheer": "歓声が大きい順", "cheer_badge": "歓声",
             "auto_text": "自動テキスト", "auto_example": "例を入れる",
             "auto_text_d": "打球数・順位・コートなど検出した情報からクリップごとに自動で入ります。",
@@ -877,7 +800,6 @@ enum L {
             "crop_zoomed": "指定した選手を中心に拡大して収めます",
             "record": "撮影", "camera_unavailable": "この端末にカメラがありません。",
             "import_failed": "動画を読み込めませんでした。取り込みは行われていません。",
-            "owner_wrong": "パスフレーズが正しくありません",
             "drag_hint": "字幕をドラッグして配置します",
             "font": "書体", "font_system": "ゴシック", "font_condensed": "インパクト", "font_rounded": "丸ゴシック",
             "font_mono": "モノ", "font_serif": "明朝",
@@ -909,9 +831,7 @@ enum L {
             "quality_720": "720p", "quality_source": "最大4K",
             "quality_1080": "1080p", "apply_changes": "変更を適用",
             "place": "場所", "add_place": "場所を追加", "place_placeholder": "コート・クラブ名",
-            "paywall_sub_feature": "一度の購入で Pro 機能をすべて使えます。",
             "courts": "行ったコート", "visits_fmt": "%d回", "rallies_n": "ラリー %d本",
-            "matches_one": "%d試合", "matches_n": "%d試合",
             "activity": "直近6か月",
             "next": "次へ",
             "get_started": "はじめる",
@@ -958,14 +878,10 @@ enum L {
             "f_hits": "打球",
             "hits_fmt": "%d打以上",
             // オーナーモード
-            "owner_title": "オーナーモード",
-            "owner_sub": "この端末のみ。テスト中は自由に切り替えられます。",
-            "owner_pass": "パスフレーズ",
-            "owner_enter": "確認",
-            "owner_pro": "Proを有効化",
-            "owner_reset": "無料回数をリセット",
-            "owner_exit": "オーナーモードを終了",
-            "owner_on": "オーナー",
+            
+            
+            
+            
         ],
         "es": [
             "library": "Biblioteca",
@@ -1040,21 +956,13 @@ enum L {
             "empty_clips": "Pulsa Detectar puntos y los clips aparecerán aquí.",
             "all_clips_empty": "Aquí aparecen los clips de tus partidos.",
             "paywall_title": "Desbloquea Ribatto Pro",
-            "paywall_sub": "Has usado tus importaciones gratuitas. Paga una vez y es tuyo para siempre.",
-            "paywall_note": "Pago único. Sin suscripción ni cuenta. Tu vídeo se analiza en este iPhone y nunca se sube.",
-            "feat_unlimited": "Importaciones ilimitadas",
-            "feat_unlimited_d": "Convierte cada partido en clips, todos los que juegues.",
-            "feat_sports": "Todos los deportes de raqueta",
-            "feat_sports_d": "Ajustes para tenis, bádminton, pickleball y pádel.",
-            "feat_highlight": "Resúmenes",
-            "feat_highlight_d": "Une puntos en un vídeo, horizontal o vertical para Shorts.",
-            "feat_offline": "Funciona en tu iPhone",
-            "feat_offline_d": "Tu vídeo nunca sale del teléfono. Funciona sin conexión, incluso en la pista.",
-            "once": "pago único",
-            "no_subscription": "Sin suscripción: paga una vez y es tuyo",
-            "unlock": "Desbloquear Pro",
-            "restore": "Restaurar",
-            "free_left_fmt": "%d gratis",
+            
+            
+            
+            
+            
+            
+            
             "reels": "Reels",
             "reels_empty": "Los reels que crees se guardan aquí, listos para volver a publicarlos.",
             "reels_count_fmt": "%d reels",
@@ -1150,29 +1058,18 @@ enum L {
             "target_switch_ok": "Cambiar y elegir",
             "feat_nowm": "Sin marca de agua",
             "feat_nowm_d": "Clips limpios, listos para publicar.",
-            "paywall_free_fmt": "Gratis: %d importaciones · 720p · marca de agua",
-            "price_loading": "Cargando el precio…",
+            
             "clips_title": "Clips",
             "clip_one": "clip",
-            "retry": "Reintentar",
-            "feat_counter_d": "Un contador de golpes que sube en el clip a medida que avanza el punto.",
-            "sc_sets": "sets",
-            "sc_deuce": "Deuce",
-            "sc_ad_in": "Ventaja",
-            "sc_ad_out": "Ventaja rival",
-            "sc_games": "juegos",
-            "winner_me": "Yo",
-            "winner_them": "Rival",
-            "who_won": "¿Quién ganó el punto?",
-            "scoreboard": "Marcador",
-            "scoreboard_d": "Marca quién ganó cada punto y el marcador se graba en los clips.",
-            "tag_points": "Marcar puntos",
-            "tagged_fmt": "%d de %d marcados",
-            "untagged": "Sin marcar",
-            "opponent": "Rival",
-            "opponent_ph": "Nombre o grupo",
-            "tok_score": "Marcador",
-            "tok_opponent": "Rival",
+            
+            
+            
+            
+            
+            
+            
+            
+            
             "tempo": "Ritmo",
             "tempo_fmt": "%d/min",
             "tok_tempo": "Ritmo",
@@ -1185,13 +1082,9 @@ enum L {
             "rally_added": "Punto añadido",
             "split_hint": "Divide este clip en dos por donde está la reproducción.",
             "split_failed": "Ese clip es demasiado corto para dividirlo. Alárgalo primero.",
-            "score_needs_tags": "Marca al menos un punto para ver el marcador.",
-            "record_fmt": "%d–%d puntos",
-            "paywall_sub_open": "Paga una vez y quédate con todo Pro para siempre.",
-            "no_sub_pitch": "Sin suscripción · Sin cuenta · El vídeo se queda en tu teléfono",
-            "store_unavailable": "No se puede conectar con la App Store. Comprueba tu conexión e inténtalo de nuevo.",
-            "restore_none": "No se ha encontrado ninguna compra en este ID de Apple. Comprueba que has iniciado sesión con el ID con el que compraste Pro.",
-            "restore_hint": "¿Ya compraste Pro? Restaurar",
+            
+            
+            
             "no_rallies": "No se han encontrado puntos en este vídeo.",
             "no_rallies_hint": "Prueba con sensibilidad Amplia y detecta otra vez, comprueba que el deporte es el correcto o añade un punto a mano. La detección escucha los golpes de raqueta, así que una grabación muy silenciosa o muy ruidosa puede salir vacía.",
             "privacy": "Privacidad",
@@ -1202,28 +1095,25 @@ enum L {
             "p_account_d": "No hay que registrarse ni hay perfil. Tus clips viven en esta app y en Fotos cuando los guardas.",
             "p_place_t": "Nombres de pista",
             "p_place_d": "Si un vídeo lleva datos de GPS, la coordenada se envía una vez al geocodificador de Apple para convertirla en el nombre de una pista. Es lo único que sale del teléfono, el desarrollador de esta app no lo guarda y puedes editar o borrar el nombre tú mismo.",
-            "p_purchase_t": "Compras",
-            "p_purchase_d": "La App Store gestiona Pro. Esta app nunca ve tus datos de pago y solo guarda si la compra está activa.",
+            
             "p_analytics_t": "Sin analíticas",
             "p_analytics_d": "Sin analíticas ni informes de fallos. Aparte del SDK de anuncios descrito arriba, nada sale del teléfono.",
             "p_ads_t": "Anuncios",
             "p_ads_d": "La versión gratuita muestra anuncios de Google AdMob: un banner y, tras un renderizado, un anuncio a pantalla completa. El SDK de anuncios recibe el identificador de publicidad y la dirección IP del dispositivo para mostrar y medir anuncios; nunca tu vídeo, tus clips ni tus datos de partidos. iOS pide permiso antes de compartir el identificador; si lo rechazas, verás anuncios menos relevantes. Pro elimina todos los anuncios. En la pantalla Pro también se ofrece un vídeo con recompensa: verlo hasta el final abre Pro durante una hora.",
             "pass_watch_fmt": "Ver un anuncio · Pro %d min",
-            "pass_watch_d": "El anuncio debe verse hasta el final. Después se abren de inmediato todas las funciones Pro: calidad completa, sin marca de agua, recorte inteligente, seguimiento, contadores y sin anuncios. Los clips y reels que hagas en ese tiempo siguen siendo tuyos cuando termine. Puedes verlo otra vez cuando quieras.",
+            "pass_watch_d": "Los clips y reels que hagas durante el pase conservan la calidad Pro cuando termine.",
             "pass_active_fmt": "Prueba Pro · quedan %d min",
-            "pass_pill": "Prueba Pro",
             "pass_loading": "Cargando anuncio…",
+            "pass_sub_fmt": "Mira un anuncio hasta el final y todas las funciones Pro se abren durante %d minutos.",
+            "pass_unavailable": "Ahora mismo no hay anuncios disponibles. Inténtalo de nuevo en un momento.",
+            "pass_pill_fmt": "PRO · %d min", "pass_get": "Desbloquear Pro",
             "feat_noads": "Sin anuncios",
             "feat_noads_d": "Pro elimina el banner y los anuncios entre renderizados.",
             "paywall_free_ads": "Gratis: anuncios · 720p · marca de agua",
-            "tier_free": "Gratis",
-            "shot_counter": "Contador de golpes",
-            "shot_counter_d": "Un contador que sube con cada golpe, grabado en el clip.",
-            "counter_label": "GOLPES",
-            "count_uncertain": "Puede haber otra pista mezclada: revisa el clip y corrígelo.",
-            "mixed_courts_t": "El conteo de golpes puede fallar",
-            "mixed_courts_d": "Parece que en algunos puntos se mezclan golpes de otra pista. El contador no se grabó en esos clips. Corrige el número en el clip o vuelve a detectar en modo estricto.",
-            "redetect_strict": "Detectar de nuevo, estricto",
+            
+            
+            
+            
             "sort_cheer": "Más ovacionados",
             "cheer_badge": "Ovación",
             "auto_text": "Texto automático",
@@ -1248,7 +1138,6 @@ enum L {
             "record": "Grabar",
             "camera_unavailable": "Este dispositivo no tiene cámara.",
             "import_failed": "No se ha podido leer el vídeo. No se importó nada.",
-            "owner_wrong": "Contraseña incorrecta",
             "drag_hint": "Arrastra el texto para colocarlo",
             "font": "Tipografía",
             "font_system": "Sans",
@@ -1300,10 +1189,8 @@ enum L {
             "place": "Lugar",
             "add_place": "Añadir un lugar",
             "place_placeholder": "Nombre de la pista o el club",
-            "paywall_sub_feature": "Paga una vez y quédate con todas las funciones Pro.",
             "courts": "Dónde has jugado",
             "visits_fmt": "%d visitas",
-            "matches_one": "%d partido", "matches_n": "%d partidos",
             "rallies_n": "%d puntos",
             "activity": "Últimos 6 meses",
             "next": "Siguiente",
@@ -1347,14 +1234,10 @@ enum L {
             "f_len": "Duración",
             "f_hits": "Golpes",
             "hits_fmt": "%d+ golpes",
-            "owner_title": "Modo propietario",
-            "owner_sub": "Solo en este dispositivo. Cambia de plan libremente durante las pruebas.",
-            "owner_pass": "Contraseña",
-            "owner_enter": "Entrar",
-            "owner_pro": "Pro desbloqueado",
-            "owner_reset": "Restablecer importaciones gratis",
-            "owner_exit": "Salir del modo propietario",
-            "owner_on": "PROPIETARIO",
+            
+            
+            
+            
         ],
         "pt": [
             "library": "Biblioteca",
@@ -1429,21 +1312,13 @@ enum L {
             "empty_clips": "Toque em Detectar pontos e os clipes aparecem aqui.",
             "all_clips_empty": "Os clipes dos seus jogos aparecem aqui.",
             "paywall_title": "Desbloqueie o Ribatto Pro",
-            "paywall_sub": "Você usou suas importações gratuitas. Pague uma vez e é seu para sempre.",
-            "paywall_note": "Compra única. Sem assinatura e sem conta. Seu vídeo é analisado neste iPhone e nunca é enviado.",
-            "feat_unlimited": "Importações ilimitadas",
-            "feat_unlimited_d": "Transforme cada jogo em clipes, quantos você jogar.",
-            "feat_sports": "Todos os esportes de raquete",
-            "feat_sports_d": "Ajustes para tênis, badminton, pickleball e padel.",
-            "feat_highlight": "Compilações",
-            "feat_highlight_d": "Junte pontos em um vídeo só, horizontal ou vertical para Shorts.",
-            "feat_offline": "Roda no seu iPhone",
-            "feat_offline_d": "Seu vídeo nunca sai do celular. Funciona offline, mesmo na quadra.",
-            "once": "pagamento único",
-            "no_subscription": "Sem assinatura — pague uma vez e é seu",
-            "unlock": "Desbloquear Pro",
-            "restore": "Restaurar",
-            "free_left_fmt": "%d grátis",
+            
+            
+            
+            
+            
+            
+            
             "reels": "Reels",
             "reels_empty": "Os reels que você cria ficam aqui, prontos para postar de novo.",
             "reels_count_fmt": "%d reels",
@@ -1539,29 +1414,18 @@ enum L {
             "target_switch_ok": "Mudar e escolher",
             "feat_nowm": "Sem marca d'água",
             "feat_nowm_d": "Clipes limpos, prontos para postar.",
-            "paywall_free_fmt": "Grátis: %d importações · 720p · marca d'água",
-            "price_loading": "Carregando o preço…",
+            
             "clips_title": "Clipes",
             "clip_one": "clipe",
-            "retry": "Tentar de novo",
-            "feat_counter_d": "Um contador de batidas que sobe no clipe conforme o ponto acontece.",
-            "sc_sets": "sets",
-            "sc_deuce": "Deuce",
-            "sc_ad_in": "Vantagem",
-            "sc_ad_out": "Vantagem adversário",
-            "sc_games": "games",
-            "winner_me": "Eu",
-            "winner_them": "Adversário",
-            "who_won": "Quem ganhou o ponto?",
-            "scoreboard": "Placar",
-            "scoreboard_d": "Marque quem ganhou cada ponto e o placar é gravado nos clipes.",
-            "tag_points": "Marcar pontos",
-            "tagged_fmt": "%d de %d marcados",
-            "untagged": "Sem marcação",
-            "opponent": "Adversário",
-            "opponent_ph": "Nome ou grupo",
-            "tok_score": "Placar",
-            "tok_opponent": "Adversário",
+            
+            
+            
+            
+            
+            
+            
+            
+            
             "tempo": "Ritmo",
             "tempo_fmt": "%d/min",
             "tok_tempo": "Ritmo",
@@ -1574,13 +1438,9 @@ enum L {
             "rally_added": "Ponto adicionado",
             "split_hint": "Divide este clipe em dois na posição da reprodução.",
             "split_failed": "Esse clipe é curto demais para dividir. Aumente a duração primeiro.",
-            "score_needs_tags": "Marque pelo menos um ponto para ver o placar.",
-            "record_fmt": "%d–%d pontos",
-            "paywall_sub_open": "Pague uma vez e fique com todo o Pro para sempre.",
-            "no_sub_pitch": "Sem assinatura · Sem conta · O vídeo fica no seu celular",
-            "store_unavailable": "Não foi possível conectar à App Store. Verifique sua conexão e tente de novo.",
-            "restore_none": "Nenhuma compra encontrada neste ID Apple. Confira se você entrou com o ID Apple usado para comprar o Pro.",
-            "restore_hint": "Já comprou o Pro? Restaurar",
+            
+            
+            
             "no_rallies": "Nenhum ponto encontrado neste vídeo.",
             "no_rallies_hint": "Tente a sensibilidade Ampla e detecte de novo, confira se o esporte está certo ou adicione um ponto à mão. A detecção escuta as batidas da raquete, então uma gravação muito silenciosa ou muito barulhenta pode voltar vazia.",
             "privacy": "Privacidade",
@@ -1591,28 +1451,25 @@ enum L {
             "p_account_d": "Não há cadastro nem perfil. Seus clipes ficam neste app e em Fotos quando você os salva.",
             "p_place_t": "Nomes de quadra",
             "p_place_d": "Se um vídeo tiver dados de GPS, a coordenada é enviada uma vez ao geocodificador da Apple para virar o nome de uma quadra. É a única coisa que sai do celular, o desenvolvedor deste app não guarda nada e você pode editar ou apagar o nome.",
-            "p_purchase_t": "Compras",
-            "p_purchase_d": "A App Store cuida do Pro. Este app nunca vê seus dados de pagamento e guarda apenas se a compra está ativa.",
+            
             "p_analytics_t": "Sem análises",
             "p_analytics_d": "Sem análises nem relatórios de falhas. Além do SDK de anúncios descrito acima, nada sai do aparelho.",
             "p_ads_t": "Anúncios",
             "p_ads_d": "A versão gratuita mostra anúncios do Google AdMob: um banner e, após uma renderização, um anúncio em tela cheia. O SDK de anúncios recebe o identificador de publicidade e o endereço IP do aparelho para exibir e medir anúncios — nunca o seu vídeo, os clipes ou os dados das partidas. O iOS pede permissão antes de compartilhar o identificador; se recusar, verá anúncios menos relevantes. O Pro remove todos os anúncios. Na tela Pro também há um vídeo com recompensa: assistir até o fim abre o Pro por uma hora.",
             "pass_watch_fmt": "Ver um anúncio · Pro por %d min",
-            "pass_watch_d": "O anúncio precisa ser visto até o fim. Depois todos os recursos Pro abrem na hora: qualidade total, sem marca d'água, corte inteligente, rastreamento, contadores e sem anúncios. Os clipes e reels feitos nesse tempo continuam seus quando ele acabar. Assista de novo quando quiser.",
+            "pass_watch_d": "Os clipes e reels feitos durante o passe mantêm a qualidade Pro depois que ele acaba.",
             "pass_active_fmt": "Teste Pro · faltam %d min",
-            "pass_pill": "Teste Pro",
             "pass_loading": "Carregando anúncio…",
+            "pass_sub_fmt": "Assista a um anúncio até o fim e todos os recursos Pro abrem por %d minutos.",
+            "pass_unavailable": "Nenhum anúncio disponível agora. Tente de novo em instantes.",
+            "pass_pill_fmt": "PRO · %d min", "pass_get": "Liberar Pro",
             "feat_noads": "Sem anúncios",
             "feat_noads_d": "O Pro remove o banner e os anúncios entre renderizações.",
             "paywall_free_ads": "Grátis: anúncios · 720p · marca d'água",
-            "tier_free": "Grátis",
-            "shot_counter": "Contador de batidas",
-            "shot_counter_d": "Um contador que sobe a cada batida, gravado no clipe.",
-            "counter_label": "BATIDAS",
-            "count_uncertain": "Pode haver outra quadra misturada — confira o clipe e corrija.",
-            "mixed_courts_t": "A contagem de batidas pode estar errada",
-            "mixed_courts_d": "Parece que batidas de outra quadra se misturaram a alguns pontos. O contador não foi gravado nesses clipes. Corrija o número no clipe ou detecte de novo no modo rigoroso.",
-            "redetect_strict": "Detectar de novo, rigoroso",
+            
+            
+            
+            
             "sort_cheer": "Mais vibração",
             "cheer_badge": "Vibração",
             "auto_text": "Texto automático",
@@ -1637,7 +1494,6 @@ enum L {
             "record": "Gravar",
             "camera_unavailable": "Este aparelho não tem câmera.",
             "import_failed": "Não foi possível ler esse vídeo. Nada foi importado.",
-            "owner_wrong": "Senha incorreta",
             "drag_hint": "Arraste a legenda para posicioná-la",
             "font": "Fonte",
             "font_system": "Sans",
@@ -1689,10 +1545,8 @@ enum L {
             "place": "Local",
             "add_place": "Adicionar um local",
             "place_placeholder": "Nome da quadra ou do clube",
-            "paywall_sub_feature": "Pague uma vez e fique com todos os recursos Pro.",
             "courts": "Onde você jogou",
             "visits_fmt": "%d visitas",
-            "matches_one": "%d jogo", "matches_n": "%d jogos",
             "rallies_n": "%d pontos",
             "activity": "Últimos 6 meses",
             "next": "Avançar",
@@ -1736,14 +1590,10 @@ enum L {
             "f_len": "Duração",
             "f_hits": "Batidas",
             "hits_fmt": "%d+ batidas",
-            "owner_title": "Modo proprietário",
-            "owner_sub": "Só neste aparelho. Troque de plano à vontade durante os testes.",
-            "owner_pass": "Senha",
-            "owner_enter": "Entrar",
-            "owner_pro": "Pro desbloqueado",
-            "owner_reset": "Redefinir importações grátis",
-            "owner_exit": "Sair do modo proprietário",
-            "owner_on": "PROPRIETÁRIO",
+            
+            
+            
+            
         ],
         "de": [
             "library": "Bibliothek",
@@ -1818,21 +1668,13 @@ enum L {
             "empty_clips": "Tippe auf Ballwechsel finden, dann erscheinen die Clips hier.",
             "all_clips_empty": "Hier erscheinen die Clips aus deinen Matches.",
             "paywall_title": "Ribatto Pro freischalten",
-            "paywall_sub": "Deine kostenlosen Importe sind aufgebraucht. Einmal zahlen, für immer behalten.",
-            "paywall_note": "Einmalkauf. Kein Abo, kein Konto. Dein Video wird auf diesem iPhone analysiert und nie hochgeladen.",
-            "feat_unlimited": "Unbegrenzte Importe",
-            "feat_unlimited_d": "Mach aus jedem Match Clips, so oft du spielst.",
-            "feat_sports": "Alle Racketsportarten",
-            "feat_sports_d": "Voreinstellungen für Tennis, Badminton, Pickleball und Padel.",
-            "feat_highlight": "Highlight-Videos",
-            "feat_highlight_d": "Ballwechsel zu einem Video verbinden, quer oder hoch für Shorts.",
-            "feat_offline": "Läuft auf deinem iPhone",
-            "feat_offline_d": "Dein Video verlässt das Handy nie. Funktioniert offline, auch am Platz.",
-            "once": "einmalig",
-            "no_subscription": "Kein Abo – einmal zahlen, dir gehört es",
-            "unlock": "Pro freischalten",
-            "restore": "Wiederherstellen",
-            "free_left_fmt": "%d frei",
+            
+            
+            
+            
+            
+            
+            
             "reels": "Reels",
             "reels_empty": "Gebaute Reels bleiben hier — jederzeit wieder zum Posten.",
             "reels_count_fmt": "%d Reels",
@@ -1928,29 +1770,18 @@ enum L {
             "target_switch_ok": "Wechseln und wählen",
             "feat_nowm": "Kein Wasserzeichen",
             "feat_nowm_d": "Saubere Clips, fertig zum Posten.",
-            "paywall_free_fmt": "Gratis: %d Importe · 720p · Wasserzeichen",
-            "price_loading": "Preis wird geladen…",
+            
             "clips_title": "Clips",
             "clip_one": "Clip",
-            "retry": "Erneut versuchen",
-            "feat_counter_d": "Ein Schlagzähler, der im Clip mitläuft, während der Ballwechsel läuft.",
-            "sc_sets": "Sätze",
-            "sc_deuce": "Einstand",
-            "sc_ad_in": "Vorteil",
-            "sc_ad_out": "Vorteil Gegner",
-            "sc_games": "Spiele",
-            "winner_me": "Ich",
-            "winner_them": "Gegner",
-            "who_won": "Wer hat den Punkt gemacht?",
-            "scoreboard": "Punktestand",
-            "scoreboard_d": "Markiere, wer jeden Ballwechsel gewonnen hat – der Stand wird in die Clips eingebrannt.",
-            "tag_points": "Punkte markieren",
-            "tagged_fmt": "%d von %d markiert",
-            "untagged": "Nicht markiert",
-            "opponent": "Gegner",
-            "opponent_ph": "Name oder Gruppe",
-            "tok_score": "Punktestand",
-            "tok_opponent": "Gegner",
+            
+            
+            
+            
+            
+            
+            
+            
+            
             "tempo": "Tempo",
             "tempo_fmt": "%d/Min",
             "tok_tempo": "Tempo",
@@ -1963,13 +1794,9 @@ enum L {
             "rally_added": "Ballwechsel hinzugefügt",
             "split_hint": "Teilt diesen Clip an der Abspielposition in zwei.",
             "split_failed": "Dieser Clip ist zum Teilen zu kurz. Mach ihn erst länger.",
-            "score_needs_tags": "Markiere mindestens einen Ballwechsel, damit ein Stand erscheint.",
-            "record_fmt": "%d–%d Punkte",
-            "paywall_sub_open": "Einmal freischalten und alle Pro-Funktionen für immer behalten.",
-            "no_sub_pitch": "Kein Abo · Kein Konto · Video bleibt auf deinem Handy",
-            "store_unavailable": "Der App Store ist nicht erreichbar. Prüfe deine Verbindung und versuch es erneut.",
-            "restore_none": "Auf dieser Apple-ID wurde kein Kauf gefunden. Prüfe, ob du mit der Apple-ID angemeldet bist, mit der du Pro gekauft hast.",
-            "restore_hint": "Pro schon gekauft? Wiederherstellen",
+            
+            
+            
             "no_rallies": "In diesem Video wurden keine Ballwechsel gefunden.",
             "no_rallies_hint": "Probier die Empfindlichkeit Locker und such erneut, prüf die Sportart oder füge einen Ballwechsel von Hand hinzu. Die Erkennung hört auf Schlaggeräusche, deshalb kann eine sehr leise oder sehr laute Aufnahme leer bleiben.",
             "privacy": "Datenschutz",
@@ -1980,28 +1807,25 @@ enum L {
             "p_account_d": "Es gibt nichts zu registrieren und kein Profil. Deine Clips liegen in dieser App und in Fotos, wenn du sie sicherst.",
             "p_place_t": "Platznamen",
             "p_place_d": "Trägt ein Video GPS-Daten, wird die Koordinate einmal an Apples Geocoder geschickt, um daraus einen Platznamen zu machen. Nur das verlässt das Handy, der Entwickler dieser App speichert es nicht, und du kannst den Namen selbst ändern oder löschen.",
-            "p_purchase_t": "Käufe",
-            "p_purchase_d": "Pro wickelt der App Store ab. Diese App sieht deine Zahlungsdaten nie und speichert nur, ob der Kauf aktiv ist.",
+            
             "p_analytics_t": "Keine Analyse",
             "p_analytics_d": "Keine Analyse und keine Absturzberichte. Außer dem oben beschriebenen Werbe-SDK verlässt nichts das Telefon.",
             "p_ads_t": "Werbung",
             "p_ads_d": "Die kostenlose Version zeigt Werbung von Google AdMob: ein Banner und nach einem Rendern eine Vollbildanzeige. Das Werbe-SDK erhält die Werbe-ID und die IP-Adresse des Geräts, um Anzeigen auszuliefern und zu messen – nie dein Video, deine Clips oder deine Matchdaten. iOS fragt, bevor die ID geteilt wird; bei Ablehnung erscheint weniger relevante Werbung. Pro entfernt alle Werbung. Auf dem Pro-Bildschirm gibt es außerdem ein Video mit Belohnung: bis zum Ende ansehen öffnet Pro für eine Stunde.",
             "pass_watch_fmt": "Werbung ansehen · %d Min. Pro",
-            "pass_watch_d": "Die Anzeige muss bis zum Ende laufen. Danach sind sofort alle Pro-Funktionen offen – volle Qualität, kein Wasserzeichen, Smart-Crop, Tracking, Zähler, keine Werbung. Clips und Reels aus dieser Zeit bleiben dir auch danach. Jederzeit erneut ansehen.",
+            "pass_watch_d": "Clips und Reels aus dieser Zeit behalten auch danach die Pro-Qualität.",
             "pass_active_fmt": "Pro-Test · noch %d Min.",
-            "pass_pill": "Pro-Test",
             "pass_loading": "Anzeige wird geladen…",
+            "pass_sub_fmt": "Sieh dir eine Anzeige bis zum Ende an, und alle Pro-Funktionen sind %d Minuten lang offen.",
+            "pass_unavailable": "Gerade ist keine Anzeige verfügbar. Versuch es gleich noch einmal.",
+            "pass_pill_fmt": "PRO · %d Min.", "pass_get": "Pro freischalten",
             "feat_noads": "Keine Werbung",
             "feat_noads_d": "Pro entfernt das Banner und die Anzeigen zwischen den Renderings.",
             "paywall_free_ads": "Kostenlos: Werbung · 720p · Wasserzeichen",
-            "tier_free": "Kostenlos",
-            "shot_counter": "Schlagzähler",
-            "shot_counter_d": "Ein Zähler, der bei jedem Schlag hochzählt, fest im Clip.",
-            "counter_label": "SCHLÄGE",
-            "count_uncertain": "Vielleicht ist ein anderer Platz zu hören — sieh dir den Clip an und korrigiere.",
-            "mixed_courts_t": "Schlagzahl könnte falsch sein",
-            "mixed_courts_d": "In einigen Ballwechseln scheinen Schläge vom Nachbarplatz zu stecken. Der Zähler wurde in diesen Clips weggelassen. Korrigiere die Zahl im Clip oder erkenne noch einmal mit Streng.",
-            "redetect_strict": "Neu erkennen, streng",
+            
+            
+            
+            
             "sort_cheer": "Lautester Jubel",
             "cheer_badge": "Jubel",
             "auto_text": "Auto-Text",
@@ -2026,7 +1850,6 @@ enum L {
             "record": "Aufnehmen",
             "camera_unavailable": "Dieses Gerät hat keine Kamera.",
             "import_failed": "Das Video konnte nicht gelesen werden. Es wurde nichts importiert.",
-            "owner_wrong": "Falsches Kennwort",
             "drag_hint": "Zieh den Text an die gewünschte Stelle",
             "font": "Schrift",
             "font_system": "Sans",
@@ -2078,10 +1901,8 @@ enum L {
             "place": "Ort",
             "add_place": "Ort hinzufügen",
             "place_placeholder": "Name von Platz oder Verein",
-            "paywall_sub_feature": "Einmal freischalten und alle Pro-Funktionen behalten.",
             "courts": "Wo du gespielt hast",
             "visits_fmt": "%d Besuche",
-            "matches_one": "%d Match", "matches_n": "%d Matches",
             "rallies_n": "%d Ballwechsel",
             "activity": "Letzte 6 Monate",
             "next": "Weiter",
@@ -2125,14 +1946,10 @@ enum L {
             "f_len": "Länge",
             "f_hits": "Schläge",
             "hits_fmt": "%d+ Schläge",
-            "owner_title": "Besitzermodus",
-            "owner_sub": "Nur auf diesem Gerät. Zum Testen frei zwischen den Stufen wechseln.",
-            "owner_pass": "Kennwort",
-            "owner_enter": "Weiter",
-            "owner_pro": "Pro freigeschaltet",
-            "owner_reset": "Freie Importe zurücksetzen",
-            "owner_exit": "Besitzermodus verlassen",
-            "owner_on": "BESITZER",
+            
+            
+            
+            
         ],
         "fr": [
             "library": "Bibliothèque",
@@ -2207,21 +2024,13 @@ enum L {
             "empty_clips": "Touchez Détecter les échanges et les clips apparaîtront ici.",
             "all_clips_empty": "Les clips de vos matchs apparaissent ici.",
             "paywall_title": "Débloquer Ribatto Pro",
-            "paywall_sub": "Vous avez utilisé vos imports gratuits. Payez une fois, c'est à vous pour toujours.",
-            "paywall_note": "Achat unique. Sans abonnement ni compte. Votre vidéo est analysée sur cet iPhone et n'est jamais envoyée.",
-            "feat_unlimited": "Imports illimités",
-            "feat_unlimited_d": "Transformez chaque match en clips, autant que vous jouez.",
-            "feat_sports": "Tous les sports de raquette",
-            "feat_sports_d": "Réglages pour tennis, badminton, pickleball et padel.",
-            "feat_highlight": "Résumés",
-            "feat_highlight_d": "Réunissez les échanges en une vidéo, paysage ou portrait pour les Shorts.",
-            "feat_offline": "Tourne sur votre iPhone",
-            "feat_offline_d": "Votre vidéo ne quitte jamais le téléphone. Fonctionne hors ligne, même au bord du court.",
-            "once": "une fois",
-            "no_subscription": "Sans abonnement — payez une fois, c'est à vous",
-            "unlock": "Débloquer Pro",
-            "restore": "Restaurer",
-            "free_left_fmt": "%d gratuits",
+            
+            
+            
+            
+            
+            
+            
             "reels": "Reels",
             "reels_empty": "Les reels que vous créez restent ici, prêts à être republiés.",
             "reels_count_fmt": "%d reels",
@@ -2317,29 +2126,18 @@ enum L {
             "target_switch_ok": "Passer et choisir",
             "feat_nowm": "Sans filigrane",
             "feat_nowm_d": "Des clips nets, prêts à publier.",
-            "paywall_free_fmt": "Gratuit : %d imports · 720p · filigrane",
-            "price_loading": "Chargement du prix…",
+            
             "clips_title": "Clips",
             "clip_one": "clip",
-            "retry": "Réessayer",
-            "feat_counter_d": "Un compteur de frappes qui monte sur le clip au fil de l'échange.",
-            "sc_sets": "sets",
-            "sc_deuce": "Égalité",
-            "sc_ad_in": "Avantage",
-            "sc_ad_out": "Avantage adverse",
-            "sc_games": "jeux",
-            "winner_me": "Moi",
-            "winner_them": "Adversaire",
-            "who_won": "Qui a gagné le point ?",
-            "scoreboard": "Score",
-            "scoreboard_d": "Indiquez qui gagne chaque échange : le score s'inscrit dans les clips.",
-            "tag_points": "Marquer les points",
-            "tagged_fmt": "%d sur %d marqués",
-            "untagged": "Non marqué",
-            "opponent": "Adversaire",
-            "opponent_ph": "Nom ou groupe",
-            "tok_score": "Score",
-            "tok_opponent": "Adversaire",
+            
+            
+            
+            
+            
+            
+            
+            
+            
             "tempo": "Rythme",
             "tempo_fmt": "%d/min",
             "tok_tempo": "Rythme",
@@ -2352,13 +2150,9 @@ enum L {
             "rally_added": "Échange ajouté",
             "split_hint": "Coupe ce clip en deux à la position de lecture.",
             "split_failed": "Ce clip est trop court pour être coupé. Allongez-le d’abord.",
-            "score_needs_tags": "Marquez au moins un échange pour afficher un score.",
-            "record_fmt": "%d–%d points",
-            "paywall_sub_open": "Payez une fois et gardez toutes les fonctions Pro pour toujours.",
-            "no_sub_pitch": "Sans abonnement · Sans compte · La vidéo reste sur votre téléphone",
-            "store_unavailable": "L'App Store est injoignable. Vérifiez votre connexion et réessayez.",
-            "restore_none": "Aucun achat trouvé sur cet identifiant Apple. Vérifiez que vous êtes connecté avec celui utilisé pour acheter Pro.",
-            "restore_hint": "Déjà acheté Pro ? Restaurer",
+            
+            
+            
             "no_rallies": "Aucun échange trouvé dans cette vidéo.",
             "no_rallies_hint": "Essayez la sensibilité Large puis relancez, vérifiez le sport, ou ajoutez un échange à la main. La détection écoute les frappes de raquette : un enregistrement très silencieux ou très bruyant peut ne rien donner.",
             "privacy": "Confidentialité",
@@ -2369,28 +2163,25 @@ enum L {
             "p_account_d": "Rien à créer, aucun profil. Vos clips vivent dans cette app et dans Photos quand vous les enregistrez.",
             "p_place_t": "Noms de court",
             "p_place_d": "Si une vidéo contient des données GPS, la coordonnée est envoyée une fois au géocodeur d'Apple pour en tirer un nom de court. C'est la seule chose qui quitte le téléphone, le développeur de cette app ne la conserve pas, et vous pouvez modifier ou effacer ce nom.",
-            "p_purchase_t": "Achats",
-            "p_purchase_d": "L'App Store gère Pro. Cette app ne voit jamais vos données de paiement et ne retient que si l'achat est actif.",
+            
             "p_analytics_t": "Aucune analyse",
             "p_analytics_d": "Aucune analyse ni rapport de plantage. En dehors du SDK publicitaire décrit ci-dessus, rien ne quitte le téléphone.",
             "p_ads_t": "Publicité",
             "p_ads_d": "La version gratuite affiche des publicités Google AdMob : une bannière et, après un rendu, une publicité plein écran. Le SDK publicitaire reçoit l'identifiant publicitaire et l'adresse IP de l'appareil pour diffuser et mesurer les publicités — jamais votre vidéo, vos clips ni vos données de match. iOS demande votre accord avant de partager l'identifiant ; en cas de refus, les publicités sont moins ciblées. Pro supprime toute publicité. L'écran Pro propose aussi une vidéo avec récompense : la regarder jusqu'au bout ouvre Pro pendant une heure.",
             "pass_watch_fmt": "Regarder une pub · Pro pendant %d min",
-            "pass_watch_d": "La publicité doit être regardée jusqu'au bout. Ensuite toutes les fonctions Pro s'ouvrent aussitôt : qualité maximale, sans filigrane, recadrage intelligent, suivi, compteurs, sans publicité. Les clips et reels créés pendant ce temps restent à vous après. À revoir quand vous voulez.",
+            "pass_watch_d": "Les clips et reels créés pendant le pass gardent la qualité Pro après la fin.",
             "pass_active_fmt": "Essai Pro · %d min restantes",
-            "pass_pill": "Essai Pro",
             "pass_loading": "Chargement de la pub…",
+            "pass_sub_fmt": "Regardez une publicité jusqu'au bout et toutes les fonctions Pro s'ouvrent pendant %d minutes.",
+            "pass_unavailable": "Aucune publicité disponible pour le moment. Réessayez dans un instant.",
+            "pass_pill_fmt": "PRO · %d min", "pass_get": "Débloquer Pro",
             "feat_noads": "Sans publicité",
             "feat_noads_d": "Pro supprime la bannière et les publicités entre les rendus.",
             "paywall_free_ads": "Gratuit : publicité · 720p · filigrane",
-            "tier_free": "Gratuit",
-            "shot_counter": "Compteur de frappes",
-            "shot_counter_d": "Un compteur qui monte à chaque frappe, incrusté dans le clip.",
-            "counter_label": "FRAPPES",
-            "count_uncertain": "Un autre court semble se mêler — vérifie le clip et corrige.",
-            "mixed_courts_t": "Le compte de frappes peut être faux",
-            "mixed_courts_d": "Des frappes d'un autre court semblent mêlées à certains échanges. Le compteur n'a pas été incrusté sur ces clips. Corrige le nombre sur le clip, ou relance la détection en mode strict.",
-            "redetect_strict": "Détecter à nouveau, strict",
+            
+            
+            
+            
             "sort_cheer": "Public le plus fort",
             "cheer_badge": "Public",
             "auto_text": "Texte automatique",
@@ -2415,7 +2206,6 @@ enum L {
             "record": "Filmer",
             "camera_unavailable": "Cet appareil n'a pas de caméra.",
             "import_failed": "Impossible de lire cette vidéo. Rien n'a été importé.",
-            "owner_wrong": "Phrase secrète incorrecte",
             "drag_hint": "Faites glisser la légende pour la placer",
             "font": "Police",
             "font_system": "Sans",
@@ -2467,10 +2257,8 @@ enum L {
             "place": "Lieu",
             "add_place": "Ajouter un lieu",
             "place_placeholder": "Nom du court ou du club",
-            "paywall_sub_feature": "Payez une fois et gardez toutes les fonctions Pro.",
             "courts": "Où vous avez joué",
             "visits_fmt": "%d visites",
-            "matches_one": "%d match", "matches_n": "%d matchs",
             "rallies_n": "%d échanges",
             "activity": "6 derniers mois",
             "next": "Suivant",
@@ -2514,14 +2302,10 @@ enum L {
             "f_len": "Durée",
             "f_hits": "Frappes",
             "hits_fmt": "%d+ frappes",
-            "owner_title": "Mode propriétaire",
-            "owner_sub": "Cet appareil uniquement. Changez de formule librement pendant les tests.",
-            "owner_pass": "Phrase secrète",
-            "owner_enter": "Entrer",
-            "owner_pro": "Pro débloqué",
-            "owner_reset": "Réinitialiser les imports gratuits",
-            "owner_exit": "Quitter le mode propriétaire",
-            "owner_on": "PROPRIÉTAIRE",
+            
+            
+            
+            
         ],
         "it": [
             "library": "Libreria",
@@ -2596,21 +2380,13 @@ enum L {
             "empty_clips": "Tocca Trova gli scambi e i clip compariranno qui.",
             "all_clips_empty": "Qui compaiono i clip delle tue partite.",
             "paywall_title": "Sblocca Ribatto Pro",
-            "paywall_sub": "Hai usato le importazioni gratuite. Paghi una volta e resta tuo per sempre.",
-            "paywall_note": "Acquisto unico. Nessun abbonamento e nessun account. Il video viene analizzato su questo iPhone e non viene mai caricato.",
-            "feat_unlimited": "Importazioni illimitate",
-            "feat_unlimited_d": "Trasforma ogni partita in clip, quante ne giochi.",
-            "feat_sports": "Tutti gli sport di racchetta",
-            "feat_sports_d": "Impostazioni per tennis, badminton, pickleball e padel.",
-            "feat_highlight": "Highlights",
-            "feat_highlight_d": "Unisci gli scambi in un solo video, orizzontale o verticale per gli Shorts.",
-            "feat_offline": "Gira sul tuo iPhone",
-            "feat_offline_d": "Il video non lascia mai il telefono. Funziona offline, anche a bordo campo.",
-            "once": "una volta",
-            "no_subscription": "Nessun abbonamento — paghi una volta ed è tuo",
-            "unlock": "Sblocca Pro",
-            "restore": "Ripristina",
-            "free_left_fmt": "%d gratis",
+            
+            
+            
+            
+            
+            
+            
             "reels": "Reel",
             "reels_empty": "I reel che crei restano qui, pronti da ripubblicare.",
             "reels_count_fmt": "%d reel",
@@ -2706,29 +2482,18 @@ enum L {
             "target_switch_ok": "Passa e scegli",
             "feat_nowm": "Senza filigrana",
             "feat_nowm_d": "Clip puliti, pronti da pubblicare.",
-            "paywall_free_fmt": "Gratis: %d importazioni · 720p · filigrana",
-            "price_loading": "Caricamento del prezzo…",
+            
             "clips_title": "Clip",
             "clip_one": "clip",
-            "retry": "Riprova",
-            "feat_counter_d": "Un contatore di colpi che sale sul clip mentre lo scambio va avanti.",
-            "sc_sets": "set",
-            "sc_deuce": "Parità",
-            "sc_ad_in": "Vantaggio",
-            "sc_ad_out": "Vantaggio avversario",
-            "sc_games": "giochi",
-            "winner_me": "Io",
-            "winner_them": "Avversario",
-            "who_won": "Chi ha vinto il punto?",
-            "scoreboard": "Punteggio",
-            "scoreboard_d": "Segna chi vince ogni scambio: il punteggio viene impresso nei clip.",
-            "tag_points": "Segna i punti",
-            "tagged_fmt": "%d di %d segnati",
-            "untagged": "Non segnato",
-            "opponent": "Avversario",
-            "opponent_ph": "Nome o gruppo",
-            "tok_score": "Punteggio",
-            "tok_opponent": "Avversario",
+            
+            
+            
+            
+            
+            
+            
+            
+            
             "tempo": "Ritmo",
             "tempo_fmt": "%d/min",
             "tok_tempo": "Ritmo",
@@ -2741,13 +2506,9 @@ enum L {
             "rally_added": "Scambio aggiunto",
             "split_hint": "Divide questo clip in due nel punto di riproduzione.",
             "split_failed": "Questo clip è troppo corto per dividerlo. Allungalo prima.",
-            "score_needs_tags": "Segna almeno uno scambio per vedere il punteggio.",
-            "record_fmt": "%d–%d punti",
-            "paywall_sub_open": "Paghi una volta e tieni tutte le funzioni Pro per sempre.",
-            "no_sub_pitch": "Nessun abbonamento · Nessun account · Il video resta sul telefono",
-            "store_unavailable": "L'App Store non è raggiungibile. Controlla la connessione e riprova.",
-            "restore_none": "Nessun acquisto trovato su questo ID Apple. Verifica di aver effettuato l'accesso con l'ID Apple usato per comprare Pro.",
-            "restore_hint": "Hai già comprato Pro? Ripristina",
+            
+            
+            
             "no_rallies": "Nessuno scambio trovato in questo video.",
             "no_rallies_hint": "Prova la sensibilità Ampia e cerca di nuovo, controlla che lo sport sia giusto oppure aggiungi uno scambio a mano. Il rilevamento ascolta i colpi di racchetta, quindi una registrazione molto silenziosa o molto rumorosa può risultare vuota.",
             "privacy": "Privacy",
@@ -2758,28 +2519,25 @@ enum L {
             "p_account_d": "Non c'è niente da registrare e nessun profilo. I tuoi clip stanno in questa app e in Foto quando li salvi.",
             "p_place_t": "Nomi dei campi",
             "p_place_d": "Se un video contiene dati GPS, la coordinata viene inviata una volta al geocoder di Apple per ricavarne il nome di un campo. È l'unica cosa che lascia il telefono, lo sviluppatore di questa app non la conserva e puoi modificare o cancellare il nome tu stesso.",
-            "p_purchase_t": "Acquisti",
-            "p_purchase_d": "Pro è gestito dall'App Store. Questa app non vede mai i tuoi dati di pagamento e memorizza solo se l'acquisto è attivo.",
+            
             "p_analytics_t": "Nessuna analisi",
             "p_analytics_d": "Nessuna analisi e nessun report di arresto. A parte l'SDK pubblicitario descritto sopra, nulla lascia il telefono.",
             "p_ads_t": "Pubblicità",
             "p_ads_d": "La versione gratuita mostra annunci di Google AdMob: un banner e, dopo un rendering, un annuncio a schermo intero. L'SDK pubblicitario riceve l'identificativo pubblicitario e l'indirizzo IP del dispositivo per mostrare e misurare gli annunci — mai il tuo video, i tuoi clip o i dati delle partite. iOS chiede il permesso prima di condividere l'identificativo; se rifiuti vedrai annunci meno pertinenti. Pro rimuove tutti gli annunci. Nella schermata Pro c'è anche un video con premio: guardarlo fino alla fine apre Pro per un'ora.",
             "pass_watch_fmt": "Guarda un annuncio · Pro per %d min",
-            "pass_watch_d": "L'annuncio va visto fino alla fine. Poi tutte le funzioni Pro si aprono subito: qualità piena, niente filigrana, ritaglio intelligente, tracciamento, contatori, niente pubblicità. I clip e i reel creati in quel tempo restano tuoi anche dopo. Puoi rivederlo quando vuoi.",
+            "pass_watch_d": "I clip e i reel creati durante il pass mantengono la qualità Pro anche dopo.",
             "pass_active_fmt": "Prova Pro · %d min rimasti",
-            "pass_pill": "Prova Pro",
             "pass_loading": "Caricamento annuncio…",
+            "pass_sub_fmt": "Guarda un annuncio fino alla fine e tutte le funzioni Pro si aprono per %d minuti.",
+            "pass_unavailable": "Nessun annuncio disponibile al momento. Riprova tra poco.",
+            "pass_pill_fmt": "PRO · %d min", "pass_get": "Sblocca Pro",
             "feat_noads": "Senza pubblicità",
             "feat_noads_d": "Pro rimuove il banner e gli annunci tra un rendering e l'altro.",
             "paywall_free_ads": "Gratis: pubblicità · 720p · filigrana",
-            "tier_free": "Gratis",
-            "shot_counter": "Contatore dei colpi",
-            "shot_counter_d": "Un contatore che sale a ogni colpo, impresso nel clip.",
-            "counter_label": "COLPI",
-            "count_uncertain": "Forse c'è un altro campo nell'audio — guarda il clip e correggi.",
-            "mixed_courts_t": "Il conteggio dei colpi può essere sbagliato",
-            "mixed_courts_d": "In alcuni scambi sembrano esserci colpi di un altro campo. Il contatore non è stato impresso su quei clip. Correggi il numero sul clip o rileva di nuovo in modalità severa.",
-            "redetect_strict": "Rileva di nuovo, severo",
+            
+            
+            
+            
             "sort_cheer": "Pubblico più caldo",
             "cheer_badge": "Pubblico",
             "auto_text": "Testo automatico",
@@ -2804,7 +2562,6 @@ enum L {
             "record": "Registra",
             "camera_unavailable": "Questo dispositivo non ha una fotocamera.",
             "import_failed": "Non è stato possibile leggere il video. Non è stato importato nulla.",
-            "owner_wrong": "Frase segreta errata",
             "drag_hint": "Trascina la didascalia per posizionarla",
             "font": "Carattere",
             "font_system": "Sans",
@@ -2856,10 +2613,8 @@ enum L {
             "place": "Luogo",
             "add_place": "Aggiungi un luogo",
             "place_placeholder": "Nome del campo o del circolo",
-            "paywall_sub_feature": "Paghi una volta e tieni tutte le funzioni Pro.",
             "courts": "Dove hai giocato",
             "visits_fmt": "%d visite",
-            "matches_one": "%d partita", "matches_n": "%d partite",
             "rallies_n": "%d scambi",
             "activity": "Ultimi 6 mesi",
             "next": "Avanti",
@@ -2903,14 +2658,10 @@ enum L {
             "f_len": "Durata",
             "f_hits": "Colpi",
             "hits_fmt": "%d+ colpi",
-            "owner_title": "Modalità proprietario",
-            "owner_sub": "Solo su questo dispositivo. Cambia piano liberamente durante i test.",
-            "owner_pass": "Frase segreta",
-            "owner_enter": "Entra",
-            "owner_pro": "Pro sbloccato",
-            "owner_reset": "Azzera le importazioni gratuite",
-            "owner_exit": "Esci dalla modalità proprietario",
-            "owner_on": "PROPRIETARIO",
+            
+            
+            
+            
         ],
         "zh-Hans": [
             "library": "资料库",
@@ -2985,21 +2736,13 @@ enum L {
             "empty_clips": "点按“检测回合”，片段会出现在这里。",
             "all_clips_empty": "比赛里的片段会出现在这里。",
             "paywall_title": "解锁 Ribatto Pro",
-            "paywall_sub": "免费导入次数已用完。付费一次，永久使用。",
-            "paywall_note": "一次性购买。无订阅、无账号。视频在这台 iPhone 上分析，绝不上传。",
-            "feat_unlimited": "无限导入",
-            "feat_unlimited_d": "打多少场，就能把多少场变成片段。",
-            "feat_sports": "支持各类拍类运动",
-            "feat_sports_d": "网球、羽毛球、匹克球和板式网球的专用预设。",
-            "feat_highlight": "集锦视频",
-            "feat_highlight_d": "把多个回合合成一条视频，横版或竖版都行。",
-            "feat_offline": "在你的 iPhone 上运行",
-            "feat_offline_d": "视频不会离开手机。没有网络也能用，在球场边也一样。",
-            "once": "一次性",
-            "no_subscription": "不是订阅 — 付一次，永久拥有",
-            "unlock": "解锁 Pro",
-            "restore": "恢复购买",
-            "free_left_fmt": "免费 %d 次",
+            
+            
+            
+            
+            
+            
+            
             "reels": "竖版视频",
             "reels_empty": "做好的竖版视频都留在这里，随时可以再发一次。",
             "reels_count_fmt": "%d 条",
@@ -3095,29 +2838,18 @@ enum L {
             "target_switch_ok": "切换并选择",
             "feat_nowm": "没有水印",
             "feat_nowm_d": "干净的片段，可以直接发布。",
-            "paywall_free_fmt": "免费版：%d 次导入 · 720p · 带水印",
-            "price_loading": "正在获取价格…",
+            
             "clips_title": "片段",
             "clip_one": "个片段",
-            "retry": "重试",
-            "feat_counter_d": "回合进行时，片段上的击球计数会实时增加。",
-            "sc_sets": "盘",
-            "sc_deuce": "平分",
-            "sc_ad_in": "占先",
-            "sc_ad_out": "对方占先",
-            "sc_games": "局",
-            "winner_me": "我",
-            "winner_them": "对手",
-            "who_won": "这一分谁赢了？",
-            "scoreboard": "比分",
-            "scoreboard_d": "标记每个回合的胜者，比分会烧录进片段。",
-            "tag_points": "标记比分",
-            "tagged_fmt": "已标记 %d / %d",
-            "untagged": "未标记",
-            "opponent": "对手",
-            "opponent_ph": "姓名或球队名",
-            "tok_score": "比分",
-            "tok_opponent": "对手",
+            
+            
+            
+            
+            
+            
+            
+            
+            
             "tempo": "节奏",
             "tempo_fmt": "%d 拍/分",
             "tok_tempo": "节奏",
@@ -3130,13 +2862,9 @@ enum L {
             "rally_added": "已添加回合",
             "split_hint": "在播放位置把这个片段一分为二。",
             "split_failed": "这个片段太短，无法拆分。请先加长。",
-            "score_needs_tags": "至少标记一个回合才会显示比分。",
-            "record_fmt": "%d–%d 分",
-            "paywall_sub_open": "付费一次，永久保留全部 Pro 功能。",
-            "no_sub_pitch": "无订阅 · 无账号 · 视频只留在你手机里",
-            "store_unavailable": "无法连接 App Store。请检查网络后重试。",
-            "restore_none": "这个 Apple ID 下没有找到购买记录。请确认你登录的是购买 Pro 时使用的 Apple ID。",
-            "restore_hint": "已经买过 Pro？点此恢复",
+            
+            
+            
             "no_rallies": "这段视频里没有找到回合。",
             "no_rallies_hint": "试试把灵敏度调成“宽松”再检测一次，确认运动项目选对了，或者手动添加一个回合。检测依靠球拍击球声，所以录音太轻或太吵都可能什么也找不到。",
             "privacy": "隐私",
@@ -3147,28 +2875,25 @@ enum L {
             "p_account_d": "不用注册，也没有个人资料。你的片段只存在这个 App 里，保存后也会在照片里。",
             "p_place_t": "球场名称",
             "p_place_d": "如果视频带有 GPS 信息，坐标会发送给 Apple 的地理编码服务一次，用来换成球场名称。这是唯一离开手机的数据，本 App 的开发者不会保存它，名称你也可以自己修改或清除。",
-            "p_purchase_t": "购买",
-            "p_purchase_d": "Pro 由 App Store 处理。本 App 看不到你的支付信息，只记录购买是否有效。",
+            
             "p_analytics_t": "不做统计分析",
             "p_analytics_d": "没有统计分析，也没有崩溃报告。除上文所述的广告 SDK 外，没有任何数据离开手机。",
             "p_ads_t": "广告",
             "p_ads_d": "免费版会显示 Google AdMob 广告：底部横幅，以及渲染完成后的全屏广告。广告 SDK 会接收设备的广告标识符和 IP 地址用于投放和统计广告，绝不会接收你的视频、片段或比赛数据。共享标识符前 iOS 会先征求你的同意，拒绝后只会看到相关性较低的广告。Pro 会移除所有广告。 Pro 页面还提供激励视频：看完即可开放 Pro 一小时。",
             "pass_watch_fmt": "观看广告 · Pro %d 分钟",
-            "pass_watch_d": "广告需要看完。之后所有 Pro 功能立即开放：原画质、无水印、智能裁剪、人物跟踪、计数器、无广告。这段时间里做的片段和短片在结束后仍然保留。随时可以再看一次。",
+            "pass_watch_d": "在此期间制作的片段和短片，结束后仍保持 Pro 画质。",
             "pass_active_fmt": "Pro 试用中 · 剩余 %d 分钟",
-            "pass_pill": "Pro 试用",
             "pass_loading": "广告加载中…",
+            "pass_sub_fmt": "完整看完一段广告，所有 Pro 功能开放 %d 分钟。",
+            "pass_unavailable": "暂时无法加载广告，请稍后再试。",
+            "pass_pill_fmt": "PRO · %d分钟", "pass_get": "解锁 Pro",
             "feat_noads": "无广告",
             "feat_noads_d": "Pro 会移除横幅和渲染之间的广告。",
             "paywall_free_ads": "免费：广告 · 720p · 水印",
-            "tier_free": "免费",
-            "shot_counter": "击球计数",
-            "shot_counter_d": "每击一拍就加一，烧录在片段上。",
-            "counter_label": "拍",
-            "count_uncertain": "可能混入了隔壁球场的声音 — 请查看片段并修正。",
-            "mixed_courts_t": "击球数可能不准",
-            "mixed_courts_d": "部分来回球中似乎混入了隔壁球场的击球声，这些片段没有烧录计数器。可在片段中直接修改数字，或用严格模式重新检测。",
-            "redetect_strict": "用严格模式重新检测",
+            
+            
+            
+            
             "sort_cheer": "欢呼最响",
             "cheer_badge": "欢呼",
             "auto_text": "自动文字",
@@ -3193,7 +2918,6 @@ enum L {
             "record": "录制",
             "camera_unavailable": "这台设备没有摄像头。",
             "import_failed": "无法读取该视频，没有导入任何内容。",
-            "owner_wrong": "口令不正确",
             "drag_hint": "拖动字幕来放置位置",
             "font": "字体",
             "font_system": "无衬线",
@@ -3245,10 +2969,8 @@ enum L {
             "place": "地点",
             "add_place": "添加地点",
             "place_placeholder": "球场或俱乐部名称",
-            "paywall_sub_feature": "付费一次，保留全部 Pro 功能。",
             "courts": "你打过的球场",
             "visits_fmt": "%d 次",
-            "matches_one": "%d 场", "matches_n": "%d 场",
             "rallies_n": "%d 个回合",
             "activity": "最近 6 个月",
             "next": "下一步",
@@ -3292,14 +3014,10 @@ enum L {
             "f_len": "时长",
             "f_hits": "击球",
             "hits_fmt": "%d 拍以上",
-            "owner_title": "作者模式",
-            "owner_sub": "仅限本机。测试时可随意切换版本。",
-            "owner_pass": "口令",
-            "owner_enter": "进入",
-            "owner_pro": "已解锁 Pro",
-            "owner_reset": "重置免费导入次数",
-            "owner_exit": "退出作者模式",
-            "owner_on": "作者",
+            
+            
+            
+            
         ],
     ]
 }

@@ -3,15 +3,14 @@ import GoogleMobileAds
 import SwiftUI
 import UIKit
 
-/// Ads for the free tier: a banner under the tab bar and an interstitial
-/// after a render. Pro removes both.
+/// Ads for the free tier: a banner under the tab bar, an interstitial after a
+/// render, and the rewarded ad that opens Pro. A pass removes the first two.
 ///
-/// Why ads at all: a free app can go through review before the paid-apps
-/// agreement, bank account and tax forms are accepted, and a match-clipping
-/// tool is opened once or twice a week, so the free import cap that fed the
-/// paywall mostly fed uninstalls. The cap is gone; the banner pays for the
-/// render instead, and the interstitial sits where the user is already
-/// waiting — the end of a render — never in a player or an editor.
+/// Why ads: a free app can go through review without the paid-apps agreement,
+/// bank account and tax forms, and a match-clipping tool opened once or twice a
+/// week is a poor fit for a price. The banner pays for the render, and the
+/// interstitial sits where the user is already waiting — the end of a render —
+/// never in a player or an editor.
 ///
 /// What the SDK sends: the advertising identifier (only after the ATT prompt
 /// is accepted), IP address and coarse device data. Never the video, the clips
@@ -46,7 +45,7 @@ final class AdsManager: NSObject, ObservableObject {
     /// Height the banner needs, so the layout can reserve it before the ad
     /// arrives and nothing jumps when it does.
     @Published private(set) var bannerHeight: CGFloat = 0
-    /// A rewarded ad is loaded and can be shown. The paywall's "watch an ad"
+    /// A rewarded ad is loaded and can be shown. The Pro sheet's "watch an ad"
     /// button reads this so it never promises an ad that is not there.
     @Published private(set) var rewardedReady = false
 
@@ -56,7 +55,7 @@ final class AdsManager: NSObject, ObservableObject {
     private var loadingInterstitial = false
     /// The rewarded ad: the highest-paying format AdMob has, and the one
     /// the user has to sit through to the end. In exchange it opens every
-    /// Pro feature for `PurchaseManager.passDuration`.
+    /// Pro feature for `ProPass.duration`.
     private var rewarded: RewardedAd?
     private var loadingRewarded = false
     private var lastInterstitial = Date.distantPast
@@ -88,8 +87,8 @@ final class AdsManager: NSObject, ObservableObject {
         loadRewarded()
     }
 
-    /// Pro switches ads off the moment the purchase lands; a refund or an
-    /// owner-mode toggle switches them back on without a relaunch.
+    /// A pass switches ads off the moment it is granted, and back on the
+    /// minute it ends, without a relaunch.
     func setPro(_ pro: Bool) {
         isPro = pro
         refreshShowing()

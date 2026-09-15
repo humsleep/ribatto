@@ -3,7 +3,7 @@ import SwiftUI
 
 struct SessionDetailView: View {
     @EnvironmentObject var store: SessionStore
-    @EnvironmentObject var purchases: PurchaseManager
+    @EnvironmentObject var pass: ProPass
     @EnvironmentObject var ads: AdsManager
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.horizontalSizeClass) private var hSize
@@ -16,8 +16,6 @@ struct SessionDetailView: View {
     @State private var confirmDeleteSession = false
     @State private var confirmDeleteClips = false
     @State private var confirmSwitchVertical = false
-    @State private var editingOpponent = false
-    @State private var opponentDraft = ""
     @State private var selecting = false
     @State private var selection: Set<String> = []
 
@@ -30,7 +28,7 @@ struct SessionDetailView: View {
         case clip(ClipInfo)
         case highlight
         case merged(URL)
-        case paywall(feature: String?)
+        case pro(feature: String?)
         case caption
         case targetPlayer
         case addRally
@@ -41,7 +39,7 @@ struct SessionDetailView: View {
             case .clip(let c): return "clip-" + c.id
             case .highlight: return "highlight"
             case .merged(let u): return "merged-" + u.lastPathComponent
-            case .paywall(let f): return "paywall-" + (f ?? "")
+            case .pro(let f): return "pro-" + (f ?? "")
             case .caption: return "caption"
             case .targetPlayer: return "target-player"
             case .addRally: return "add-rally"
@@ -77,11 +75,8 @@ struct SessionDetailView: View {
                 }
 
                 if !clips.isEmpty {
-                    if purchases.isPro && session.renderedPro != true {
+                    if pass.isPro && session.renderedPro != true {
                         upgradeBanner()
-                    }
-                    if (session.segments ?? []).contains(where: { $0.countIsUncertain }) {
-                        mixedCourtsBanner(session, busy: busy)
                     }
                     if session.hasHighlight { highlightCard(session) }
                     statsRow(clips)
@@ -124,11 +119,6 @@ struct SessionDetailView: View {
                     }
                 } label: { Image(systemName: "ellipsis.circle") }
             }
-        }
-        .alert(L.s("opponent", lang), isPresented: $editingOpponent) {
-            TextField(L.s("opponent_ph", lang), text: $opponentDraft)
-            Button(L.s("apply", lang)) { store.setOpponent(session, opponentDraft) }
-            Button(L.s("cancel", lang), role: .cancel) {}
         }
         .alert(L.s("place", lang), isPresented: $editingPlace) {
             TextField(L.s("place_placeholder", lang), text: $placeDraft)
@@ -187,8 +177,8 @@ struct SessionDetailView: View {
             case .merged(let url):
                 HighlightPlayerSheet(url: url, name: L.s("merged", lang),
                                      orientation: session.renderedOrientation)
-            case .paywall(let feature):
-                PaywallView(feature: feature)
+            case .pro(let feature):
+                ProPassView(feature: feature)
             case .caption:
                 CaptionEditorView(session: session)
             case .targetPlayer:
@@ -243,8 +233,8 @@ struct SessionDetailView: View {
 
     /// Icon, value and the edit affordance as one run of text. Laid out as an
     /// HStack the two glyphs hold fixed columns, and what is left at
-    /// accessibility sizes is narrower than a single word — "Wednesday group"
-    /// came out as "Wednes / day / group". Inline, the value owns the width.
+    /// accessibility sizes is narrower than a single word — a court name came
+    /// out broken mid-word. Inline, the value owns the width.
     private func editableRow(icon: String, value: String, dim: Bool) -> some View {
         (Text(Image(systemName: icon))
          + Text("  ")
@@ -267,33 +257,6 @@ struct SessionDetailView: View {
                 editableRow(icon: "mappin.and.ellipse",
                             value: session.placeName ?? L.s("add_place", lang),
                             dim: session.placeName == nil)
-            }
-            .buttonStyle(.plain)
-            Button {
-                opponentDraft = session.opponent ?? ""
-                editingOpponent = true
-            } label: {
-                let score = TennisScore.summary(for: session.segments ?? [],
-                                                sport: session.sport, lang: lang)
-                // The score is short but at accessibility sizes it still claims
-                // more than half the row, so there it drops to its own line.
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        editableRow(icon: "person.2",
-                                    value: session.opponent ?? L.s("opponent", lang),
-                                    dim: session.opponent == nil)
-                        if let score, !typeSize.isAccessibilitySize {
-                            Text(score)
-                                .font(.caption.bold())
-                                .foregroundStyle(.primary)
-                        }
-                    }
-                    if let score, typeSize.isAccessibilitySize {
-                        Text(score)
-                            .font(.caption.bold())
-                            .foregroundStyle(.primary)
-                    }
-                }
             }
             .buttonStyle(.plain)
             // The card title already shows when the match was filmed; this only
@@ -336,17 +299,17 @@ struct SessionDetailView: View {
                 }
 
                 Toggle(isOn: Binding(
-                    get: { purchases.isPro && session.smartCropEnabled },
+                    get: { pass.isPro && session.smartCropEnabled },
                     set: { on in
-                        guard purchases.isPro else {
-                            destination = .paywall(feature: L.s("smart_crop", lang))
+                        guard pass.isPro else {
+                            destination = .pro(feature: L.s("smart_crop", lang))
                             return
                         }
                         store.setSmartCrop(session, on)
                     })) {
                     HStack(spacing: 6) {
                         Text(L.s("smart_crop", lang)).font(.subheadline)
-                        if !purchases.isPro { ProBadge() }
+                        if !pass.isPro { ProBadge() }
                     }
                 }
                 .tint(Theme.accent)
@@ -368,63 +331,23 @@ struct SessionDetailView: View {
                 HStack(spacing: 6) {
                     Text(L.s("export_quality", lang))
                         .font(.subheadline)
-                    if !purchases.isPro { ProBadge() }
+                    if !pass.isPro { ProBadge() }
                     Spacer()
                     Button {
-                        guard !purchases.isPro else { return }
-                        destination = .paywall(feature: L.s("feat_quality", lang))
+                        guard !pass.isPro else { return }
+                        destination = .pro(feature: L.s("feat_quality", lang))
                     } label: {
                         // 4K is the wide path only: a portrait export is
                         // capped at a 1080 short side, and 9:16 is the app's
                         // main output — promising 4K there was simply false.
-                        Text(purchases.isPro
+                        Text(pass.isPro
                              ? L.s(OutputFrame(session.effectiveOrientation).isPortrait
                                    ? "quality_1080" : "quality_source", lang)
                                              : L.s("quality_720", lang))
                             .font(.caption.bold())
-                            .foregroundStyle(purchases.isPro ? .primary : .secondary)
+                            .foregroundStyle(pass.isPro ? .primary : .secondary)
                     }
                     .buttonStyle(.plain)
-                }
-
-                Toggle(isOn: Binding(
-                    get: { purchases.isPro && session.shotCounterEnabled },
-                    set: { on in
-                        guard purchases.isPro else {
-                            destination = .paywall(feature: L.s("shot_counter", lang))
-                            return
-                        }
-                        store.setShotCounter(session, on)
-                    })) {
-                    HStack(spacing: 6) {
-                        Text(L.s("shot_counter", lang)).font(.subheadline)
-                        if !purchases.isPro { ProBadge() }
-                    }
-                }
-                .tint(Theme.accent)
-                hint(L.s("shot_counter_d", lang))
-
-                Toggle(isOn: Binding(
-                    get: { purchases.isPro && session.scoreboardEnabled },
-                    set: { on in
-                        guard purchases.isPro else {
-                            destination = .paywall(feature: L.s("scoreboard", lang))
-                            return
-                        }
-                        store.setScoreboard(session, on)
-                    })) {
-                    HStack(spacing: 6) {
-                        Text(L.s("scoreboard", lang)).font(.subheadline)
-                        if !purchases.isPro { ProBadge() }
-                    }
-                }
-                .tint(Theme.accent)
-                hint(L.s("scoreboard_d", lang))
-                if session.scoreboardEnabled && session.taggedPoints == 0 {
-                    Label(L.s("score_needs_tags", lang), systemImage: "hand.tap")
-                        .font(.caption)
-                        .foregroundStyle(Theme.warning)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 Button { destination = .caption } label: {
@@ -611,7 +534,7 @@ struct SessionDetailView: View {
             // With a player picked the crop stops being "this much of the
             // width" and becomes "this player, close up" — quoting a width
             // then would be wrong.
-            let zoomed = purchases.isPro && session.effectiveSmartCrop
+            let zoomed = pass.isPro && session.effectiveSmartCrop
                 && session.targetPlayer != nil
             let kept = Int((frame.widthKeptFrom169 * 100).rounded())
             Label(zoomed
@@ -625,7 +548,7 @@ struct SessionDetailView: View {
         }
     }
 
-    /// "Track a player" — opens the picker, or routes free users to the paywall.
+    /// "Track a player" — opens the picker, or routes free users to the Pro sheet.
     /// Styled like every other action button so it reads as one; the old plain
     /// text row was indistinguishable from the hint under it.
     @ViewBuilder
@@ -633,8 +556,8 @@ struct SessionDetailView: View {
         let picked = session.targetPlayer != nil
         HStack(spacing: 8) {
             Button {
-                guard purchases.isPro else {
-                    destination = .paywall(feature: L.s("target_player", lang))
+                guard pass.isPro else {
+                    destination = .pro(feature: L.s("target_player", lang))
                     return
                 }
                 if OutputFrame(session.effectiveOrientation).isPortrait {
@@ -649,7 +572,7 @@ struct SessionDetailView: View {
                           : "person.crop.circle.badge.plus")
                         .foregroundStyle(picked ? Theme.accent : Color.primary)
                     Text(picked ? L.s("target_change", lang) : L.s("target_pick", lang))
-                    if !purchases.isPro { ProBadge() }
+                    if !pass.isPro { ProBadge() }
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
@@ -728,38 +651,6 @@ struct SessionDetailView: View {
 
     // MARK: - Pro
 
-    /// Says out loud that the shot counts on this session are in doubt.
-    ///
-    /// The detector hears the court next door as well as this one, and when a
-    /// rally's strikes fall into two loudness groups there is no honest number
-    /// to burn in — so none was. Saying nothing would leave the user to find
-    /// the missing counter on their own; guessing would put a wrong number in
-    /// a video they are about to post.
-    private func mixedCourtsBanner(_ session: Session, busy: Bool) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "waveform.badge.exclamationmark")
-                .font(.title3).foregroundStyle(Theme.warning)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(L.s("mixed_courts_t", lang)).font(.subheadline.bold())
-                Text(L.s("mixed_courts_d", lang))
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                // Strict raises both thresholds, which is the one setting that
-                // reliably drops the quieter court.
-                Button(L.s("redetect_strict", lang)) {
-                    store.setSensitivity(session, .low)
-                    Task { await store.apply(sessionID: sessionID) }
-                }
-                .rcSecondary()
-                .disabled(busy)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
-    }
-
     private func upgradeBanner() -> some View {
         HStack(spacing: 12) {
             Image(systemName: "arrow.up.circle.fill")
@@ -787,8 +678,8 @@ struct SessionDetailView: View {
 
     private func saveAllButton(_ session: Session, busy: Bool) -> some View {
         Button {
-            guard purchases.isPro else {
-                destination = .paywall(feature: L.s("save_all", lang))
+            guard pass.isPro else {
+                destination = .pro(feature: L.s("save_all", lang))
                 return
             }
             Task {
@@ -800,7 +691,7 @@ struct SessionDetailView: View {
             }
         } label: {
             Label(L.s("save_all", lang),
-                  systemImage: purchases.isPro ? "square.and.arrow.down.on.square" : "lock.fill")
+                  systemImage: pass.isPro ? "square.and.arrow.down.on.square" : "lock.fill")
                 .font(.subheadline.bold())
                 .frame(maxWidth: .infinity, minHeight: 24)
         }
@@ -855,11 +746,11 @@ struct SessionDetailView: View {
 
     /// Saving several at once is the Pro capability — a single clip can always
     /// be shared. Without this gate, Select → Save was a two-tap bypass of the
-    /// "one-tap camera roll" the paywall sells.
+    /// "one-tap camera roll" the Pro sheet lists.
     private func saveBtn(_ session: Session, _ n: Int) -> some View {
         Button {
-            guard purchases.isPro || n <= 1 else {
-                destination = .paywall(feature: L.s("feat_saveall", lang))
+            guard pass.isPro || n <= 1 else {
+                destination = .pro(feature: L.s("feat_saveall", lang))
                 return
             }
             Task {
@@ -872,9 +763,9 @@ struct SessionDetailView: View {
         } label: {
             HStack(spacing: 6) {
                 Label(L.s("save", lang),
-                      systemImage: purchases.isPro || n <= 1
+                      systemImage: pass.isPro || n <= 1
                           ? "square.and.arrow.down" : "lock.fill")
-                if !purchases.isPro && n > 1 { ProBadge() }
+                if !pass.isPro && n > 1 { ProBadge() }
             }
             .font(.subheadline.bold()).frame(maxWidth: .infinity, minHeight: 24)
         }
@@ -885,13 +776,13 @@ struct SessionDetailView: View {
     /// Joining clips is a Pro capability.
     private func mergeBtn(_ session: Session, _ canMerge: Bool) -> some View {
         Button {
-            guard purchases.isPro else { destination = .paywall(feature: L.s("merge", lang)); return }
+            guard pass.isPro else { destination = .pro(feature: L.s("merge", lang)); return }
             Task { if let url = await store.mergeClips(selection, in: session) {
                     destination = .merged(url)
                 } }
         } label: {
             Label(L.s("merge", lang),
-                  systemImage: purchases.isPro ? "arrow.triangle.merge" : "lock.fill")
+                  systemImage: pass.isPro ? "arrow.triangle.merge" : "lock.fill")
                 .font(.subheadline.bold()).frame(maxWidth: .infinity, minHeight: 24)
         }
         .rcSecondary()
@@ -913,7 +804,7 @@ struct SessionDetailView: View {
     private func statsRow(_ clips: [ClipInfo]) -> some View {
         let total = clips.reduce(0) { $0 + $1.duration }
         let longest = clips.map(\.duration).max() ?? 0
-        let hits = clips.reduce(0) { $0 + $1.segment.effectiveHits }
+        let hits = clips.reduce(0) { $0 + $1.segment.hits }
         return LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: 10),
                            count: statColumns),
@@ -943,17 +834,7 @@ struct SessionDetailView: View {
     // MARK: - Toolbar
 
     private func toolbar(_ session: Session, busy: Bool) -> some View {
-        let tagged = session.taggedPoints
-        let total = session.segments?.count ?? 0
-        // Everything on this row is short, and every one of them still breaks
-        // mid-word at accessibility sizes once it has to share the width:
-        // the sort pill read "Timeli…" and the tally read "4 of 4 / tagge / d".
-        let stacked = typeSize.isAccessibilitySize
-        let taggedLabel = Label(String(format: L.s("tagged_fmt", lang), tagged, total),
-                                systemImage: tagged == total && total > 0
-                                    ? "checkmark.circle.fill" : "flag.checkered")
-            .font(.caption)
-            .foregroundStyle(tagged == total && total > 0 ? .primary : .secondary)
+        let title = Text(L.s("clips_title", lang)).font(.headline)
         let addRally = Button { destination = .addRally } label: {
             Label(L.s("add_rally", lang), systemImage: "plus")
                 .font(.caption.bold())
@@ -961,22 +842,28 @@ struct SessionDetailView: View {
         .buttonStyle(.plain)
         .foregroundStyle(Theme.accent)
 
-        let picker = VStack(alignment: .leading, spacing: 10) {
-            if stacked {
-                Text(L.s("clips_title", lang)).font(.headline)
-                SortMenu(sort: $sort)
-                taggedLabel
-                addRally
-            } else {
-                HStack {
-                    Text(L.s("clips_title", lang)).font(.headline)
-                    Spacer()
+        // One row when it fits. At accessibility sizes, or in a language whose
+        // labels run long, sharing the width breaks words mid-way — the sort
+        // pill read "Timeli…" — so the row splits instead of truncating.
+        let picker = Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    title
                     SortMenu(sort: $sort)
-                }
-                HStack(spacing: 8) {
-                    taggedLabel
-                    Spacer()
                     addRally
+                }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        title
+                        Spacer(minLength: 8)
+                        addRally
+                        SortMenu(sort: $sort)
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack { title; Spacer(); SortMenu(sort: $sort) }
+                        addRally
+                    }
                 }
             }
         }
