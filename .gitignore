@@ -24,3 +24,7 @@ xcuserdata/
 
 # macOS
 .DS_Store
+
+# RF-DETR 모델 산출물 (20MB) — Tools/rfdetr/make_model.py로 다시 만든다
+ios/Tools/rfdetr/*.mlpackage
+ios/Tools/rfdetr/export/

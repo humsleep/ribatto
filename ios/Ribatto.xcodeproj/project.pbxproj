@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		AA0000000000000000000102 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000101 /* GoogleMobileAds */; };
+		AA0000000000000000000112 /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000111 /* Pow */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA0000000000000000000102 /* GoogleMobileAds in Frameworks */,
+				AA0000000000000000000112 /* Pow in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			name = Ribatto;
 			packageProductDependencies = (
 				AA0000000000000000000101 /* GoogleMobileAds */,
+				AA0000000000000000000111 /* Pow */,
 			);
 			productName = Ribatto;
 			productReference = AA0000000000000000000010 /* Ribatto.app */;
@@ -104,6 +107,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				AA0000000000000000000100 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+				AA0000000000000000000110 /* XCRemoteSwiftPackageReference "Pow" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AA0000000000000000000041 /* Products */;
@@ -306,6 +310,14 @@
 				minimumVersion = 12.0.0;
 			};
 		};
+		AA0000000000000000000110 /* XCRemoteSwiftPackageReference "Pow" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/EmergeTools/Pow";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.5;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -313,6 +325,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AA0000000000000000000100 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
 			productName = GoogleMobileAds;
+		};
+		AA0000000000000000000111 /* Pow */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA0000000000000000000110 /* XCRemoteSwiftPackageReference "Pow" */;
+			productName = Pow;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

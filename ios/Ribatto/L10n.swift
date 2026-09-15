@@ -117,8 +117,7 @@ enum L {
             "reel_pick_top": "Best %d", "reel_included_fmt": "%d of %d",
             "reel_reorder": "Drag to reorder", "reel_over_cap": "Over the limit",
             "clips": "clips", "shots_n": "shots", "sec": "s",
-            "highlight": "Highlight Reel", "make_highlight": "Create Highlight Reel",
-            "highlight_ready": "Highlight reel ready",
+            
             "play": "Play", "save": "Save", "rebuild": "Rebuild",
             "delete": "Delete", "delete_clip": "Delete Clip", "cancel": "Cancel",
             "delete_session": "Delete Session",
@@ -130,10 +129,6 @@ enum L {
             "empty_clips": "Press Detect Rallies and clips will appear here.",
             "all_clips_empty": "Clips from your matches show up here.",
             "paywall_title": "Unlock Ribatto Pro",
-            
-            
-            
-            
             
             
             
@@ -213,11 +208,8 @@ enum L {
             "target_switch_msg": "Player tracking works on vertical clips. The aspect will switch to 9:16, then you pick a player.",
             "target_switch_ok": "Switch and pick",
             "feat_nowm": "No watermark", "feat_nowm_d": "Clean clips, ready to post.",
-            
             "clips_title": "Clips",
             "clip_one": "clip",
-            
-            
             
             
             "tempo": "Tempo", "tempo_fmt": "%d/min", "tok_tempo": "Tempo",
@@ -226,8 +218,6 @@ enum L {
             "add_rally_d": "Drag to where the missed rally was, then add it.",
             "rally_added": "Rally added", "split_hint": "Splits this clip in two at the playhead.",
             "split_failed": "That clip is too short to split. Make it longer first.",
-            
-            
             
             "no_rallies": "No rallies found in this video.",
             "no_rallies_hint": "Try Loose sensitivity and detect again, check the sport is right, or add a rally by hand. Detection listens for racket impacts, so a very quiet or very noisy recording can come back empty.",
@@ -239,7 +229,6 @@ enum L {
             "p_account_d": "There is nothing to sign up for and no profile. Your clips live in this app and in Photos when you save them.",
             "p_place_t": "Court names",
             "p_place_d": "If a video carries GPS metadata, the coordinate is sent to Apple's geocoder once to turn it into a court name. That is the only thing that leaves the phone, it is not stored by this app's developer, and you can edit or clear the name yourself.",
-            
             "p_analytics_t": "No analytics",
             "p_analytics_d": "No analytics and no crash reporting. Apart from the ad SDK described above, nothing leaves the phone.",
             "p_ads_t": "Ads",
@@ -254,8 +243,6 @@ enum L {
             "feat_noads": "No ads",
             "feat_noads_d": "Pro removes the banner and the ads between renders.",
             "paywall_free_ads": "Free: ads · 720p · watermark",
-            
-            
             
             
             "sort_cheer": "Loudest crowd", "cheer_badge": "Crowd",
@@ -352,8 +339,6 @@ enum L {
             // Owner mode
             
             
-            
-            
         ],
         "ko": [
             "library": "라이브러리", "all_clips": "모든 클립",
@@ -381,8 +366,7 @@ enum L {
             "reel_pick_top": "베스트 %d개", "reel_included_fmt": "%d / %d개",
             "reel_reorder": "끌어서 순서 변경", "reel_over_cap": "길이 초과",
             "clips": "클립", "shots_n": "타구", "sec": "초",
-            "highlight": "하이라이트", "make_highlight": "하이라이트 합본 만들기",
-            "highlight_ready": "하이라이트 영상 완성",
+            
             "play": "재생", "save": "저장", "rebuild": "다시 만들기",
             "delete": "삭제", "delete_clip": "클립 삭제", "cancel": "취소",
             "delete_session": "세션 삭제",
@@ -394,10 +378,6 @@ enum L {
             "empty_clips": "랠리 감지를 누르면 클립이 여기 정리됩니다.",
             "all_clips_empty": "경기에서 만든 클립이 여기에 모입니다.",
             "paywall_title": "Ribatto Pro 잠금 해제",
-            
-            
-            
-            
             
             
             
@@ -477,11 +457,8 @@ enum L {
             "target_switch_msg": "선수 추적은 세로 클립에서 동작합니다. 방향을 9:16으로 전환한 뒤 선수를 고를 수 있어요.",
             "target_switch_ok": "전환하고 선택",
             "feat_nowm": "워터마크 없음", "feat_nowm_d": "깨끗한 클립 그대로 올리세요.",
-            
             "clips_title": "클립",
             "clip_one": "클립",
-            
-            
             
             
             "tempo": "템포", "tempo_fmt": "분당 %d타", "tok_tempo": "템포",
@@ -490,8 +467,6 @@ enum L {
             "add_rally_d": "놓친 랠리 위치로 이동한 뒤 추가하세요.",
             "rally_added": "랠리를 추가했습니다", "split_hint": "재생 위치에서 이 클립을 둘로 나눕니다.",
             "split_failed": "이 클립은 나누기에 너무 짧습니다. 길이를 늘린 뒤 시도해 주세요.",
-            
-            
             
             "no_rallies": "이 영상에서 랠리를 찾지 못했습니다.",
             "no_rallies_hint": "민감도를 '느슨하게'로 바꿔 다시 감지하거나, 종목이 맞는지 확인하거나, 랠리를 직접 추가해 보세요. 타구음을 듣는 방식이라 소리가 아주 작거나 주변이 시끄러우면 결과가 비어 있을 수 있습니다.",
@@ -503,7 +478,6 @@ enum L {
             "p_account_d": "가입할 것도 프로필도 없습니다. 클립은 이 앱과, 저장하신 경우 사진 앱에만 있습니다.",
             "p_place_t": "코트 이름",
             "p_place_d": "영상에 GPS 정보가 있으면 좌표를 애플 지오코더에 한 번 보내 코트 이름으로 바꿉니다. 기기를 벗어나는 것은 이것뿐이고, 개발자가 보관하지 않으며, 이름은 직접 수정하거나 지울 수 있습니다.",
-            
             "p_analytics_t": "분석 도구 없음",
             "p_analytics_d": "분석 도구도 오류 보고도 없습니다. 위에 설명한 광고 SDK 외에는 아무것도 기기 밖으로 나가지 않습니다.",
             "p_ads_t": "광고",
@@ -518,8 +492,6 @@ enum L {
             "feat_noads": "광고 없음",
             "feat_noads_d": "Pro는 배너와 렌더 사이의 광고를 없앱니다.",
             "paywall_free_ads": "무료: 광고 · 720p · 워터마크",
-            
-            
             
             
             "sort_cheer": "환호 큰 순", "cheer_badge": "환호",
@@ -616,8 +588,6 @@ enum L {
             // 소유자 모드
             
             
-            
-            
         ],
         "ja": [
             "library": "ライブラリ", "all_clips": "すべてのクリップ",
@@ -645,8 +615,7 @@ enum L {
             "reel_pick_top": "ベスト%d本", "reel_included_fmt": "%d / %d本",
             "reel_reorder": "ドラッグで並べ替え", "reel_over_cap": "長さ超過",
             "clips": "クリップ", "shots_n": "打球", "sec": "秒",
-            "highlight": "ハイライト", "make_highlight": "ハイライトを作成",
-            "highlight_ready": "ハイライト完成",
+            
             "play": "再生", "save": "保存", "rebuild": "作り直す",
             "delete": "削除", "delete_clip": "クリップを削除", "cancel": "キャンセル",
             "delete_session": "セッションを削除",
@@ -658,10 +627,6 @@ enum L {
             "empty_clips": "ラリー検出を押すとクリップがここに並びます。",
             "all_clips_empty": "試合から作ったクリップがここに並びます。",
             "paywall_title": "Ribatto Pro を解除",
-            
-            
-            
-            
             
             
             
@@ -741,11 +706,8 @@ enum L {
             "target_switch_msg": "選手追跡は縦クリップで動作します。向きを 9:16 に切り替えてから選手を選べます。",
             "target_switch_ok": "切り替えて選ぶ",
             "feat_nowm": "ウォーターマークなし", "feat_nowm_d": "そのまま投稿できるクリーンなクリップ。",
-            
             "clips_title": "クリップ",
             "clip_one": "クリップ",
-            
-            
             
             
             "tempo": "テンポ", "tempo_fmt": "毎分 %d 打", "tok_tempo": "テンポ",
@@ -754,8 +716,6 @@ enum L {
             "add_rally_d": "見逃したラリーの位置に移動してから追加してください。",
             "rally_added": "ラリーを追加しました", "split_hint": "再生位置でこのクリップを2つに分けます。",
             "split_failed": "このクリップは分割するには短すぎます。長さを伸ばしてからお試しください。",
-            
-            
             
             "no_rallies": "この映像からラリーを検出できませんでした。",
             "no_rallies_hint": "感度を「ゆるめ」にして再検出する、種目が合っているか確認する、またはラリーを手動で追加してみてください。打球音を聞き取る方式のため、音が小さすぎたり騒がしいと結果が空になることがあります。",
@@ -767,7 +727,6 @@ enum L {
             "p_account_d": "登録もプロフィールもありません。クリップはこのアプリ内と、保存した場合は写真アプリにのみ残ります。",
             "p_place_t": "コート名",
             "p_place_d": "映像に GPS 情報があるときだけ、座標を Apple のジオコーダーに一度送ってコート名に変換します。端末から出るのはこれだけで、開発者が保存することはなく、名前はご自身で編集・削除できます。",
-            
             "p_analytics_t": "解析なし",
             "p_analytics_d": "解析ツールもクラッシュ報告もありません。上記の広告 SDK 以外に端末の外へ出るものはありません。",
             "p_ads_t": "広告",
@@ -782,8 +741,6 @@ enum L {
             "feat_noads": "広告なし",
             "feat_noads_d": "Pro はバナーと書き出し後の広告をなくします。",
             "paywall_free_ads": "無料: 広告 · 720p · ウォーターマーク",
-            
-            
             
             
             "sort_cheer": "歓声が大きい順", "cheer_badge": "歓声",
@@ -880,8 +837,6 @@ enum L {
             // オーナーモード
             
             
-            
-            
         ],
         "es": [
             "library": "Biblioteca",
@@ -935,9 +890,7 @@ enum L {
             "clips": "clips",
             "shots_n": "golpes",
             "sec": "s",
-            "highlight": "Resumen",
-            "make_highlight": "Crear resumen",
-            "highlight_ready": "Resumen listo",
+            
             "play": "Reproducir",
             "save": "Guardar",
             "rebuild": "Rehacer",
@@ -956,10 +909,6 @@ enum L {
             "empty_clips": "Pulsa Detectar puntos y los clips aparecerán aquí.",
             "all_clips_empty": "Aquí aparecen los clips de tus partidos.",
             "paywall_title": "Desbloquea Ribatto Pro",
-            
-            
-            
-            
             
             
             
@@ -1058,14 +1007,8 @@ enum L {
             "target_switch_ok": "Cambiar y elegir",
             "feat_nowm": "Sin marca de agua",
             "feat_nowm_d": "Clips limpios, listos para publicar.",
-            
             "clips_title": "Clips",
             "clip_one": "clip",
-            
-            
-            
-            
-            
             
             
             
@@ -1083,8 +1026,6 @@ enum L {
             "split_hint": "Divide este clip en dos por donde está la reproducción.",
             "split_failed": "Ese clip es demasiado corto para dividirlo. Alárgalo primero.",
             
-            
-            
             "no_rallies": "No se han encontrado puntos en este vídeo.",
             "no_rallies_hint": "Prueba con sensibilidad Amplia y detecta otra vez, comprueba que el deporte es el correcto o añade un punto a mano. La detección escucha los golpes de raqueta, así que una grabación muy silenciosa o muy ruidosa puede salir vacía.",
             "privacy": "Privacidad",
@@ -1095,7 +1036,6 @@ enum L {
             "p_account_d": "No hay que registrarse ni hay perfil. Tus clips viven en esta app y en Fotos cuando los guardas.",
             "p_place_t": "Nombres de pista",
             "p_place_d": "Si un vídeo lleva datos de GPS, la coordenada se envía una vez al geocodificador de Apple para convertirla en el nombre de una pista. Es lo único que sale del teléfono, el desarrollador de esta app no lo guarda y puedes editar o borrar el nombre tú mismo.",
-            
             "p_analytics_t": "Sin analíticas",
             "p_analytics_d": "Sin analíticas ni informes de fallos. Aparte del SDK de anuncios descrito arriba, nada sale del teléfono.",
             "p_ads_t": "Anuncios",
@@ -1110,8 +1050,6 @@ enum L {
             "feat_noads": "Sin anuncios",
             "feat_noads_d": "Pro elimina el banner y los anuncios entre renderizados.",
             "paywall_free_ads": "Gratis: anuncios · 720p · marca de agua",
-            
-            
             
             
             "sort_cheer": "Más ovacionados",
@@ -1236,8 +1174,6 @@ enum L {
             "hits_fmt": "%d+ golpes",
             
             
-            
-            
         ],
         "pt": [
             "library": "Biblioteca",
@@ -1291,9 +1227,7 @@ enum L {
             "clips": "clipes",
             "shots_n": "batidas",
             "sec": "s",
-            "highlight": "Melhores momentos",
-            "make_highlight": "Criar compilação",
-            "highlight_ready": "Compilação pronta",
+            
             "play": "Reproduzir",
             "save": "Salvar",
             "rebuild": "Refazer",
@@ -1312,10 +1246,6 @@ enum L {
             "empty_clips": "Toque em Detectar pontos e os clipes aparecem aqui.",
             "all_clips_empty": "Os clipes dos seus jogos aparecem aqui.",
             "paywall_title": "Desbloqueie o Ribatto Pro",
-            
-            
-            
-            
             
             
             
@@ -1414,14 +1344,8 @@ enum L {
             "target_switch_ok": "Mudar e escolher",
             "feat_nowm": "Sem marca d'água",
             "feat_nowm_d": "Clipes limpos, prontos para postar.",
-            
             "clips_title": "Clipes",
             "clip_one": "clipe",
-            
-            
-            
-            
-            
             
             
             
@@ -1439,8 +1363,6 @@ enum L {
             "split_hint": "Divide este clipe em dois na posição da reprodução.",
             "split_failed": "Esse clipe é curto demais para dividir. Aumente a duração primeiro.",
             
-            
-            
             "no_rallies": "Nenhum ponto encontrado neste vídeo.",
             "no_rallies_hint": "Tente a sensibilidade Ampla e detecte de novo, confira se o esporte está certo ou adicione um ponto à mão. A detecção escuta as batidas da raquete, então uma gravação muito silenciosa ou muito barulhenta pode voltar vazia.",
             "privacy": "Privacidade",
@@ -1451,7 +1373,6 @@ enum L {
             "p_account_d": "Não há cadastro nem perfil. Seus clipes ficam neste app e em Fotos quando você os salva.",
             "p_place_t": "Nomes de quadra",
             "p_place_d": "Se um vídeo tiver dados de GPS, a coordenada é enviada uma vez ao geocodificador da Apple para virar o nome de uma quadra. É a única coisa que sai do celular, o desenvolvedor deste app não guarda nada e você pode editar ou apagar o nome.",
-            
             "p_analytics_t": "Sem análises",
             "p_analytics_d": "Sem análises nem relatórios de falhas. Além do SDK de anúncios descrito acima, nada sai do aparelho.",
             "p_ads_t": "Anúncios",
@@ -1466,8 +1387,6 @@ enum L {
             "feat_noads": "Sem anúncios",
             "feat_noads_d": "O Pro remove o banner e os anúncios entre renderizações.",
             "paywall_free_ads": "Grátis: anúncios · 720p · marca d'água",
-            
-            
             
             
             "sort_cheer": "Mais vibração",
@@ -1592,8 +1511,6 @@ enum L {
             "hits_fmt": "%d+ batidas",
             
             
-            
-            
         ],
         "de": [
             "library": "Bibliothek",
@@ -1647,9 +1564,7 @@ enum L {
             "clips": "Clips",
             "shots_n": "Schläge",
             "sec": "s",
-            "highlight": "Highlight-Video",
-            "make_highlight": "Highlight-Video erstellen",
-            "highlight_ready": "Highlight-Video fertig",
+            
             "play": "Abspielen",
             "save": "Sichern",
             "rebuild": "Neu erstellen",
@@ -1668,10 +1583,6 @@ enum L {
             "empty_clips": "Tippe auf Ballwechsel finden, dann erscheinen die Clips hier.",
             "all_clips_empty": "Hier erscheinen die Clips aus deinen Matches.",
             "paywall_title": "Ribatto Pro freischalten",
-            
-            
-            
-            
             
             
             
@@ -1770,14 +1681,8 @@ enum L {
             "target_switch_ok": "Wechseln und wählen",
             "feat_nowm": "Kein Wasserzeichen",
             "feat_nowm_d": "Saubere Clips, fertig zum Posten.",
-            
             "clips_title": "Clips",
             "clip_one": "Clip",
-            
-            
-            
-            
-            
             
             
             
@@ -1795,8 +1700,6 @@ enum L {
             "split_hint": "Teilt diesen Clip an der Abspielposition in zwei.",
             "split_failed": "Dieser Clip ist zum Teilen zu kurz. Mach ihn erst länger.",
             
-            
-            
             "no_rallies": "In diesem Video wurden keine Ballwechsel gefunden.",
             "no_rallies_hint": "Probier die Empfindlichkeit Locker und such erneut, prüf die Sportart oder füge einen Ballwechsel von Hand hinzu. Die Erkennung hört auf Schlaggeräusche, deshalb kann eine sehr leise oder sehr laute Aufnahme leer bleiben.",
             "privacy": "Datenschutz",
@@ -1807,7 +1710,6 @@ enum L {
             "p_account_d": "Es gibt nichts zu registrieren und kein Profil. Deine Clips liegen in dieser App und in Fotos, wenn du sie sicherst.",
             "p_place_t": "Platznamen",
             "p_place_d": "Trägt ein Video GPS-Daten, wird die Koordinate einmal an Apples Geocoder geschickt, um daraus einen Platznamen zu machen. Nur das verlässt das Handy, der Entwickler dieser App speichert es nicht, und du kannst den Namen selbst ändern oder löschen.",
-            
             "p_analytics_t": "Keine Analyse",
             "p_analytics_d": "Keine Analyse und keine Absturzberichte. Außer dem oben beschriebenen Werbe-SDK verlässt nichts das Telefon.",
             "p_ads_t": "Werbung",
@@ -1822,8 +1724,6 @@ enum L {
             "feat_noads": "Keine Werbung",
             "feat_noads_d": "Pro entfernt das Banner und die Anzeigen zwischen den Renderings.",
             "paywall_free_ads": "Kostenlos: Werbung · 720p · Wasserzeichen",
-            
-            
             
             
             "sort_cheer": "Lautester Jubel",
@@ -1948,8 +1848,6 @@ enum L {
             "hits_fmt": "%d+ Schläge",
             
             
-            
-            
         ],
         "fr": [
             "library": "Bibliothèque",
@@ -2003,9 +1901,7 @@ enum L {
             "clips": "clips",
             "shots_n": "frappes",
             "sec": "s",
-            "highlight": "Résumé",
-            "make_highlight": "Créer un résumé",
-            "highlight_ready": "Résumé prêt",
+            
             "play": "Lire",
             "save": "Enregistrer",
             "rebuild": "Refaire",
@@ -2024,10 +1920,6 @@ enum L {
             "empty_clips": "Touchez Détecter les échanges et les clips apparaîtront ici.",
             "all_clips_empty": "Les clips de vos matchs apparaissent ici.",
             "paywall_title": "Débloquer Ribatto Pro",
-            
-            
-            
-            
             
             
             
@@ -2126,14 +2018,8 @@ enum L {
             "target_switch_ok": "Passer et choisir",
             "feat_nowm": "Sans filigrane",
             "feat_nowm_d": "Des clips nets, prêts à publier.",
-            
             "clips_title": "Clips",
             "clip_one": "clip",
-            
-            
-            
-            
-            
             
             
             
@@ -2151,8 +2037,6 @@ enum L {
             "split_hint": "Coupe ce clip en deux à la position de lecture.",
             "split_failed": "Ce clip est trop court pour être coupé. Allongez-le d’abord.",
             
-            
-            
             "no_rallies": "Aucun échange trouvé dans cette vidéo.",
             "no_rallies_hint": "Essayez la sensibilité Large puis relancez, vérifiez le sport, ou ajoutez un échange à la main. La détection écoute les frappes de raquette : un enregistrement très silencieux ou très bruyant peut ne rien donner.",
             "privacy": "Confidentialité",
@@ -2163,7 +2047,6 @@ enum L {
             "p_account_d": "Rien à créer, aucun profil. Vos clips vivent dans cette app et dans Photos quand vous les enregistrez.",
             "p_place_t": "Noms de court",
             "p_place_d": "Si une vidéo contient des données GPS, la coordonnée est envoyée une fois au géocodeur d'Apple pour en tirer un nom de court. C'est la seule chose qui quitte le téléphone, le développeur de cette app ne la conserve pas, et vous pouvez modifier ou effacer ce nom.",
-            
             "p_analytics_t": "Aucune analyse",
             "p_analytics_d": "Aucune analyse ni rapport de plantage. En dehors du SDK publicitaire décrit ci-dessus, rien ne quitte le téléphone.",
             "p_ads_t": "Publicité",
@@ -2178,8 +2061,6 @@ enum L {
             "feat_noads": "Sans publicité",
             "feat_noads_d": "Pro supprime la bannière et les publicités entre les rendus.",
             "paywall_free_ads": "Gratuit : publicité · 720p · filigrane",
-            
-            
             
             
             "sort_cheer": "Public le plus fort",
@@ -2304,8 +2185,6 @@ enum L {
             "hits_fmt": "%d+ frappes",
             
             
-            
-            
         ],
         "it": [
             "library": "Libreria",
@@ -2359,9 +2238,7 @@ enum L {
             "clips": "clip",
             "shots_n": "colpi",
             "sec": "s",
-            "highlight": "Highlights",
-            "make_highlight": "Crea gli highlights",
-            "highlight_ready": "Highlights pronti",
+            
             "play": "Riproduci",
             "save": "Salva",
             "rebuild": "Rifai",
@@ -2380,10 +2257,6 @@ enum L {
             "empty_clips": "Tocca Trova gli scambi e i clip compariranno qui.",
             "all_clips_empty": "Qui compaiono i clip delle tue partite.",
             "paywall_title": "Sblocca Ribatto Pro",
-            
-            
-            
-            
             
             
             
@@ -2482,14 +2355,8 @@ enum L {
             "target_switch_ok": "Passa e scegli",
             "feat_nowm": "Senza filigrana",
             "feat_nowm_d": "Clip puliti, pronti da pubblicare.",
-            
             "clips_title": "Clip",
             "clip_one": "clip",
-            
-            
-            
-            
-            
             
             
             
@@ -2507,8 +2374,6 @@ enum L {
             "split_hint": "Divide questo clip in due nel punto di riproduzione.",
             "split_failed": "Questo clip è troppo corto per dividerlo. Allungalo prima.",
             
-            
-            
             "no_rallies": "Nessuno scambio trovato in questo video.",
             "no_rallies_hint": "Prova la sensibilità Ampia e cerca di nuovo, controlla che lo sport sia giusto oppure aggiungi uno scambio a mano. Il rilevamento ascolta i colpi di racchetta, quindi una registrazione molto silenziosa o molto rumorosa può risultare vuota.",
             "privacy": "Privacy",
@@ -2519,7 +2384,6 @@ enum L {
             "p_account_d": "Non c'è niente da registrare e nessun profilo. I tuoi clip stanno in questa app e in Foto quando li salvi.",
             "p_place_t": "Nomi dei campi",
             "p_place_d": "Se un video contiene dati GPS, la coordinata viene inviata una volta al geocoder di Apple per ricavarne il nome di un campo. È l'unica cosa che lascia il telefono, lo sviluppatore di questa app non la conserva e puoi modificare o cancellare il nome tu stesso.",
-            
             "p_analytics_t": "Nessuna analisi",
             "p_analytics_d": "Nessuna analisi e nessun report di arresto. A parte l'SDK pubblicitario descritto sopra, nulla lascia il telefono.",
             "p_ads_t": "Pubblicità",
@@ -2534,8 +2398,6 @@ enum L {
             "feat_noads": "Senza pubblicità",
             "feat_noads_d": "Pro rimuove il banner e gli annunci tra un rendering e l'altro.",
             "paywall_free_ads": "Gratis: pubblicità · 720p · filigrana",
-            
-            
             
             
             "sort_cheer": "Pubblico più caldo",
@@ -2660,8 +2522,6 @@ enum L {
             "hits_fmt": "%d+ colpi",
             
             
-            
-            
         ],
         "zh-Hans": [
             "library": "资料库",
@@ -2715,9 +2575,7 @@ enum L {
             "clips": "个片段",
             "shots_n": "拍",
             "sec": "秒",
-            "highlight": "集锦",
-            "make_highlight": "生成集锦",
-            "highlight_ready": "集锦已生成",
+            
             "play": "播放",
             "save": "保存",
             "rebuild": "重新生成",
@@ -2736,10 +2594,6 @@ enum L {
             "empty_clips": "点按“检测回合”，片段会出现在这里。",
             "all_clips_empty": "比赛里的片段会出现在这里。",
             "paywall_title": "解锁 Ribatto Pro",
-            
-            
-            
-            
             
             
             
@@ -2838,14 +2692,8 @@ enum L {
             "target_switch_ok": "切换并选择",
             "feat_nowm": "没有水印",
             "feat_nowm_d": "干净的片段，可以直接发布。",
-            
             "clips_title": "片段",
             "clip_one": "个片段",
-            
-            
-            
-            
-            
             
             
             
@@ -2863,8 +2711,6 @@ enum L {
             "split_hint": "在播放位置把这个片段一分为二。",
             "split_failed": "这个片段太短，无法拆分。请先加长。",
             
-            
-            
             "no_rallies": "这段视频里没有找到回合。",
             "no_rallies_hint": "试试把灵敏度调成“宽松”再检测一次，确认运动项目选对了，或者手动添加一个回合。检测依靠球拍击球声，所以录音太轻或太吵都可能什么也找不到。",
             "privacy": "隐私",
@@ -2875,7 +2721,6 @@ enum L {
             "p_account_d": "不用注册，也没有个人资料。你的片段只存在这个 App 里，保存后也会在照片里。",
             "p_place_t": "球场名称",
             "p_place_d": "如果视频带有 GPS 信息，坐标会发送给 Apple 的地理编码服务一次，用来换成球场名称。这是唯一离开手机的数据，本 App 的开发者不会保存它，名称你也可以自己修改或清除。",
-            
             "p_analytics_t": "不做统计分析",
             "p_analytics_d": "没有统计分析，也没有崩溃报告。除上文所述的广告 SDK 外，没有任何数据离开手机。",
             "p_ads_t": "广告",
@@ -2890,8 +2735,6 @@ enum L {
             "feat_noads": "无广告",
             "feat_noads_d": "Pro 会移除横幅和渲染之间的广告。",
             "paywall_free_ads": "免费：广告 · 720p · 水印",
-            
-            
             
             
             "sort_cheer": "欢呼最响",
@@ -3014,8 +2857,6 @@ enum L {
             "f_len": "时长",
             "f_hits": "击球",
             "hits_fmt": "%d 拍以上",
-            
-            
             
             
         ],

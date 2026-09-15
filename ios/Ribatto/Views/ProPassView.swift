@@ -1,3 +1,4 @@
+import Pow
 import SwiftUI
 
 /// What Pro opens, and the one way to open it: a rewarded ad played to the end.
@@ -11,6 +12,7 @@ struct ProPassView: View {
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Name of the feature the user just tried to use, if any.
     var feature: String? = nil
 
@@ -139,6 +141,10 @@ struct ProPassView: View {
                 }
                 .rcPrimary()
                 .disabled(!ads.rewardedReady)
+                // A slow shine once the ad is loaded: the one moment the
+                // button changes from "wait" to "press".
+                .conditionalEffect(.repeat(.shine(duration: 0.9), every: 3.0),
+                                   condition: ads.rewardedReady && !reduceMotion)
                 Text(L.s("pass_watch_d", lang))
                     .font(.caption2)
                     .foregroundStyle(.secondary)

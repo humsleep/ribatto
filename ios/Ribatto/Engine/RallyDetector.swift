@@ -122,24 +122,34 @@ enum RallyDetector {
         }
         let lengths = merged.map { $0[$0.count - 1].t - $0[0].t }
         let shots = merged.map { Double($0.count) }
-        let nHits = normalized(shots)
-        let nCheer = normalized(cheers)
-        let nLength = normalized(lengths)
+        let ranked = scores(shots: shots, cheers: cheers, lengths: lengths)
 
         return merged.enumerated().map { i, g in
-            let score = nHits[i] * scoreWeights.hits
-                      + nCheer[i] * scoreWeights.cheer
-                      + nLength[i] * scoreWeights.length
-            return RallySegment(start: max(0, g[0].t - padStartS),
-                                end: min(duration, g[g.count - 1].t + padEndS),
-                                hits: g.count,
-                                score: min(max(score, 0), 1),
-                                hitTimes: g.map { $0.t },
-                                cheer: cheers[i])
+            RallySegment(start: max(0, g[0].t - padStartS),
+                         end: min(duration, g[g.count - 1].t + padEndS),
+                         hits: g.count,
+                         score: ranked[i],
+                         hitTimes: g.map { $0.t },
+                         cheer: cheers[i])
         }
     }
 
     // MARK: - Scoring
+
+    /// Each rally's score from its three signals, min-max normalised over the
+    /// session. `SoundCheck` calls this again once it has a better measure of
+    /// the crowd's reaction than the voice band.
+    static func scores(shots: [Double], cheers: [Double], lengths: [Double]) -> [Double] {
+        let nHits = normalized(shots)
+        let nCheer = normalized(cheers)
+        let nLength = normalized(lengths)
+        return shots.indices.map { i in
+            let score = nHits[i] * scoreWeights.hits
+                      + nCheer[i] * scoreWeights.cheer
+                      + nLength[i] * scoreWeights.length
+            return min(max(score, 0), 1)
+        }
+    }
 
     /// Loudest voice-band moment just after the point ends, over how loud the
     /// same band was during play. Measuring against the rally's own baseline

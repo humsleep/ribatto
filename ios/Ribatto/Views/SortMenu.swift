@@ -29,7 +29,7 @@ enum ClipSort: CaseIterable {
         case .short: return a.duration < b.duration
         case .hitsMany: return a.segment.hits > b.segment.hits
         case .hitsFew: return a.segment.hits < b.segment.hits
-        case .cheer: return (a.segment.cheer ?? -1) > (b.segment.cheer ?? -1)
+        case .cheer: return (a.segment.reaction ?? -1) > (b.segment.reaction ?? -1)
         // Starred first, then newest-detected order inside each group.
         case .favourite:
             if a.segment.isFavourite != b.segment.isFavourite { return a.segment.isFavourite }

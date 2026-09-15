@@ -141,15 +141,28 @@ struct RallySegment: Codable, Equatable {
     /// rally's own median, so 1 is silence and 2 is a clear shout. nil before
     /// it was kept.
     var cheer: Double? = nil
+    /// `SoundCheck`'s confidence that the rally sounds like racket play, 0…1.
+    /// nil on rallies from before it existed, or where it could not run.
+    var racketConf: Double? = nil
+    /// `SoundCheck`'s confidence of a crowd reaction — cheering, applause,
+    /// laughter — just after the point, 0…1.
+    var crowdConf: Double? = nil
 
     var duration: Double { end - start }
 
-    /// Loud enough to badge. The detector's own scoring already normalises
-    /// within a session; this absolute floor is for "the crowd actually
-    /// reacted". On a 26-minute courtside doubles the ratios ran 1.1–5.1 with
-    /// a median near 3, so 3.5 badges the top third rather than every point.
-    var isLoud: Bool { (cheer ?? 0) >= RallySegment.loudCheer }
+    /// How strongly people reacted, on the classifier's 0…1 scale. Rallies
+    /// detected before `SoundCheck` carry only the voice-band ratio, which is
+    /// mapped so that both measures badge at the same point.
+    var reaction: Double? {
+        crowdConf ?? cheer.map { $0 * RallySegment.loudCrowd / RallySegment.loudCheer }
+    }
+    var isLoud: Bool { (reaction ?? 0) >= RallySegment.loudCrowd }
+    /// The voice-band ratio that used to badge a rally: on a 26-minute
+    /// courtside doubles the ratios ran 1.1–5.1 with a median near 3.
     static let loudCheer = 3.5
+    /// Classifier confidence that badges a reaction. The two clear reactions
+    /// measured came in at 0.34 and 0.49, over a 0.01–0.09 floor.
+    static let loudCrowd = 0.3
 
     /// Strikes per minute of actual play — the padding the detector adds at
     /// each end is not play, so it comes off before the rate is taken. nil
@@ -377,7 +390,6 @@ struct Session: Identifiable, Codable, Equatable {
         let order = segs.indices.sorted { (segs[$0].score ?? -1) > (segs[$1].score ?? -1) }
         return (order.firstIndex(of: index) ?? index) + 1
     }
-    var hasHighlight: Bool = false
 
     /// The date the user means when they say "that match" — the day they
     /// played, not the evening they got round to importing it. Everything
@@ -438,7 +450,7 @@ struct Session: Identifiable, Codable, Equatable {
              caption, renderedCaption,
              smartCrop, renderedSmartCrop, detectionFoundNothing,
              targetPlayer, renderedTargetPlayer,
-             clipTargets, renderedClipTargets, hasHighlight
+             clipTargets, renderedClipTargets
     }
 }
 

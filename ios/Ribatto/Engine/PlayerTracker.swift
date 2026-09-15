@@ -7,8 +7,10 @@ import Vision
 ///
 /// Three stages per sampled frame, cheapest first:
 ///  1. a seeded `VNTrackObjectRequest` walked forward frame to frame;
-///  2. when it loses confidence, re-acquire with `VNDetectHumanRectanglesRequest`
-///     and take the person nearest the last known position;
+///  2. when it loses confidence, re-acquire with `PersonDetector` (RF-DETR,
+///     which also sees far-court players) and then
+///     `VNDetectHumanRectanglesRequest`, taking the person nearest the last
+///     known position;
 ///  3. if Vision sees nobody — the common case on court-side footage where a
 ///     player is only a few percent of the frame, as `SmartCrop`'s header
 ///     explains — fall back to frame-to-frame motion, but windowed around the
@@ -44,13 +46,51 @@ enum PlayerTracker {
     /// reproduce the old per-sample constants at the old 0.3 s spacing.
     private static let smoothingHalfLife = 0.48      // seconds
     private static let maxPanSpeed: CGFloat = 400    // display points per second
+    /// Whether stage 2 asks `PersonDetector` before Vision. Off: measured on
+    /// four IMG_0007 rallies × near/far seeds (Tools/track_validate.sh with
+    /// TRACK_AB=1) it barely moved retention — near 97.7 % → 98.4 %, far
+    /// 99.9 % → 100 % — for 20 MB of model and ~0.6 s more per match. The
+    /// model is not bundled; `Tools/rfdetr/make_model.py` rebuilds it.
+    static let useDetector = false
+    /// While lost, run the detector on at most every this-many sampled frames.
+    private static let detectorEvery = 3
+    private static let detectorMinScore: Float = 0.5
+    /// A detection that moved less than this (fraction of the frame) since the
+    /// previous detector run is scenery, not a player — see `still` below.
+    private static let stillShift: CGFloat = 0.002
+
+    /// What one run did, for the validator in `Tools/`. The app ignores it.
+    struct Stats {
+        var samples = 0
+        var tracked = 0                 // stage 1 held the lock
+        var reacquiredByDetector = 0
+        var reacquiredByVision = 0
+        var motion = 0
+        var detectorLoaded = false
+        var detectorRuns = 0
+        var detectorSeconds = 0.0
+        var detectorPeople = 0          // everything the detector reported
+        var stillRejected = 0
+        var sizeRejected = 0            // width or height unlike the seed
+        var distanceRejected = 0        // right size, beyond reacquireRadius
+    }
 
     /// - Parameter seed: normalized rect in display space (origin top-left).
     static func track(asset: AVAsset,
                       segment: RallySegment,
                       seed: CGRect,
                       displaySize: CGSize) async -> [Keyframe] {
-        guard segment.end > segment.start else { return [] }
+        await track(asset: asset, segment: segment, seed: seed,
+                    displaySize: displaySize, useDetector: useDetector).keyframes
+    }
+
+    static func track(asset: AVAsset,
+                      segment: RallySegment,
+                      seed: CGRect,
+                      displaySize: CGSize,
+                      useDetector: Bool) async -> (keyframes: [Keyframe], stats: Stats) {
+        var stats = Stats()
+        guard segment.end > segment.start else { return ([], stats) }
 
         // Vision boxes are normalized with the origin at the BOTTOM-left; the
         // seed comes in top-left. Flip Y and clamp into the unit square.
@@ -58,7 +98,7 @@ enum PlayerTracker {
                              y: 1 - seed.origin.y - seed.size.height,
                              width: seed.size.width, height: seed.size.height)
         var box = flipped.intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
-        guard !box.isNull, box.width > 0.01, box.height > 0.01 else { return [] }
+        guard !box.isNull, box.width > 0.01, box.height > 0.01 else { return ([], stats) }
 
         var sequence = VNSequenceRequestHandler()
         // Tracking state lives in the REQUEST, not the handler: build a new
@@ -92,12 +132,39 @@ enum PlayerTracker {
         func plausible(_ b: CGRect) -> Bool {
             b.width > seedWidth * 0.5 && b.width < seedWidth * 2.0
         }
+        /// The detector also reports people the width check alone lets
+        /// through — a far-court player's arm-out box can match a near
+        /// player's width — so its candidates must match the seed in height too.
+        let seedHeight = box.height
+        func plausibleHeight(_ b: CGRect) -> Bool {
+            b.height > seedHeight * 0.5 && b.height < seedHeight * 2.0
+        }
+        /// The detector scores clothes hanging on a courtside bench as a
+        /// person, run after run. Measured 0.2 s apart on IMG_0007, that box
+        /// moved 0.0001–0.0015 of the frame with 1–5 % height change; players
+        /// mostly moved 0.002–0.03. A standing player occasionally comes in
+        /// under the bar too, but that only costs one run — they are tried
+        /// again `detectorEvery` samples later — whereas accepting the clothes
+        /// hands stage 1 an object it will track perfectly for the rest of
+        /// the rally.
+        func still(_ b: CGRect, _ earlier: [CGRect]) -> Bool {
+            earlier.contains {
+                abs($0.midX - b.midX) < stillShift && abs($0.midY - b.midY) < stillShift
+                    && abs($0.height - b.height) < b.height * 0.06
+            }
+        }
+        var detector: PersonDetector?
+        var detectorTried = false
+        var sinceDetector = detectorEvery
+        var previousDetections: [CGRect] = []
         var samples: [(time: Double, x: CGFloat, box: CGRect, seen: Bool)] = []
 
         await FrameSequence.read(asset: asset, from: segment.start, to: segment.end,
                                  fps: fps, maxWidth: analysisWidth) { time, cg in
             var center: CGFloat?
             var seen: CGRect?
+            stats.samples += 1
+            sinceDetector += 1
 
             // 0) start a fresh handler+request before the old pair hits the
             //    call limit, and whenever the lock was lost
@@ -122,11 +189,49 @@ enum PlayerTracker {
                 request.inputObservation = obs
                 center = obs.boundingBox.midX
                 seen = topLeft(obs.boundingBox)
+                stats.tracked += 1
             } else {
                 tracker = nil       // rebuild next frame, from wherever we end up
             }
 
-            // 2) re-acquire with human detection near the last position
+            // 2a) re-acquire with RF-DETR near the last position. Throttled:
+            //     an inference costs about as much as the Vision request, and
+            //     the lock it restores then holds through the frames between.
+            if center == nil, useDetector, sinceDetector >= detectorEvery {
+                sinceDetector = 0
+                if !detectorTried {
+                    detectorTried = true
+                    detector = PersonDetector()      // once per run, lazily
+                    stats.detectorLoaded = detector != nil
+                }
+                let started = Date()
+                if let people = detector?.people(in: cg, minScore: detectorMinScore) {
+                    stats.detectorRuns += 1
+                    stats.detectorPeople += people.count
+                    let moving = people.filter { !still($0, previousDetections) }
+                    stats.stillRejected += people.count - moving.count
+                    previousDetections = people
+                    var best: CGRect?
+                    var bestGap = reacquireRadius
+                    for p in moving {
+                        guard plausible(p) && plausibleHeight(p) else {
+                            stats.sizeRejected += 1; continue
+                        }
+                        let gap = abs(p.midX - lastCenter)
+                        if gap < bestGap { bestGap = gap; best = p }
+                        else { stats.distanceRejected += 1 }
+                    }
+                    if let best {
+                        box = best
+                        center = best.midX
+                        seen = topLeft(best)
+                        stats.reacquiredByDetector += 1
+                    }
+                }
+                stats.detectorSeconds += Date().timeIntervalSince(started)
+            }
+
+            // 2b) re-acquire with Vision human detection near the last position
             if center == nil {
                 let detect = VNDetectHumanRectanglesRequest()
                 detect.upperBodyOnly = false
@@ -148,6 +253,7 @@ enum PlayerTracker {
                         box = best
                         center = best.midX
                         seen = topLeft(best)
+                        stats.reacquiredByVision += 1
                     }
                 }
             }
@@ -158,6 +264,7 @@ enum PlayerTracker {
                prev.w == g.w, prev.h == g.h,
                let moved = motionCenter(prev, g, near: lastCenter) {
                 center = moved
+                stats.motion += 1
                 // slide the seed too, so the rebuild in step 0 starts from
                 // where the subject now is rather than where it was lost
                 box.origin.x = moved - box.width / 2
@@ -180,8 +287,8 @@ enum PlayerTracker {
             }
             return true
         }
-        guard samples.count > 1 else { return [] }
-        return smoothed(samples)
+        guard samples.count > 1 else { return ([], stats) }
+        return (smoothed(samples), stats)
     }
 
     // MARK: - Motion fallback

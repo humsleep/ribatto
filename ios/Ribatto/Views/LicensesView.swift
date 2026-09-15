@@ -2,8 +2,9 @@ import SwiftUI
 
 /// The licence texts of everything bundled with the app.
 ///
-/// The SIL Open Font License requires the licence to travel with the fonts, so
-/// this screen is a shipping obligation, not a courtesy — the .txt files are
+/// The SIL Open Font License requires the licence to travel with the fonts, and
+/// the MIT licence asks the same of Pow's notice, so this screen is a shipping
+/// obligation, not a courtesy — the .txt files are
 /// bundled verbatim as they came from the foundries and read at runtime rather
 /// than pasted into source, so they cannot drift from the files they cover.
 struct LicensesView: View {
@@ -17,6 +18,7 @@ struct LicensesView: View {
     private let items = [
         Item(id: "Anton-OFL", title: "Anton"),
         Item(id: "BebasNeue-OFL", title: "Bebas Neue"),
+        Item(id: "Pow-MIT", title: "Pow"),
     ]
 
     var body: some View {

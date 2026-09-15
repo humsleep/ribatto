@@ -216,9 +216,192 @@ func dumpAnnotated(_ cg: CGImage, boxes: [CGRect], smartX: CGFloat?, to path: St
     CGImageDestinationFinalize(dest)
 }
 
+// MARK: - Detector A/B
+//
+//   TRACK_AB=1 RFDETR_MODEL=<compiled .mlmodelc> [TRACK_DUMP_DIR=dir] ./track_validate <video> [n]
+//
+// Runs the real PlayerTracker.track twice per rally and seed — stage 2 with
+// Vision only (the old behaviour) and with PersonDetector first — and prints
+// what each kept. Two seeds per rally, both picked by the detector at
+// start+1s: the tallest person (near court) and the tallest person in the
+// middle band that is well under that height (far court, which Vision can't
+// see). There is no ground truth, so "wrong person" is approximated by two
+// signals and the contact sheets are the real check:
+//   size-off  locked samples whose box height is outside 0.55–1.8× the seed's
+//             (near and far players differ by about 2.5×)
+//   jumps     locked samples whose centre moved over 0.12 of the frame width
+//             from the previous kept sample (a teleport, not running)
+
+let env = ProcessInfo.processInfo.environment
+
+func detectorAB(asset: AVAsset, gen: AVAssetImageGenerator, segs: [RallySegment],
+                displaySize: CGSize, name: String) async {
+    if let path = env["RFDETR_MODEL"] { PersonDetector.modelURL = URL(fileURLWithPath: path) }
+    guard let seedDetector = PersonDetector() else {
+        print("PersonDetector failed to load — set RFDETR_MODEL to a compiled .mlmodelc")
+        return
+    }
+    rule("Detector A/B — PlayerTracker.track, Vision-only vs RF-DETR first")
+    print("  rally seed  mode   samples  locked  motion   lost  reacq D/V  runs  ms/run  still  size-off  jumps   wall")
+    var totals: [String: (samples: Int, locked: Int, motion: Int, lost: Int, d: Int, v: Int,
+                          sizeOff: Int, jumps: Int, wall: Double)] = [:]
+
+    // TargetPlayerSheet picks on the frame at start+1s, but track() starts at
+    // `start`, so by default the seed is a second stale — as in the app.
+    // TRACK_SEED_OFFSET=0 seeds on the frame tracking actually starts from.
+    let seedOffset = env["TRACK_SEED_OFFSET"].flatMap(Double.init) ?? 1.0
+    for (i, seg) in segs.enumerated() {
+        let t = min(seg.start + seedOffset, seg.end)
+        guard let cg = grab(gen, t).image,
+              let people = seedDetector.people(in: cg, minScore: 0.5) else { continue }
+        // Vision space → top-left, which is what track() takes
+        let boxes = people.map { CGRect(x: $0.minX, y: 1 - $0.maxY, width: $0.width, height: $0.height) }
+            .filter { $0.midX > 0.04 && $0.midX < 0.96 }
+        var seeds: [(String, CGRect)] = []
+        if let near = boxes.max(by: { $0.height < $1.height }) {
+            seeds.append(("near", near))
+            if let far = boxes.filter({ $0.height < near.height * 0.6 && $0.midX > 0.3 && $0.midX < 0.7 })
+                .max(by: { $0.height < $1.height }) {
+                seeds.append(("far", far))
+            }
+        }
+        for (seedName, seed) in seeds {
+            var runs: [(String, [PlayerTracker.Keyframe])] = []
+            for on in [false, true] {
+                let wall = Date()
+                let r = await PlayerTracker.track(asset: asset, segment: seg, seed: seed,
+                                                  displaySize: displaySize, useDetector: on)
+                let seconds = Date().timeIntervalSince(wall)
+                let s = r.stats, kf = r.keyframes
+                let locked = kf.filter(\.locked)
+                var sizeOff = 0, jumps = 0
+                var prev: PlayerTracker.Keyframe?
+                for k in kf {
+                    if k.locked, let b = k.box {
+                        let ratio = b.height / displaySize.height / seed.height
+                        if ratio < 0.55 || ratio > 1.8 { sizeOff += 1 }
+                        if let p = prev, let pb = p.box,
+                           abs(b.midX - pb.midX) / displaySize.width > 0.12 { jumps += 1 }
+                    }
+                    prev = k
+                }
+                let lost = s.samples - kf.count
+                let mode = on ? "on" : "off"
+                let perRun = s.detectorRuns > 0 ? f(s.detectorSeconds / Double(s.detectorRuns) * 1000, 0) : "-"
+                let reacq = String(s.reacquiredByDetector) + "/" + String(s.reacquiredByVision)
+                let cols: [String] = [
+                    "  #" + padR(String(i + 1), 4), padR(seedName, 6), padR(mode, 5),
+                    padL(String(s.samples), 8),
+                    padL(pct(locked.count, s.samples), 8),
+                    padL(pct(s.motion, s.samples), 8),
+                    padL(pct(lost, s.samples), 7),
+                    padL(reacq, 11),
+                    padL(String(s.detectorRuns), 6),
+                    padL(perRun, 8),
+                    padL(String(s.stillRejected), 7),
+                    padL(String(sizeOff), 10),
+                    padL(String(jumps), 7),
+                    padL(f(seconds) + "s", 7),
+                    on && s.detectorRuns == 0 && !s.detectorLoaded && s.motion > 0
+                        ? "  ⚠ detector did not load" : "",
+                ]
+                print(cols.joined())
+                if s.detectorRuns > 0 {
+                    print("         detector saw \(s.detectorPeople): still \(s.stillRejected)"
+                          + ", size \(s.sizeRejected), too far \(s.distanceRejected)"
+                          + "   seed w=" + f(Double(seed.width), 3) + " h=" + f(Double(seed.height), 3))
+                }
+                let key = seedName + " " + mode
+                var tot = totals[key] ?? (0, 0, 0, 0, 0, 0, 0, 0, 0)
+                tot.samples += s.samples; tot.locked += locked.count; tot.motion += s.motion
+                tot.lost += lost; tot.d += s.reacquiredByDetector; tot.v += s.reacquiredByVision
+                tot.sizeOff += sizeOff; tot.jumps += jumps; tot.wall += seconds
+                totals[key] = tot
+                runs.append((mode, kf))
+            }
+            if let dir = env["TRACK_DUMP_DIR"] {
+                try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+                let path = dir + "/ab_" + name + "_r\(i + 1)_" + seedName + ".png"
+                contactSheet(gen: gen, seg: seg, seed: seed, runs: runs.map(\.1),
+                             displaySize: displaySize, to: path)
+                print("         wrote " + path)
+            }
+        }
+    }
+    print("")
+    for key in totals.keys.sorted() {
+        let t = totals[key]!
+        let parts: [String] = [
+            "  TOTAL " + padR(key, 9), " samples=\(t.samples)",
+            "  locked=" + pct(t.locked, t.samples),
+            "  motion=" + pct(t.motion, t.samples),
+            "  lost=" + pct(t.lost, t.samples),
+            "  reacq D/V=\(t.d)/\(t.v)  size-off=\(t.sizeOff)  jumps=\(t.jumps)",
+            "  wall=" + f(t.wall) + "s",
+        ]
+        print(parts.joined())
+    }
+}
+
+/// Rows of moments through the rally; left column detector off, right on.
+/// White = seed, green = locked box, orange = motion-carried box,
+/// blue = the 9:16 window centred on the smoothed centre.
+func contactSheet(gen: AVAssetImageGenerator, seg: RallySegment, seed: CGRect,
+                  runs: [[PlayerTracker.Keyframe]], displaySize: CGSize, to path: String) {
+    let rows = 8, cellW = 640
+    let cellH = Int(CGFloat(cellW) * displaySize.height / displaySize.width)
+    let gap = 6
+    let W = cellW * runs.count + gap * (runs.count - 1), H = cellH * rows + gap * (rows - 1)
+    guard let ctx = CGContext(data: nil, width: W, height: H, bitsPerComponent: 8, bytesPerRow: 0,
+                              space: CGColorSpaceCreateDeviceRGB(),
+                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+    ctx.setFillColor(CGColor(gray: 0, alpha: 1))
+    ctx.fill(CGRect(x: 0, y: 0, width: W, height: H))
+    for r in 0..<rows {
+        let t = seg.start + (seg.end - seg.start) * (Double(r) + 0.5) / Double(rows)
+        guard let cg = grab(gen, t).image else { continue }
+        for (c, kf) in runs.enumerated() {
+            let ox = CGFloat(c * (cellW + gap))
+            let oy = CGFloat(H - (r + 1) * cellH - r * gap)     // row 0 at the top
+            let cell = CGRect(x: ox, y: oy, width: CGFloat(cellW), height: CGFloat(cellH))
+            ctx.draw(cg, in: cell)
+            // normalized top-left rect → cell rect in CG's bottom-left space
+            func place(_ n: CGRect) -> CGRect {
+                CGRect(x: ox + n.minX * CGFloat(cellW), y: oy + (1 - n.maxY) * CGFloat(cellH),
+                       width: n.width * CGFloat(cellW), height: n.height * CGFloat(cellH))
+            }
+            ctx.setLineWidth(2)
+            if r == 0 {
+                ctx.setStrokeColor(CGColor(gray: 1, alpha: 1))
+                ctx.stroke(place(seed).insetBy(dx: -4, dy: -4))
+            }
+            guard let k = kf.min(by: { abs($0.time - t) < abs($1.time - t) }),
+                  abs(k.time - t) < 0.2 else { continue }     // nothing kept near t: lost
+            if let b = k.box {
+                ctx.setStrokeColor(k.locked ? CGColor(srgbRed: 0.2, green: 1, blue: 0.3, alpha: 1)
+                                            : CGColor(srgbRed: 1, green: 0.6, blue: 0.1, alpha: 1))
+                ctx.stroke(place(CGRect(x: b.minX / displaySize.width, y: b.minY / displaySize.height,
+                                        width: b.width / displaySize.width,
+                                        height: b.height / displaySize.height)))
+            }
+            let ww = CROP_WIDTH_FRACTION
+            let cx = min(max(k.centerX / displaySize.width, ww / 2), 1 - ww / 2)
+            ctx.setStrokeColor(CGColor(srgbRed: 0.3, green: 0.6, blue: 1, alpha: 1))
+            ctx.setLineWidth(3)
+            ctx.stroke(place(CGRect(x: cx - ww / 2, y: 0, width: ww, height: 1)).insetBy(dx: 2, dy: 2))
+        }
+    }
+    guard let out = ctx.makeImage(),
+          let dest = CGImageDestinationCreateWithURL(
+            URL(fileURLWithPath: path) as CFURL, UTType.png.identifier as CFString, 1, nil)
+    else { return }
+    CGImageDestinationAddImage(dest, out, nil)
+    CGImageDestinationFinalize(dest)
+}
+
 // MARK: - Main
 
-let dumpDir = ProcessInfo.processInfo.environment["TRACK_DUMP_DIR"]
+let dumpDir = env["TRACK_DUMP_DIR"]
 let sema = DispatchSemaphore(value: 0)
 Task {
     do {
@@ -229,16 +412,29 @@ Task {
         print("duration  : " + f(info.duration) + "s")
 
         // ── rally segments, from the shipping detector ──
-        print("loading audio…")
-        let t0 = Date()
-        let samples = try await AudioLoader.loadMono16k(url: url)
-        print("audio     : \(samples.count) samples in " + f(Date().timeIntervalSince(t0)) + "s")
-        let td = Date()
-        let allSegs = RallyDetector.detect(samples: samples,
+        // TRACK_RANGES="12-30,75-95" (seconds) skips audio and uses those spans
+        // instead — the only practical way to pick rallies out of a long file.
+        var allSegs: [RallySegment] = []
+        if let ranges = env["TRACK_RANGES"] {
+            for part in ranges.split(separator: ",") {
+                let ends = part.split(separator: "-").compactMap { Double($0) }
+                if ends.count == 2, ends[1] > ends[0] {
+                    allSegs.append(RallySegment(start: ends[0], end: min(ends[1], info.duration), hits: 0))
+                }
+            }
+            print("ranges    : \(allSegs.count) from TRACK_RANGES")
+        } else {
+            print("loading audio…")
+            let t0 = Date()
+            let samples = try await AudioLoader.loadMono16k(url: url)
+            print("audio     : \(samples.count) samples in " + f(Date().timeIntervalSince(t0)) + "s")
+            let td = Date()
+            allSegs = RallyDetector.detect(samples: samples,
                                            sampleRate: AudioLoader.sampleRate,
                                            duration: info.duration,
                                            sensitivity: .normal, sport: sport)
-        print("detect    : \(allSegs.count) rallies in " + f(Date().timeIntervalSince(td)) + "s")
+            print("detect    : \(allSegs.count) rallies in " + f(Date().timeIntervalSince(td)) + "s")
+        }
         guard !allSegs.isEmpty else { print("no rallies — stopping"); sema.signal(); return }
         let segs = Array(allSegs.prefix(maxSegments))
         print("testing   : first \(segs.count) of \(allSegs.count) rallies")
@@ -246,6 +442,13 @@ Task {
         let asset = AVURLAsset(url: url)
         let gen = makeGenerator(asset)
         let displaySize = CGSize(width: CGFloat(info.width), height: CGFloat(info.height))
+
+        if env["TRACK_AB"] != nil {
+            await detectorAB(asset: asset, gen: gen, segs: segs, displaySize: displaySize,
+                             name: url.deletingPathExtension().lastPathComponent)
+            sema.signal()
+            return
+        }
 
         // ══════════════════════════════════════════════════════════
         // 1) Does Vision see anyone at all?

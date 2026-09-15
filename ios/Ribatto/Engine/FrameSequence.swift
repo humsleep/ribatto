@@ -55,6 +55,18 @@ enum FrameSequence {
         func even(_ v: CGFloat) -> CGFloat { max(2, (v / 2).rounded() * 2) }
         composition.renderSize = CGSize(width: even(full.width * shrink),
                                         height: even(full.height * shrink))
+        // renderSize alone does not scale anything: the layer still draws at
+        // source size, so a 4K frame came out as its top-left 1280×720 — sky
+        // and trees — and every tracker stage ran on that crop while its boxes
+        // were read as the whole frame. The scale has to be in the transform.
+        let layer = AVMutableVideoCompositionLayerInstruction(assetTrack: track)
+        layer.setTransform(try await track.load(.preferredTransform)
+                               .concatenating(CGAffineTransform(scaleX: shrink, y: shrink)),
+                           at: .zero)
+        let instruction = AVMutableVideoCompositionInstruction()
+        instruction.timeRange = CMTimeRange(start: .zero, duration: try await asset.load(.duration))
+        instruction.layerInstructions = [layer]
+        composition.instructions = [instruction]
 
         let reader = try AVAssetReader(asset: asset)
         reader.timeRange = CMTimeRange(

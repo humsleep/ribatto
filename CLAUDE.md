@@ -31,6 +31,11 @@ ios/Ribatto/
                            + 랠리 점수화: 타구수 0.40 / 환호(voiceE 급등) 0.35 / 길이 0.25
                            RallySegment.hitTimes(타구 시각)·cheer(환호 비율, 3.5↑이면 🔥 배지·"환호 큰 순" 정렬)도 보존
                            즐겨찾기는 감지가 아니라 사용자 입력(RallySegment.favourite)
+    SoundCheck.swift       감지 직후 iOS 내장 소리 분류기(SoundAnalysis .version1, 3초 창·겹침 0.9 — 0.5는 창 위치에 따라 판정이 뒤집혔다)로 랠리마다 두 번째 판정
+                           racketConf < 0.15 && 타구 ≤ 5 → 버림(전부 버려지면 적용 안 함) · < 0.35 → 점수 절반
+                           crowdConf(마지막 타 뒤 0.5~4초의 환호·박수·웃음)가 환호 점수와 🔥 배지(≥0.3)를 대신한다
+                           옛 세션은 `reaction`이 cheer 비율을 같은 눈금으로 환산해 폴백. 분류기가 못 돌면 감지 결과 그대로
+                           기준값은 sample.mov 한 녹화(박수·볼머신·실내 없음)로 잡았다 — 그런 녹화가 생기면 다시 잴 것
     SmartCrop.swift        세로 크롭용 관심영역 추적 — 모션 기반(사람 인식 아님). 설계 이유는 파일 주석 참고
     PlayerTracker.swift    특정 인물 추적 — Vision 시드 추적 + 재획득 + SmartCrop 모션 폴백. Session.targetPlayer 있을 때 사용
                            Keyframe.box(디스플레이 좌표)를 채워 ClipExporter의 재프레이밍 입력이 됨
@@ -41,8 +46,14 @@ ios/Ribatto/
     ReelBuilder.swift      여러 랠리를 하나의 세로 릴스로 (길이캡: reels 90s/shorts 60s/tiktok 180s)
                            ReelPace: full/impact(마지막 6초)/hook(위닝샷 0.8초 + 전체)
     FrameSequence.swift    AVAssetReader 순차 디코드 (2.1ms/프레임, 시크는 45ms). PlayerTracker 전용
+                           축소는 renderSize만으로 안 된다 — 레이어 transform에 배율을 곱해야 한다. 빠뜨리면 4K 프레임의
+                           좌상단 1280×720(하늘·나무)만 넘어와 추적 전체가 엉뚱한 화면에서 돈다(2026-09-15 수정, 가까운 선수 유지율 89.8→97.7%)
+    PersonDetector.swift   RF-DETR Nano(Apache-2.0, 6bit 20MB) 사람 검출. PlayerTracker 2단계 재획득용이지만 `useDetector = false`
+                           이득이 작아(97.7→98.4%) 모델을 번들에서 뺐다. 다시 만들기: ios/Tools/rfdetr/make_model.py
+                           켤 때는 모델을 Ribatto/Engine/에 넣고 LicensesView에 Apache-2.0 고지를 추가할 것
                            SmartCrop은 의도적으로 시크 유지 — 파일 주석 참고
-    HighlightMerger.swift  무재인코딩 병합 우선
+    HighlightMerger.swift  무재인코딩 병합 우선. 클립 병합·릴스가 쓴다
+                           (세션 전체 "하이라이트 합본"은 2026-09-15 삭제 — 릴스와 역할이 겹쳤다. 옛 highlight.mp4는 load가 지운다)
     VideoProbe.swift       메타데이터 + 포스터
   Store/
     SessionStore.swift     세션 영속화 + 처리 파이프라인 (process → render). 모든 상태의 소유자
@@ -53,7 +64,7 @@ ios/Ribatto/
                            ATT 프롬프트 → SDK 시작 순서. 온보딩이 끝난 뒤에만 시작한다
                            앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=빈값), 단위 ID는 Unit(Debug만 테스트값)
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다
-  Views/                   SessionDetailView(설정) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
+  Views/                   SessionDetailView(설정 카드는 클립이 생기면 한 줄 요약으로 접힌다) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더) · TargetPlayerSheet(추적 대상 선택)
                            LibraryView · StatsView · CaptionEditorView · ProPassView(Pro 안내 + 리워드 광고 버튼) 등
                            SortMenu.swift: ClipSort(6종 정렬) + 정렬 메뉴 — 세션 화면·모든클립 탭 공용
@@ -134,12 +145,15 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   이 파일은 그 키 하나 때문에 존재하고, 나머지 키는 여전히 생성된 뒤 여기에 병합된다.
 - 오버레이 번인 결과를 원본 자리로 옮기는 데 실패하면 던진다. 삼키면 워터마크 없는 무료 클립이 나간다.
 - 세로 고정이다(OrientationGate + AppDelegate). 가로는 클립·하이라이트 재생 화면만, 그것도 가로 영상일 때만 허용한다.
-  하이라이트·병합 재생도 세션의 `renderedOrientation`을 받아 같은 판정을 한다. 무조건 허용하면 세로 하이라이트가 옆으로 눕는다.
+  병합 재생(HighlightPlayerSheet)도 세션의 `renderedOrientation`을 받아 같은 판정을 한다. 무조건 허용하면 세로 영상이 옆으로 눕는다.
   `.allowsLandscape()`는 시트 최상위에 붙인다. 세로/가로 레이아웃 분기 안쪽에 붙이면 전환 순간 사라지는 쪽의 onDisappear가 권한을 도로 거둔다.
   시트가 떠 있을 때는 최상위 presented VC에 setNeedsUpdateOfSupportedInterfaceOrientations를 보내야 한다. 루트만 갱신하면 반영되지 않는다.
 - Pro 시트(ProPassView)의 광고 버튼 블록은 접근성 크기에서 하단 고정을 풀고 스크롤에 넣는다. 고정하면 바가 화면을 통째로 먹어 기능 목록에 닿지 못한다.
 - 접근성 큰 글씨에서는 설정 행이 세로로 쌓인다(`settingRows`). 가로 배치를 강제하면 AX5에서 종목명이 한 글자로 잘린다.
   같은 규칙이 시즌 기록·코트 행에도 적용된다(`statRow`). 좌우 배치를 고집하면 아이콘이 글자를 덮거나 이름이 두 글자로 잘린다.
+- 세션 설정 카드는 감지 전·감지 0개·미적용 변경·원본 없음일 때 강제로 펼친다(`forced`). 그 외에는 접힌 요약에서 사용자가 연다.
+  접힌 상태에서 적용 버튼이 숨으므로, 설정을 바꾸면 `hasPendingChanges`로 곧바로 펼쳐져야 한다.
+- Pow(MIT, SPM)는 작은 반응 효과에만 쓴다. 라이선스 전문은 `Pow-MIT.txt`로 번들되어 LicensesView에 나온다 — 빼면 MIT 고지 의무 위반이다.
 - 장식 요소(정렬 칩, 썸네일 배지, 차트 축 라벨)는 `dynamicTypeSize(...)`로 상한을 둔다. 두면 한 글자씩 줄바꿈되어 화면을 삼킨다.
   클립 카드의 시각·타구수도 같다. 격자가 폭을 고정하므로 상한이 없으면 "00:02–0…"으로 잘린다.
   행 앞의 SF Symbol도 마찬가지다. 글리프는 Dynamic Type을 따라 커지는데 `frame(width:)` 칸은 안 커져서,

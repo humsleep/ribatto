@@ -47,7 +47,9 @@ final class SessionStore: ObservableObject {
     func dir(_ s: Session) -> URL { root.appendingPathComponent(s.id.uuidString) }
     func sourceURL(_ s: Session) -> URL { dir(s).appendingPathComponent("source.mov") }
     func posterURL(_ s: Session) -> URL { dir(s).appendingPathComponent("poster.jpg") }
-    func highlightURL(_ s: Session) -> URL { dir(s).appendingPathComponent("highlight.mp4") }
+    /// Where the removed "highlight reel" feature wrote its file; kept only so
+    /// `load` can clear what an older build left behind.
+    private func highlightURL(_ s: Session) -> URL { dir(s).appendingPathComponent("highlight.mp4") }
     func clipsDir(_ s: Session) -> URL { dir(s).appendingPathComponent("clips", isDirectory: true) }
     private func metaURL(_ id: UUID) -> URL {
         root.appendingPathComponent(id.uuidString).appendingPathComponent("meta.json")
@@ -425,13 +427,11 @@ final class SessionStore: ObservableObject {
         segments.insert(seg, at: at)
         mutate(session.id) {
             $0.segments = segments
-            $0.hasHighlight = false
             // indices moved, so per-clip overrides no longer point at the
             // clips they were chosen for
             $0.clipTargets = shift($0.clipTargets, insertedAt: at)
             $0.renderedClipTargets = nil
         }
-        try? fm.removeItem(at: highlightURL(session))
         await render(sessionID: session.id)
         return true
     }
@@ -450,7 +450,7 @@ final class SessionStore: ObservableObject {
         // the score is no longer meaningful for either, so both are unscored.
         let firstHits = (seg.hitTimes ?? []).filter { $0 < time }
         let secondHits = (seg.hitTimes ?? []).filter { $0 >= time }
-        let first = RallySegment(start: seg.start, end: time,
+        var first = RallySegment(start: seg.start, end: time,
                                  hits: firstHits.isEmpty ? seg.hits / 2 : firstHits.count,
                                  score: nil, trimmed: true,
                                  hitTimes: seg.hitTimes == nil ? nil : firstHits)
@@ -459,17 +459,19 @@ final class SessionStore: ObservableObject {
                                   score: nil, trimmed: true,
                                   hitTimes: seg.hitTimes == nil ? nil : secondHits,
                                   cheer: seg.cheer)
+        // The play verdict covered both halves; the reaction follows the end.
+        first.racketConf = seg.racketConf
+        second.racketConf = seg.racketConf
+        second.crowdConf = seg.crowdConf
         // The star describes the point the user was looking at, and that point
         // is the one that ends where the original ended — the second half.
         second.favourite = seg.favourite
         segments.replaceSubrange(clip.index...clip.index, with: [first, second])
         mutate(session.id) {
             $0.segments = segments
-            $0.hasHighlight = false
             $0.clipTargets = shift($0.clipTargets, insertedAt: clip.index + 1)
             $0.renderedClipTargets = nil
         }
-        try? fm.removeItem(at: highlightURL(session))
         await render(sessionID: session.id)
         return true
     }
@@ -533,9 +535,7 @@ final class SessionStore: ObservableObject {
             var targets = $0.clipTargets ?? [:]
             targets[key] = target                     // nil removes the override
             $0.clipTargets = targets
-            $0.hasHighlight = false
         }
-        try? fm.removeItem(at: highlightURL(session))
         guard let updated = sessions.first(where: { $0.id == clip.sessionID }),
               updated.renderedSmartCrop == true else { return true }
 
@@ -613,8 +613,17 @@ final class SessionStore: ObservableObject {
                 let samples = try await AudioLoader.loadMono16k(asset: source)
                 progress[sessionID] = .detect
                 return await Task.detached(priority: .userInitiated) {
-                    RallyDetector.detect(samples: samples, sampleRate: AudioLoader.sampleRate,
-                                         duration: dur, sensitivity: sens, sport: sport)
+                    let found = RallyDetector.detect(samples: samples,
+                                                     sampleRate: AudioLoader.sampleRate,
+                                                     duration: dur, sensitivity: sens, sport: sport)
+                    // A second opinion from the built-in sound classifier, on
+                    // the samples already in memory. If it cannot run, the
+                    // detector's own answer stands.
+                    guard let verdicts = SoundCheck.classify(samples: samples,
+                                                             sampleRate: AudioLoader.sampleRate,
+                                                             segments: found)
+                    else { return found }
+                    return SoundCheck.apply(verdicts, to: found)
                 }.value
             }()
             mutate(sessionID) {
@@ -700,9 +709,6 @@ final class SessionStore: ObservableObject {
             let cdir = clipsDir(s)
             try? fm.removeItem(at: cdir)
             try fm.createDirectory(at: cdir, withIntermediateDirectories: true)
-            // the old reel is built from the clips being replaced — drop it now
-            // so the UI can't offer a reel whose file is already gone
-            try? fm.removeItem(at: highlightURL(s))
             let orient = s.effectiveOrientation
             let pro = isPro
             let caption = s.caption
@@ -713,7 +719,6 @@ final class SessionStore: ObservableObject {
             // is written only on the success path below. Setting it here made a
             // render that threw halfway look complete: needsRerender went false
             // and Apply then had nothing to do, stranding the session.
-            mutate(sessionID) { $0.hasHighlight = false }
             // 1) posters for every rally (no encoding — takes a moment, not minutes)
             for (i, seg) in segments.enumerated() {
                 let base = String(format: "clip_%02d", i + 1)
@@ -778,9 +783,7 @@ final class SessionStore: ObservableObject {
         let segment = segments[clip.index]
         mutate(session.id) {
             $0.segments = segments
-            $0.hasHighlight = false
         }
-        try? fm.removeItem(at: highlightURL(session))
 
         return await rerenderClip(session, segments: segments, index: clip.index)
     }
@@ -823,22 +826,6 @@ final class SessionStore: ObservableObject {
     /// only a strike and a cut.
     let minClipSeconds = 1.5
 
-    func makeHighlight(sessionID: UUID) async {
-        guard let s = sessions.first(where: { $0.id == sessionID }),
-              !isBusy(sessionID) else { return }
-        progress[sessionID] = nil       // clear a leftover .failed
-        let urls = clips(of: s).filter(\.isReady).map(\.url)
-        guard !urls.isEmpty else { return }
-        do {
-            progress[sessionID] = .merge
-            try await HighlightMerger.merge(clips: urls, to: highlightURL(s))
-            mutate(sessionID) { $0.hasHighlight = true }
-            progress[sessionID] = nil
-        } catch {
-            progress[sessionID] = .failed(error.localizedDescription)
-        }
-    }
-
     // MARK: - Batch clip actions
 
     /// Deletes the given clips and renumbers what remains so clip_NN stays
@@ -878,9 +865,6 @@ final class SessionStore: ObservableObject {
         s.segments = survivors.map { segments[$0] }
         s.clipTargets = remap(s.clipTargets, survivors: survivors)
         s.renderedClipTargets = remap(s.renderedClipTargets, survivors: survivors)
-        // the reel was built from the old set
-        try? fm.removeItem(at: highlightURL(s))
-        s.hasHighlight = false
         // The user removed these; a later empty screen must not blame detection.
         s.detectionFoundNothing = false
         save(s)
@@ -1181,9 +1165,6 @@ final class SessionStore: ObservableObject {
         let kept = Array(0..<(segments.count + 1)).filter { $0 != clip.index }
         s.clipTargets = remap(s.clipTargets, survivors: kept)
         s.renderedClipTargets = remap(s.renderedClipTargets, survivors: kept)
-        // the reel was built from the old set
-        try? fm.removeItem(at: highlightURL(s))
-        s.hasHighlight = false
         let cdir = clipsDir(s)
         try? fm.removeItem(at: clip.url)
         try? fm.removeItem(at: clip.thumbURL)

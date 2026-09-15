@@ -1,5 +1,6 @@
 import AVKit
 import PhotosUI
+import Pow
 import SwiftUI
 
 struct MovieFile: Transferable {
@@ -21,6 +22,7 @@ struct LibraryView: View {
     @EnvironmentObject var pass: ProPass
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showLicenses = false
     @State private var showPrivacy = false
     @State private var pickerItem: PhotosPickerItem?
@@ -343,6 +345,13 @@ struct LibraryView: View {
         // Plain gestures rather than a Button: a Button consumes the touch on
         // press, so the debug long press never got a chance to fire.
         .contentShape(Capsule())
+        // The pass lands while the ad sheet is closing, so the pill is where
+        // the reward shows up: a spark and a success tap, once.
+        .changeEffect(.spray {
+            Image(systemName: "sparkle").foregroundStyle(Theme.accent)
+        }, value: pass.isPro, isEnabled: pass.isPro && !reduceMotion)
+        .changeEffect(.feedback(hapticNotification: .success),
+                      value: pass.isPro, isEnabled: pass.isPro)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(pass.isPro ? L.s("pro", lang) : L.s("paywall_title", lang))
 #if DEBUG

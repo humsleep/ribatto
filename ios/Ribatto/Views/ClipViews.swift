@@ -1,4 +1,5 @@
 import AVKit
+import Pow
 import SwiftUI
 
 // MARK: - Clip card
@@ -136,6 +137,7 @@ struct ClipPlayerSheet: View {
     @State private var message: String?
     @Environment(\.verticalSizeClass) private var vSize
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// One sheet drives every modal, as on `SessionDetailView`. Stacking
     /// several `.sheet` modifiers on one view collides — a second one added
@@ -304,6 +306,12 @@ struct ClipPlayerSheet: View {
                     Button { store.toggleFavourite(clip) } label: {
                         Image(systemName: isFavourite ? "star.fill" : "star")
                             .foregroundStyle(isFavourite ? Theme.accent : .secondary)
+                            // A small burst on starring, so the tap reads as
+                            // kept. Only on the way in, and never with Reduce
+                            // Motion — Pow does not check that setting itself.
+                            .changeEffect(.spray {
+                                Image(systemName: "star.fill").foregroundStyle(Theme.accent)
+                            }, value: isFavourite, isEnabled: isFavourite && !reduceMotion)
                     }
                     .accessibilityLabel(L.s("favourite", lang))
                 }

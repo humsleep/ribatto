@@ -18,6 +18,8 @@ struct SessionDetailView: View {
     @State private var confirmSwitchVertical = false
     @State private var selecting = false
     @State private var selection: Set<String> = []
+    /// Whether the user opened the folded settings card by hand.
+    @State private var settingsOpen = false
 
     @State private var saveMessage: String?
     @State private var editingPlace = false
@@ -26,7 +28,6 @@ struct SessionDetailView: View {
     /// Every modal this screen can show, so a single .sheet drives them all.
     private enum Destination: Identifiable {
         case clip(ClipInfo)
-        case highlight
         case merged(URL)
         case pro(feature: String?)
         case caption
@@ -37,7 +38,6 @@ struct SessionDetailView: View {
         var id: String {
             switch self {
             case .clip(let c): return "clip-" + c.id
-            case .highlight: return "highlight"
             case .merged(let u): return "merged-" + u.lastPathComponent
             case .pro(let f): return "pro-" + (f ?? "")
             case .caption: return "caption"
@@ -78,7 +78,6 @@ struct SessionDetailView: View {
                     if pass.isPro && session.renderedPro != true {
                         upgradeBanner()
                     }
-                    if session.hasHighlight { highlightCard(session) }
                     statsRow(clips)
                     toolbar(session, busy: busy)
                     clipGrid(clips)
@@ -170,10 +169,6 @@ struct SessionDetailView: View {
             switch dest {
             case .clip(let clip):
                 ClipPlayerSheet(clip: clip)
-            case .highlight:
-                HighlightPlayerSheet(url: store.highlightURL(session),
-                                     name: L.dateTime(session.playedAt, lang),
-                                     orientation: session.renderedOrientation)
             case .merged(let url):
                 HighlightPlayerSheet(url: url, name: L.s("merged", lang),
                                      orientation: session.renderedOrientation)
@@ -247,7 +242,15 @@ struct SessionDetailView: View {
     }
 
     private func settingsCard(_ session: Session, busy: Bool) -> some View {
-        VStack(spacing: 14) {
+        // Sport, crop and export are chosen once per match; after that the card
+        // is a wall between the user and the clips. It folds to one summary line
+        // once there are clips, and is held open whenever it has something to
+        // say: never detected, found nothing, unapplied changes, or a missing
+        // original.
+        let forced = session.segments?.isEmpty != false || session.hasPendingChanges
+            || store.sourceMissing(session)
+        let expanded = forced || settingsOpen
+        return VStack(spacing: 14) {
             // the place comes from the video's metadata, but reverse geocoding
             // needs a network — so it stays editable by hand
             Button {
@@ -274,6 +277,65 @@ struct SessionDetailView: View {
                 .foregroundStyle(.tertiary)
             }
 
+            if !forced { settingsHeader(session, expanded: expanded) }
+            if expanded { settingsBody(session, busy: busy) }
+        }
+        .padding(14)
+        .background(Theme.surface,
+                    in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// The folded card's stand-in: what the clips are made with, and the way
+    /// back in. Only shown when folding is allowed.
+    private func settingsHeader(_ session: Session, expanded: Bool) -> some View {
+        Button {
+            withAnimation(.snappy) { settingsOpen.toggle() }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "slider.horizontal.3")
+                    .foregroundStyle(.secondary)
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L.s("settings", lang))
+                        .font(.subheadline.weight(.medium))
+                    if !expanded {
+                        Text(settingsSummary(session))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .rotationEffect(.degrees(expanded ? 180 : 0))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// "🎾 Tennis · Normal · 9:16 · 720p" — enough to tell whether the clips
+    /// below were cut the way the user wants without opening anything.
+    private func settingsSummary(_ session: Session) -> String {
+        let frame = OutputFrame(session.effectiveOrientation)
+        let sensitivity: String
+        switch session.sensitivity {
+        case .low: sensitivity = "strict"
+        case .normal: sensitivity = "normal"
+        case .high: sensitivity = "loose"
+        }
+        let quality = pass.isPro ? (frame.isPortrait ? "quality_1080" : "quality_source")
+                                 : "quality_720"
+        return [session.sport.emoji + " " + L.s(session.sport.rawValue, lang),
+                L.s(sensitivity, lang), frame.label, L.s(quality, lang)]
+            .joined(separator: " · ")
+    }
+
+    @ViewBuilder
+    private func settingsBody(_ session: Session, busy: Bool) -> some View {
             section("sec_detect") {
                 settingRows([
                     (L.s("sport", lang), AnyView(sportPicker(session))),
@@ -424,10 +486,6 @@ struct SessionDetailView: View {
             .rcPrimary()
             .disabled(!needsDetect && !session.needsRerender)
             .disabled(busy || store.sourceMissing(session))
-        }
-        .padding(14)
-        .background(Theme.surface,
-                    in: RoundedRectangle(cornerRadius: 14))
     }
 
     /// One line under a control saying what it actually does. The labels alone
@@ -613,40 +671,6 @@ struct SessionDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surface,
                     in: RoundedRectangle(cornerRadius: 14))
-    }
-
-    // MARK: - Highlight
-
-    private func highlightCard(_ session: Session) -> some View {
-        let title = HStack(spacing: 10) {
-            Image(systemName: "sparkles")
-                .font(.title3).foregroundStyle(.secondary)
-            Text(L.s("highlight_ready", lang))
-                .font(.subheadline.bold())
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        let actions = HStack(spacing: 10) {
-            Button(L.s("play", lang)) { destination = .highlight }
-                .rcPrimary()
-            ShareLink(item: store.highlightURL(session)) {
-                Image(systemName: "square.and.arrow.up")
-            }
-            .rcSecondary()
-        }
-        return ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) { title; Spacer(minLength: 12); actions }
-            VStack(alignment: .leading, spacing: 12) {
-                title
-                actions.frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(colors: [Color(red: 0.06, green: 0.15, blue: 0.11),
-                                    Color(red: 0.07, green: 0.13, blue: 0.19)],
-                           startPoint: .leading, endPoint: .trailing),
-            in: RoundedRectangle(cornerRadius: 14))
     }
 
     // MARK: - Pro
@@ -883,27 +907,11 @@ struct SessionDetailView: View {
         .rcPrimary()
         .disabled(busy)
 
-        let highlightButton = Button {
-            Task { await store.makeHighlight(sessionID: sessionID) }
-        } label: {
-            Label(L.s("make_highlight", lang), systemImage: "sparkles")
-                .font(.subheadline.bold())
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity)
-        }
-        .rcSecondary()
-        .disabled(busy)
-
-        // Stacked, not side by side: at half width "하이라이트 합본" and its
-        // Japanese equivalent truncate, and ViewThatFits can't catch it because
-        // a maxWidth:.infinity button reports that it fits any width. Full width
-        // is still not enough on a 4.7" screen at accessibility sizes, so the
-        // labels wrap rather than clip to "Make a R…".
+        // Full width, and wrapping rather than clipping to "Make a R…" on a
+        // 4.7" screen at accessibility sizes.
         return VStack(spacing: 10) {
             picker
             reelButton
-            if !session.hasHighlight { highlightButton }
         }
     }
 

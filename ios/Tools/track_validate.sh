@@ -18,9 +18,11 @@ swiftc -O \
   Ribatto/Models.swift \
   Ribatto/Engine/AudioLoader.swift \
   Ribatto/Engine/RallyDetector.swift \
+  Ribatto/Engine/SoundCheck.swift \
   Ribatto/Engine/ClipExporter.swift \
   Ribatto/Engine/SmartCrop.swift \
   Ribatto/Engine/PlayerTracker.swift \
+  Ribatto/Engine/PersonDetector.swift \
   Ribatto/Engine/FrameSequence.swift \
   Ribatto/Engine/HighlightMerger.swift \
   Ribatto/Engine/ReelBuilder.swift \
