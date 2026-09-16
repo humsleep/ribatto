@@ -40,6 +40,12 @@ ios/Ribatto/
     PlayerTracker.swift    특정 인물 추적 — Vision 시드 추적 + 재획득 + SmartCrop 모션 폴백. Session.targetPlayer 있을 때 사용
                            Keyframe.box(디스플레이 좌표)를 채워 ClipExporter의 재프레이밍 입력이 됨
     ClipExporter.swift     클립 컷 · 화면비 · 페이드 · 워터마크/캡션 번인
+                           인코딩은 리더/라이터 한 패스(`encode`). 크롭 합성 프레임에 오버레이를 얹어 바로 쓴다
+                           비트레이트는 해상도·fps에서 계산(`bitrate`), Pro는 기기에서만 HEVC(시뮬레이터는 H.264)
+                           실패하면 옛 2패스 경로(`legacyEncode`)로 떨어진다 — 조용히 떨어지므로 용량이 안 줄면 이걸 의심할 것
+                           측정(2026-09-16, 18초 랠리): 무료 720p 9.50 → 2.84 Mbps · 22.0 → 6.4MB · 3.2초
+    Stabilizer.swift       Vision 영상 정합으로 카메라 흔들림 보정. **연결 안 함** — 가진 녹화가 전부 고정 거치라
+                           랠리 안 프레임 간 이동이 0이었다. 핸드헬드 영상이 생기면 그때 붙일 것(파일 주석 참고)
                            워터마크(무료)는 Bebas 대문자 + 얇은 검정 외곽선. 흰 글자만으로는 밝은 하늘에서 사라진다
                            크롭은 `transform(window:)` 하나로 통일 — 소스의 사각 영역을 출력 프레임에 매핑
                            `reframed(...)`: 추적 박스가 있으면 피사체에 맞춰 축소·이동(최대 2배 줌), 없으면 기존 전체높이 창
@@ -65,7 +71,8 @@ ios/Ribatto/
                            앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=빈값), 단위 ID는 Unit(Debug만 테스트값)
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다
   Views/                   SessionDetailView(설정 카드는 클립이 생기면 한 줄 요약으로 접힌다) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
-                           TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더) · TargetPlayerSheet(추적 대상 선택)
+                           TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더. 썸네일 스트립은 TrimmerBar+PryntTrimmerView,
+                           타구 위치를 눈금으로 찍고 VoiceOver용 스테퍼를 함께 둔다) · TargetPlayerSheet(추적 대상 선택)
                            LibraryView · StatsView · CaptionEditorView · ProPassView(Pro 안내 + 리워드 광고 버튼) 등
                            SortMenu.swift: ClipSort(6종 정렬) + 정렬 메뉴 — 세션 화면·모든클립 탭 공용
                            AddRallySheet(놓친 랠리 수동 추가) · PrivacyView(앱 내 개인정보 설명 — 코드 동작과 항상 일치시킬 것)
@@ -144,6 +151,12 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   `AppleLanguages` 원본을 읽어 이 선언과 무관하게 동작한다(`seedLanguageFromDevice`).
   이 파일은 그 키 하나 때문에 존재하고, 나머지 키는 여전히 생성된 뒤 여기에 병합된다.
 - 오버레이 번인 결과를 원본 자리로 옮기는 데 실패하면 던진다. 삼키면 워터마크 없는 무료 클립이 나간다.
+- 하나의 `AVAssetReader`에 영상·오디오 출력을 달았으면 **동시에** 비운다. 영상을 끝까지 뽑고 오디오를 뽑으면
+  오디오 큐가 차는 순간 리더가 영상 공급을 멈춰 영영 끝나지 않는다(타임아웃도 없다).
+- NextLevelSessionExporter는 2026-09-16에 붙였다가 걷어냈다. 1.0.1에서 오디오 설정·구간·오버레이를 모두 빼도
+  "AVAssetWriterInput ... status is 0"로 죽거나 콜백이 오지 않는다. 다시 붙이지 말 것.
+- 전면광고는 세션 화면이 앞에 있을 때만 띄운다(`destination == nil`). 트림·추적 재지정·랠리 나누기도 같은 렌더
+  완료 신호를 내보내서, 확인 없이 띄우면 편집 시트 위로 광고가 덮인다.
 - 세로 고정이다(OrientationGate + AppDelegate). 가로는 클립·하이라이트 재생 화면만, 그것도 가로 영상일 때만 허용한다.
   병합 재생(HighlightPlayerSheet)도 세션의 `renderedOrientation`을 받아 같은 판정을 한다. 무조건 허용하면 세로 영상이 옆으로 눕는다.
   `.allowsLandscape()`는 시트 최상위에 붙인다. 세로/가로 레이아웃 분기 안쪽에 붙이면 전환 순간 사라지는 쪽의 onDisappear가 권한을 도로 거둔다.
