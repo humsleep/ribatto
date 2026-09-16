@@ -180,6 +180,14 @@ final class TrimStrip: UIView {
             // scrolls hides the handle the user is not holding.
             trimmer.maxDuration = windowSeconds
             trimmer.asset = asset      // this resets the handles to the window
+            // Assigning the asset generates the thumbnails straight away, at a
+            // size taken from the package's own scroll view — which has no
+            // height yet on the pass that creates it. The package logs "Could
+            // not calculate the thumbnail size", gives up, and never retries,
+            // which leaves the handles and the mask drawn over an empty strip.
+            // Lay its subviews out, then ask again.
+            trimmer.layoutIfNeeded()
+            trimmer.regenerateThumbnails()
         }
     }
 
