@@ -17,7 +17,12 @@ import UniformTypeIdentifiers
 /// source quality — up to 4K wide, or 1080p tall, the ceiling Reels and Shorts
 /// accept — with no mark.
 ///
-/// The mark is a second CoreImage pass over the finished cut.
+/// One encode does the whole job. The crop and the pan live in an
+/// `AVVideoComposition`, and the mark and caption are composited onto each
+/// frame on its way into the writer, at a bitrate chosen here rather than one
+/// baked into an export preset. It used to be two passes — cut, then re-export
+/// the cut with the overlay — which compressed every free clip twice, since a
+/// free clip always carries the mark.
 enum ClipExporter {
 
     /// Video starts and ends hard: a clip is already a cut out of a longer
@@ -366,10 +371,6 @@ enum ClipExporter {
             audioMix = mix
         }
 
-        guard let session = AVAssetExportSession(
-            asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
-            throw NSError(domain: "Ribatto", code: 11)
-        }
         // Encode beside the clip and move it into place at the end. Deleting
         // the old file first meant a trim that failed halfway — a disk that
         // filled, a source evicted to iCloud — left the card with a poster and
@@ -377,17 +378,27 @@ enum ClipExporter {
         let staging = clipURL.deletingLastPathComponent()
             .appendingPathComponent("tmp_" + clipURL.lastPathComponent)
         try? FileManager.default.removeItem(at: staging)
-        session.videoComposition = comp
-        session.audioMix = audioMix
-        session.timeRange = CMTimeRange(
-            start: segStart,
-            duration: CMTime(seconds: dur, preferredTimescale: 600))
+        let range = CMTimeRange(start: segStart,
+                                duration: CMTime(seconds: dur, preferredTimescale: 600))
+        let overlay = overlayImage(for: out, watermark: !pro, caption: caption)
         do {
-            try await export(session: session, to: staging)
-            try await burnOverlays(into: staging, watermark: !pro, caption: caption)
+            try await encode(asset: asset, composition: comp, audioMix: audioMix,
+                             timeRange: range, out: out, fps: fps, pro: pro,
+                             overlay: overlay, to: staging)
         } catch {
             try? FileManager.default.removeItem(at: staging)
-            throw error
+            // The preset path cannot choose a bitrate and needs a second pass
+            // for the overlay, but it is the one that shipped: if the writer
+            // refuses a configuration on some device, a heavier clip still
+            // beats a failed render.
+            do {
+                try await legacyEncode(asset: asset, composition: comp, audioMix: audioMix,
+                                       timeRange: range, watermark: !pro, caption: caption,
+                                       to: staging)
+            } catch {
+                try? FileManager.default.removeItem(at: staging)
+                throw error
+            }
         }
         try? FileManager.default.removeItem(at: clipURL)
         try FileManager.default.moveItem(at: staging, to: clipURL)
@@ -458,22 +469,248 @@ enum ClipExporter {
         return max(1, gain)                        // only ever lift, never duck
     }
 
+    // MARK: - Encoding
+
+    /// Bits per pixel per frame. Picked so a 1080x1920 clip lands near 5 Mbps
+    /// on HEVC and 7 on H.264 — enough that a rally full of motion does not
+    /// smear, and well inside what Reels re-encodes to anyway.
+    private static func bitrate(width: CGFloat, height: CGFloat,
+                                fps: Float, hevc: Bool) -> Int {
+        let perPixel = hevc ? 0.085 : 0.12
+        let rate = Double(width * height) * Double(min(max(fps, 24), 60)) * perPixel
+        return Int(min(max(rate, 2_000_000), 40_000_000))
+    }
+
+    /// One CoreImage context for every frame of every clip: building one per
+    /// frame rebuilds the GPU pipeline each time.
+    private static let ciContext = CIContext()
+
+    /// Writes the clip in a single pass: the composition crops and pans, the
+    /// overlay is composited onto each frame on its way into the writer, and
+    /// the bitrate is chosen here rather than inherited from a preset.
+    ///
+    /// Written against AVFoundation directly. NextLevelSessionExporter was
+    /// tried for this (1.0.1, the tagged release) and could not do it: with no
+    /// audio settings, no time range and no overlay it still raised
+    /// "AVAssetWriterInput ... Cannot call method when status is 0" — it calls
+    /// its completion handler on a setup failure and then carries on as if the
+    /// writer had started — and with audio settings it never called back at
+    /// all. Inside the app that failure was invisible: the fallback below
+    /// caught it and every clip came out of the old two-pass path.
+    ///
+    /// HEVC only for Pro, and never in the simulator, which has no hardware
+    /// HEVC encoder: it is half the size at the same quality, but H.264 is the
+    /// one that plays wherever the user drops the file.
+    private static func encode(asset: AVAsset,
+                               composition: AVVideoComposition,
+                               audioMix: AVAudioMix?,
+                               timeRange: CMTimeRange,
+                               out: CGSize,
+                               fps: Float,
+                               pro: Bool,
+                               overlay: CIImage?,
+                               to url: URL) async throws {
+#if targetEnvironment(simulator)
+        let hevc = false
+#else
+        let hevc = pro
+#endif
+        let rate = Int(max(1, fps.rounded()))
+        let videoTracks = try await asset.loadTracks(withMediaType: .video)
+        guard !videoTracks.isEmpty else {
+            throw NSError(domain: "Ribatto", code: 10,
+                          userInfo: [NSLocalizedDescriptionKey: "No video track"])
+        }
+
+        let reader = try AVAssetReader(asset: asset)
+        reader.timeRange = timeRange
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        // These clips exist to be posted, so the file is written for playback
+        // over a network: the index goes up front instead of at the end.
+        writer.shouldOptimizeForNetworkUse = true
+
+        let videoOut = AVAssetReaderVideoCompositionOutput(
+            videoTracks: videoTracks,
+            videoSettings: [kCVPixelBufferPixelFormatTypeKey as String:
+                                kCVPixelFormatType_32BGRA])
+        videoOut.videoComposition = composition
+        videoOut.alwaysCopiesSampleData = false
+        guard reader.canAdd(videoOut) else {
+            throw NSError(domain: "Ribatto", code: 18, userInfo:
+                            [NSLocalizedDescriptionKey: "Cannot read this video"])
+        }
+        reader.add(videoOut)
+
+        let videoIn = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: hevc ? AVVideoCodecType.hevc : AVVideoCodecType.h264,
+            AVVideoWidthKey: NSNumber(value: Int(out.width)),
+            AVVideoHeightKey: NSNumber(value: Int(out.height)),
+            AVVideoCompressionPropertiesKey: [
+                AVVideoAverageBitRateKey: NSNumber(value: bitrate(width: out.width,
+                                                                 height: out.height,
+                                                                 fps: fps, hevc: hevc)),
+                // A keyframe every second, so scrubbing in the app and in
+                // Photos lands where the finger let go rather than a second
+                // later.
+                AVVideoMaxKeyFrameIntervalKey: NSNumber(value: rate),
+                AVVideoExpectedSourceFrameRateKey: NSNumber(value: rate),
+            ],
+        ])
+        videoIn.expectsMediaDataInRealTime = false
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput: videoIn,
+            sourcePixelBufferAttributes: [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+                kCVPixelBufferWidthKey as String: Int(out.width),
+                kCVPixelBufferHeightKey as String: Int(out.height),
+            ])
+        guard writer.canAdd(videoIn) else {
+            throw NSError(domain: "Ribatto", code: 18, userInfo:
+                            [NSLocalizedDescriptionKey: "Unusable video settings"])
+        }
+        writer.add(videoIn)
+
+        // Audio is decoded to float, mixed (the loudness lift and the declick
+        // ramps live in `audioMix`), and re-encoded to AAC.
+        var audioOut: AVAssetReaderAudioMixOutput?
+        var audioIn: AVAssetWriterInput?
+        if let track = try await asset.loadTracks(withMediaType: .audio).first {
+            let out = AVAssetReaderAudioMixOutput(audioTracks: [track], audioSettings: [
+                AVFormatIDKey: kAudioFormatLinearPCM,
+                AVLinearPCMBitDepthKey: 32,
+                AVLinearPCMIsFloatKey: true,
+                AVLinearPCMIsNonInterleaved: false,
+            ])
+            out.audioMix = audioMix
+            let input = AVAssetWriterInput(mediaType: .audio, outputSettings: [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVEncoderBitRateKey: NSNumber(value: 128_000),
+                AVNumberOfChannelsKey: NSNumber(value: 2),
+                AVSampleRateKey: NSNumber(value: 44_100),
+            ])
+            input.expectsMediaDataInRealTime = false
+            if reader.canAdd(out), writer.canAdd(input) {
+                reader.add(out)
+                writer.add(input)
+                audioOut = out
+                audioIn = input
+            }
+        }
+
+        guard writer.startWriting() else {
+            throw writer.error ?? NSError(domain: "Ribatto", code: 19)
+        }
+        guard reader.startReading() else {
+            writer.cancelWriting()
+            throw reader.error ?? NSError(domain: "Ribatto", code: 20)
+        }
+        writer.startSession(atSourceTime: timeRange.start)
+
+        // A queue each, and both drained at once. One reader with two outputs
+        // hands over samples only as fast as its slowest consumer: pulling the
+        // whole video track first and the audio afterwards deadlocks, because
+        // the reader stops producing video once the undrained audio output has
+        // filled behind it. That is a wait with no timeout — the export simply
+        // never finishes.
+        let videoQueue = DispatchQueue(label: "com.ribatto.export.video", qos: .userInitiated)
+        let audioQueue = DispatchQueue(label: "com.ribatto.export.audio", qos: .userInitiated)
+        let context = ciContext
+        do {
+            async let video: Void = pump(input: videoIn, on: videoQueue) {
+                guard let sample = videoOut.copyNextSampleBuffer() else { return false }
+                let time = CMSampleBufferGetPresentationTimeStamp(sample)
+                // Nothing to draw: the composition's own buffer goes straight
+                // through, untouched and uncopied.
+                guard let overlay, let source = CMSampleBufferGetImageBuffer(sample),
+                      let pool = adaptor.pixelBufferPool else {
+                    return videoIn.append(sample)
+                }
+                var target: CVPixelBuffer?
+                guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &target)
+                        == kCVReturnSuccess, let target else {
+                    return videoIn.append(sample)
+                }
+                context.render(overlay.composited(over: CIImage(cvPixelBuffer: source)),
+                               to: target)
+                return adaptor.append(target, withPresentationTime: time)
+            }
+            async let audio: Void = {
+                guard let audioIn, let audioOut else { return }
+                try await pump(input: audioIn, on: audioQueue) {
+                    guard let sample = audioOut.copyNextSampleBuffer() else { return false }
+                    return audioIn.append(sample)
+                }
+            }()
+            _ = try await (video, audio)
+        } catch {
+            reader.cancelReading()
+            writer.cancelWriting()
+            throw error
+        }
+        guard reader.status != .failed else {
+            writer.cancelWriting()
+            throw reader.error ?? NSError(domain: "Ribatto", code: 21)
+        }
+        await writer.finishWriting()
+        guard writer.status == .completed else {
+            throw writer.error ?? NSError(domain: "Ribatto", code: 22)
+        }
+    }
+
+    /// Feeds one writer input until `next` says the track is done, then marks
+    /// it finished. `next` returns false at the end of the track and throws
+    /// nothing; a refused append is the writer's failure and ends the pass.
+    private static func pump(input: AVAssetWriterInput,
+                             on queue: DispatchQueue,
+                             next: @escaping () -> Bool) async throws {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            // `requestMediaDataWhenReady` calls back until the input is
+            // finished, so the continuation has to be resumed exactly once —
+            // hence the flag rather than a `return` inside the loop.
+            var finished = false
+            input.requestMediaDataWhenReady(on: queue) {
+                while input.isReadyForMoreMediaData && !finished {
+                    if next() { continue }
+                    finished = true
+                    input.markAsFinished()
+                    cont.resume()
+                }
+            }
+        }
+    }
+
+    /// The path that shipped before the single-pass writer: a preset export,
+    /// then a second pass for the overlay. Kept as the fallback for a device or
+    /// a source where the writer refuses the configuration above — a heavier
+    /// clip beats a failed render.
+    private static func legacyEncode(asset: AVAsset,
+                                     composition: AVVideoComposition,
+                                     audioMix: AVAudioMix?,
+                                     timeRange: CMTimeRange,
+                                     watermark: Bool,
+                                     caption: CaptionSettings?,
+                                     to url: URL) async throws {
+        guard let session = AVAssetExportSession(
+            asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
+            throw NSError(domain: "Ribatto", code: 11)
+        }
+        session.videoComposition = composition
+        session.audioMix = audioMix
+        session.timeRange = timeRange
+        try await export(session: session, to: url)
+        try await burnOverlays(into: url, watermark: watermark, caption: caption)
+    }
+
     // MARK: - Burned-in overlays
     //
-    // Done as a second CoreImage pass rather than
-    // AVVideoCompositionCoreAnimationTool: that API silently produced no
-    // overlay here and crashed the simulator's GLES renderer. CoreImage
-    // composites identically on device and simulator.
+    // Drawn with CoreImage rather than AVVideoCompositionCoreAnimationTool:
+    // that API silently produced no overlay here and crashed the simulator's
+    // GLES renderer. CoreImage composites identically on device and simulator.
 
-    private static func burnOverlays(into url: URL,
-                                     watermark: Bool,
-                                     caption: CaptionSettings?) async throws {
-        guard watermark || (caption?.isVisible ?? false) else { return }
-
-        let asset = AVURLAsset(url: url)
-        guard let track = try await asset.loadTracks(withMediaType: .video).first else { return }
-        let size = try await track.load(.naturalSize)
-
+    /// The mark and the caption as one image in output pixels, or nil when
+    /// neither is wanted.
+    private static func overlayImage(for size: CGSize, watermark: Bool,
+                                     caption: CaptionSettings?) -> CIImage? {
         var overlay: CIImage?
         func add(_ image: CIImage?) {
             guard let image else { return }
@@ -489,7 +726,19 @@ enum ClipExporter {
         // bottom-right corner it landed on top of a default caption and the two
         // read as one run-on word.
         if watermark { add(watermarkImage(for: size, clearOf: captionLayer?.extent)) }
-        guard let overlay else { return }
+        return overlay
+    }
+
+    private static func burnOverlays(into url: URL,
+                                     watermark: Bool,
+                                     caption: CaptionSettings?) async throws {
+        guard watermark || (caption?.isVisible ?? false) else { return }
+
+        let asset = AVURLAsset(url: url)
+        guard let track = try await asset.loadTracks(withMediaType: .video).first else { return }
+        let size = try await track.load(.naturalSize)
+        guard let overlay = overlayImage(for: size, watermark: watermark, caption: caption)
+        else { return }
 
         let comp = AVMutableVideoComposition(asset: asset) { request in
             request.finish(with: overlay.composited(over: request.sourceImage), context: nil)

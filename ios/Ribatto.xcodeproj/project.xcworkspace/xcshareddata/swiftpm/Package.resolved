@@ -1,15 +1,6 @@
 {
-  "originHash" : "71a162464d94dee85e10461e2f59d7e480e48d44b2115283cfea8fe345efc05c",
+  "originHash" : "448169de42249f82ebd23b6fd6bd98b640765268f20a461555f2038dd5b0bd12",
   "pins" : [
-    {
-      "identity" : "nextlevelsessionexporter",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/NextLevel/NextLevelSessionExporter.git",
-      "state" : {
-        "revision" : "b452672cbdc2387daabdb295f6657c37be75f990",
-        "version" : "1.0.1"
-      }
-    },
     {
       "identity" : "pow",
       "kind" : "remoteSourceControl",

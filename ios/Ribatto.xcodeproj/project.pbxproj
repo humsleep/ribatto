@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		AA0000000000000000000102 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000101 /* GoogleMobileAds */; };
 		AA0000000000000000000112 /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000111 /* Pow */; };
-		AA0000000000000000000122 /* NextLevelSessionExporter in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000121 /* NextLevelSessionExporter */; };
 		AA0000000000000000000132 /* PryntTrimmerView in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000131 /* PryntTrimmerView */; };
 /* End PBXBuildFile section */
 
@@ -32,7 +31,6 @@
 			files = (
 				AA0000000000000000000102 /* GoogleMobileAds in Frameworks */,
 				AA0000000000000000000112 /* Pow in Frameworks */,
-				AA0000000000000000000122 /* NextLevelSessionExporter in Frameworks */,
 				AA0000000000000000000132 /* PryntTrimmerView in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -78,7 +76,6 @@
 			packageProductDependencies = (
 				AA0000000000000000000101 /* GoogleMobileAds */,
 				AA0000000000000000000111 /* Pow */,
-				AA0000000000000000000121 /* NextLevelSessionExporter */,
 				AA0000000000000000000131 /* PryntTrimmerView */,
 			);
 			productName = Ribatto;
@@ -114,7 +111,6 @@
 			packageReferences = (
 				AA0000000000000000000100 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 				AA0000000000000000000110 /* XCRemoteSwiftPackageReference "Pow" */,
-				AA0000000000000000000120 /* XCRemoteSwiftPackageReference "NextLevelSessionExporter" */,
 				AA0000000000000000000130 /* XCRemoteSwiftPackageReference "PryntTrimmerView" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -326,14 +322,6 @@
 				minimumVersion = 1.0.5;
 			};
 		};
-		AA0000000000000000000120 /* XCRemoteSwiftPackageReference "NextLevelSessionExporter" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/NextLevel/NextLevelSessionExporter.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.1;
-			};
-		};
 		AA0000000000000000000130 /* XCRemoteSwiftPackageReference "PryntTrimmerView" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/HHK1/PryntTrimmerView.git";
@@ -354,11 +342,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AA0000000000000000000110 /* XCRemoteSwiftPackageReference "Pow" */;
 			productName = Pow;
-		};
-		AA0000000000000000000121 /* NextLevelSessionExporter */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = AA0000000000000000000120 /* XCRemoteSwiftPackageReference "NextLevelSessionExporter" */;
-			productName = NextLevelSessionExporter;
 		};
 		AA0000000000000000000131 /* PryntTrimmerView */ = {
 			isa = XCSwiftPackageProductDependency;
