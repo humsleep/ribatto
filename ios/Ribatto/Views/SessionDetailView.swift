@@ -162,7 +162,14 @@ struct SessionDetailView: View {
         // The one place an ad interrupts: a render just finished and the user
         // was watching the progress bar anyway. Only a completed render — a
         // `.failed` stage is a message, not a result, and gets no ad on top.
+        //
+        // And only with this screen in front. Trimming a clip, re-pointing the
+        // tracker and splitting a rally all re-render a single clip through the
+        // same stage, and the interstitial presents from the top-most
+        // controller — so an edit made inside the player put a full-screen ad
+        // over the sheet the user was working in.
         .onChange(of: store.progress[sessionID]) { old, new in
+            guard destination == nil else { return }
             if case .render? = old, new == nil { ads.showInterstitialIfDue() }
         }
         .sheet(item: $destination) { dest in

@@ -1,6 +1,15 @@
 {
-  "originHash" : "1eef2fbbae25cded404c70204ea3ec1a9d7a6cf1d148fe81abe633fdfa9a31bc",
+  "originHash" : "71a162464d94dee85e10461e2f59d7e480e48d44b2115283cfea8fe345efc05c",
   "pins" : [
+    {
+      "identity" : "nextlevelsessionexporter",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/NextLevel/NextLevelSessionExporter.git",
+      "state" : {
+        "revision" : "b452672cbdc2387daabdb295f6657c37be75f990",
+        "version" : "1.0.1"
+      }
+    },
     {
       "identity" : "pow",
       "kind" : "remoteSourceControl",
@@ -8,6 +17,15 @@
       "state" : {
         "revision" : "1b4b1dda28c50b95f0872927ee2226fe8b58950e",
         "version" : "1.0.6"
+      }
+    },
+    {
+      "identity" : "prynttrimmerview",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/HHK1/PryntTrimmerView.git",
+      "state" : {
+        "revision" : "ac1b60a22c7e6a6514de7a66d2f3d5b537c956d5",
+        "version" : "4.0.2"
       }
     },
     {
