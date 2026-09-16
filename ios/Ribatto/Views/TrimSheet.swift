@@ -16,6 +16,8 @@ struct TrimSheet: View {
     /// Seconds of headroom the handles may reach outside the detected rally,
     /// so a clipped celebration can be recovered.
     private let slack = 4.0
+    /// How much one tap of a stepper moves a handle.
+    private let step = 0.25
 
     @State private var start: Double
     @State private var end: Double
@@ -23,6 +25,13 @@ struct TrimSheet: View {
     @State private var working = false
     @State private var message: String?
     @State private var splitAt: Double
+    /// Just the reachable window of the original, for the thumbnail strip.
+    @State private var windowAsset: AVAsset?
+
+    /// The strip grows with the text size — it is the main control here, not
+    /// decoration — but only so far: past this it pushes the buttons off a
+    /// small screen for no more detail.
+    @ScaledMetric(relativeTo: .body) private var stripHeight = 64
 
     init(clip: ClipInfo) {
         self.clip = clip
@@ -38,6 +47,12 @@ struct TrimSheet: View {
     }
     private var changed: Bool {
         abs(start - clip.segment.start) > 0.05 || abs(end - clip.segment.end) > 0.05
+    }
+    /// The strikes the detector heard, in source seconds. Rallies detected
+    /// before these were kept have none, and a trim can leave one outside the
+    /// window the handles reach.
+    private var hits: [Double] {
+        (clip.segment.hitTimes ?? []).filter { $0 >= lower && $0 <= upper }.sorted()
     }
 
     /// A range that can never be inverted. The handles are interdependent, so
@@ -65,16 +80,15 @@ struct TrimSheet: View {
                     }
 
                     VStack(spacing: 14) {
+                        strip
                         // Ranges are built with `safe`, never `a...b` directly.
-                        // Dragging End below Start made the lower bound exceed the
-                        // upper one, and Swift traps on that — the app disappeared
-                        // mid-drag.
-                        handle(L.s("trim_start", lang), value: $start,
-                               range: safe(lower, end - store.minClipSeconds),
-                               preview: start)
-                        handle(L.s("trim_end", lang), value: $end,
-                               range: safe(start + store.minClipSeconds, upper),
-                               preview: max(start, end - 0.15))
+                        // Pushing End below Start made the lower bound exceed
+                        // the upper one, and Swift traps on that — the app
+                        // disappeared mid-edit.
+                        nudge(L.s("trim_start", lang), value: $start,
+                              range: safe(lower, end - store.minClipSeconds))
+                        nudge(L.s("trim_end", lang), value: $end,
+                              range: safe(start + store.minClipSeconds, upper))
 
                         HStack {
                             Text(L.s("length", lang)).font(.caption).foregroundStyle(.secondary)
@@ -82,6 +96,16 @@ struct TrimSheet: View {
                             Text(fmtDur(end - start))
                                 .font(.subheadline.monospacedDigit().bold())
                                 .foregroundStyle(Theme.accent)
+                        }
+
+                        if !hits.isEmpty {
+                            Button { fitToHits() } label: {
+                                Label(L.s("trim_fit_hits", lang), systemImage: "arrow.right.and.line.vertical.and.arrow.left")
+                                    .font(.subheadline.bold())
+                                    .frame(maxWidth: .infinity, minHeight: 24)
+                            }
+                            .rcSecondary()
+                            .disabled(working)
                         }
                     }
                     .padding(14)
@@ -188,8 +212,91 @@ struct TrimSheet: View {
         .task { await load() }
     }
 
-    /// One handle. Scrubbing it seeks the preview to that instant, which is the
-    /// only way to judge an in or out point without playing the whole clip.
+    // MARK: - Trimmer
+
+    /// Thumbnails of the reachable window with the two handles over them, and
+    /// the strikes marked so the rally can be read off the strip.
+    @ViewBuilder private var strip: some View {
+        let height = min(stripHeight, 104)
+        Group {
+            if let windowAsset {
+                TrimmerBar(asset: windowAsset, origin: lower, duration: upper - lower,
+                           start: $start, end: $end,
+                           minDuration: store.minClipSeconds,
+                           hits: hits, enabled: !working) { seek(to: $0) }
+                    // Handles are dragged, which VoiceOver cannot reach at all;
+                    // the two steppers below carry the same two values, so the
+                    // strip is left out of the accessibility tree rather than
+                    // announced as something that cannot be used.
+                    .accessibilityHidden(true)
+            } else {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Theme.surfaceHigh)
+                    .overlay(ProgressView().tint(Theme.accent))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+
+        if !hits.isEmpty {
+            Text(L.s("trim_ticks_hint", lang))
+                .font(.caption2).foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // A hint about a decoration; unbounded it takes a line per word
+                // and pushes the buttons off the screen.
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        }
+    }
+
+    /// One value as a stepper. The strip is how a trim is made; this is how it
+    /// is made with VoiceOver, where there is no handle to drag, and how to
+    /// land on an exact second on a small screen.
+    private func nudge(_ title: String, value: Binding<Double>,
+                       range: ClosedRange<Double>) -> some View {
+        Stepper {
+            HStack(spacing: 8) {
+                Text(title).font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                Text(fmtTs(value.wrappedValue)).font(.caption.monospacedDigit())
+            }
+        } onIncrement: {
+            move(value, to: value.wrappedValue + step, in: range)
+        } onDecrement: {
+            move(value, to: value.wrappedValue - step, in: range)
+        }
+        .disabled(working)
+    }
+
+    private func move(_ value: Binding<Double>, to seconds: Double,
+                      in range: ClosedRange<Double>) {
+        let next = min(max(seconds, range.lowerBound), range.upperBound)
+        value.wrappedValue = next
+        seek(to: next)
+    }
+
+    /// Snap the handles to the rally's own strikes.
+    ///
+    /// A button rather than a magnet on the handles: 0.3 s is about two points
+    /// on this strip, so a magnet would fire on drags that were never aiming
+    /// for it, and it would fight the user who is deliberately keeping the
+    /// serve toss or the celebration. A button says what it does, and Reset
+    /// undoes it.
+    private func fitToHits() {
+        guard let first = hits.first, let last = hits.last else { return }
+        // Lead: the toss and the swing are already in the air before the strike
+        // the detector hears. Tail: the ball is still in play after the last
+        // one, and the point is won after it lands.
+        var from = max(lower, first - 0.7)
+        var to = min(upper, last + 1.5)
+        if to - from < store.minClipSeconds { to = min(upper, from + store.minClipSeconds) }
+        if to - from < store.minClipSeconds { from = max(lower, to - store.minClipSeconds) }
+        start = from
+        end = to
+        seek(to: from)
+    }
+
+    /// The split playhead. Scrubbing it seeks the preview to that instant,
+    /// which is the only way to judge a cut without playing the whole clip.
     private func handle(_ title: String, value: Binding<Double>,
                         range: ClosedRange<Double>, preview: Double) -> some View {
         VStack(spacing: 4) {
@@ -221,6 +328,28 @@ struct TrimSheet: View {
         p.isMuted = true
         player = p
         seek(to: start)
+        windowAsset = await window(from: asset)
+    }
+
+    /// The strip's asset: only the window the handles can reach, cut out of the
+    /// original. Handed the whole match — half an hour of it — the thumbnails
+    /// would be minutes apart and this rally would be thinner than a handle.
+    private func window(from asset: AVAsset) async -> AVAsset? {
+        guard upper > lower,
+              let source = try? await asset.loadTracks(withMediaType: .video).first
+        else { return nil }
+        let comp = AVMutableComposition()
+        guard let track = comp.addMutableTrack(withMediaType: .video,
+                                               preferredTrackID: kCMPersistentTrackID_Invalid)
+        else { return nil }
+        let range = CMTimeRange(start: CMTime(seconds: lower, preferredTimescale: 600),
+                                duration: CMTime(seconds: upper - lower, preferredTimescale: 600))
+        do { try track.insertTimeRange(range, of: source, at: .zero) } catch { return nil }
+        // Without this a portrait recording draws its thumbnails on their side:
+        // the generator applies the track's transform, and a fresh composition
+        // track carries none.
+        if let t = try? await source.load(.preferredTransform) { track.preferredTransform = t }
+        return comp
     }
 
     private func seek(to seconds: Double) {
