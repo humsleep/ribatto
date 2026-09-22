@@ -125,6 +125,32 @@ struct ProPassView: View {
                       systemImage: "clock.badge.checkmark")
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 52)
+                // `grant` extends from the current end, so another ad before a
+                // long render adds an hour instead of being turned away.
+                if ads.rewardedReady {
+                    Button {
+                        ads.showRewarded { pass.grant() }
+                    } label: {
+                        Text(String(format: L.s("pass_extend_fmt", lang), Int(ProPass.duration / 60)))
+                            .font(.subheadline.bold())
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .rcSecondary()
+                }
+            } else if ads.showing && ads.rewardedFailed && !ads.rewardedReady {
+                Button {
+                    ads.retryRewarded()
+                } label: {
+                    Label(L.s("pass_retry", lang), systemImage: "arrow.clockwise")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .rcPrimary()
+                Text(L.s("pass_load_failed", lang))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             } else if ads.showing {
                 Button {
                     ads.showRewarded { pass.grant() }

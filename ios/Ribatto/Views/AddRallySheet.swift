@@ -100,6 +100,8 @@ struct AddRallySheet: View {
                 if !editing { seek() }
             }
             .tint(Theme.accent)
+            .accessibilityLabel(title)
+            .accessibilityValue(text)
         }
     }
 

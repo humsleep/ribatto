@@ -120,6 +120,8 @@ struct TargetPlayerSheet: View {
                     if !editing { Task { await loadFrame() } }
                 }
                 .tint(Theme.accent)
+                .accessibilityLabel(L.s("target_frame", lang))
+                .accessibilityValue(fmtTs(frameTime))
                 .disabled(loading)
             }
             .padding(.horizontal, 20)

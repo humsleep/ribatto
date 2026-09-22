@@ -385,6 +385,11 @@ enum ClipExporter {
             try await encode(asset: asset, composition: comp, audioMix: audioMix,
                              timeRange: range, out: out, fps: fps, pro: pro,
                              overlay: overlay, to: staging)
+        } catch let error as NSError where error.domain == "Ribatto" && error.code == timeoutCode {
+            // A writer that stopped making progress is almost always the disk,
+            // and the preset path would sit on the same disk with no timeout.
+            try? FileManager.default.removeItem(at: staging)
+            throw error
         } catch {
             try? FileManager.default.removeItem(at: staging)
             // The preset path cannot choose a bitrate and needs a second pass
@@ -615,30 +620,75 @@ enum ClipExporter {
         let videoQueue = DispatchQueue(label: "com.ribatto.export.video", qos: .userInitiated)
         let audioQueue = DispatchQueue(label: "com.ribatto.export.audio", qos: .userInitiated)
         let context = ciContext
+        // Either track failing, or the whole pass stalling, ends both pumps.
+        // A refused append used to finish only its own track: the other input
+        // then never became ready again and its pump waited forever.
+        let videoGate = PumpGate(), audioGate = PumpGate()
+        let abort: @Sendable (Error) -> Void = { error in
+            #if DEBUG
+            print("[enc] aborted: \(error)")
+            #endif
+            videoGate.resume(throwing: error)
+            audioGate.resume(throwing: error)
+        }
+        // Generous: 30x the clip's length, never under two minutes. A 4K HEVC
+        // pass runs at about 1.5x real time on a Mac; this only exists to turn
+        // a full disk or a wedged encoder into an error instead of a spinner.
+        let limit = max(120, CMTimeGetSeconds(timeRange.duration) * 30)
+        let watchdog = Task {
+            // A writer that fails between two appends stops calling back on
+            // both inputs, and neither pump ever learns why: no append returns
+            // false, `isReadyForMoreMediaData` just stays false forever. So the
+            // status is polled, and the writer's own error is what surfaces.
+            var waited = 0.0
+            while waited < limit {
+                try await Task.sleep(nanoseconds: 500_000_000)
+                waited += 0.5
+                if writer.status == .failed {
+                    abort(writer.error ?? NSError(domain: "Ribatto", code: 27))
+                    return
+                }
+            }
+            abort(NSError(domain: "Ribatto", code: timeoutCode,
+                          userInfo: [NSLocalizedDescriptionKey: "Export stopped making progress"]))
+        }
+        defer { watchdog.cancel() }
         do {
-            async let video: Void = pump(input: videoIn, on: videoQueue) {
+            async let video: Void = pump(input: videoIn, on: videoQueue, gate: videoGate) {
                 guard let sample = videoOut.copyNextSampleBuffer() else { return false }
                 let time = CMSampleBufferGetPresentationTimeStamp(sample)
                 // Nothing to draw: the composition's own buffer goes straight
                 // through, untouched and uncopied.
-                guard let overlay, let source = CMSampleBufferGetImageBuffer(sample),
-                      let pool = adaptor.pixelBufferPool else {
-                    return videoIn.append(sample)
+                guard let overlay else {
+                    if videoIn.append(sample) { return true }
+                    abort(writer.error ?? NSError(domain: "Ribatto", code: 23))
+                    return false
                 }
+                // No buffer to draw into means a frame without the watermark.
+                // Passing the bare frame through shipped exactly that, so the
+                // pass fails instead and the fallback burns the overlay in.
                 var target: CVPixelBuffer?
-                guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &target)
+                guard let source = CMSampleBufferGetImageBuffer(sample),
+                      let pool = adaptor.pixelBufferPool,
+                      CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &target)
                         == kCVReturnSuccess, let target else {
-                    return videoIn.append(sample)
+                    abort(NSError(domain: "Ribatto", code: 25, userInfo:
+                                    [NSLocalizedDescriptionKey: "No buffer for the overlay"]))
+                    return false
                 }
                 context.render(overlay.composited(over: CIImage(cvPixelBuffer: source)),
                                to: target)
-                return adaptor.append(target, withPresentationTime: time)
+                if adaptor.append(target, withPresentationTime: time) { return true }
+                abort(writer.error ?? NSError(domain: "Ribatto", code: 23))
+                return false
             }
             async let audio: Void = {
                 guard let audioIn, let audioOut else { return }
-                try await pump(input: audioIn, on: audioQueue) {
+                try await pump(input: audioIn, on: audioQueue, gate: audioGate) {
                     guard let sample = audioOut.copyNextSampleBuffer() else { return false }
-                    return audioIn.append(sample)
+                    if audioIn.append(sample) { return true }
+                    abort(writer.error ?? NSError(domain: "Ribatto", code: 23))
+                    return false
                 }
             }()
             _ = try await (video, audio)
@@ -662,20 +712,53 @@ enum ClipExporter {
     /// nothing; a refused append is the writer's failure and ends the pass.
     private static func pump(input: AVAssetWriterInput,
                              on queue: DispatchQueue,
+                             gate: PumpGate,
                              next: @escaping () -> Bool) async throws {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            gate.install(cont)
             // `requestMediaDataWhenReady` calls back until the input is
-            // finished, so the continuation has to be resumed exactly once —
-            // hence the flag rather than a `return` inside the loop.
-            var finished = false
+            // finished, so the continuation is resumed through the gate,
+            // exactly once — whether the track ended here or another track
+            // or the watchdog aborted the pass.
             input.requestMediaDataWhenReady(on: queue) {
-                while input.isReadyForMoreMediaData && !finished {
+                while input.isReadyForMoreMediaData && !gate.isDone {
                     if next() { continue }
-                    finished = true
+                    guard !gate.isDone else { break }
                     input.markAsFinished()
-                    cont.resume()
+                    gate.resume(throwing: nil)
                 }
             }
+        }
+    }
+
+    static let timeoutCode = 24
+
+    /// Resumes one pump's continuation exactly once, from whichever side gets
+    /// there first. An abort that arrives before the continuation exists is
+    /// held and delivered when it is installed.
+    final class PumpGate: @unchecked Sendable {
+        private let lock = NSLock()
+        private var cont: CheckedContinuation<Void, Error>?
+        private var result: Result<Void, Error>?
+
+        var isDone: Bool { lock.lock(); defer { lock.unlock() }; return result != nil }
+
+        func install(_ c: CheckedContinuation<Void, Error>) {
+            lock.lock()
+            if let result { lock.unlock(); c.resume(with: result); return }
+            cont = c
+            lock.unlock()
+        }
+
+        func resume(throwing error: Error?) {
+            lock.lock()
+            guard result == nil else { lock.unlock(); return }
+            let r: Result<Void, Error> = error.map { .failure($0) } ?? .success(())
+            result = r
+            let c = cont
+            cont = nil
+            lock.unlock()
+            c?.resume(with: r)
         }
     }
 
@@ -973,6 +1056,23 @@ enum ClipExporter {
     static func writeThumbnail(of video: URL, at seconds: Double, to url: URL,
                                maxSize: CGFloat = 640) throws {
         try writeThumbnail(of: AVURLAsset(url: video), at: seconds, to: url, maxSize: maxSize)
+    }
+
+    /// Same as `writeThumbnail`, but the decode waits asynchronously instead
+    /// of blocking the caller — the session store runs on the main actor, and
+    /// cutting a poster per rally from a long 4K original froze the screen.
+    static func writePoster(of asset: AVAsset, at seconds: Double, to url: URL,
+                            maxSize: CGFloat = 640) async throws {
+        let gen = AVAssetImageGenerator(asset: asset)
+        gen.appliesPreferredTrackTransform = true
+        gen.maximumSize = CGSize(width: maxSize, height: maxSize)
+        let img = try await gen.image(at: CMTime(seconds: seconds, preferredTimescale: 600)).image
+        guard let dest = CGImageDestinationCreateWithURL(
+            url as CFURL, UTType.jpeg.identifier as CFString, 1, nil) else {
+            throw NSError(domain: "Ribatto", code: 26)
+        }
+        CGImageDestinationAddImage(dest, img, [kCGImageDestinationLossyCompressionQuality: 0.75] as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { throw NSError(domain: "Ribatto", code: 26) }
     }
 
     static func writeThumbnail(of asset: AVAsset, at seconds: Double, to url: URL,

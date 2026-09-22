@@ -199,7 +199,12 @@ struct ReelPlayerSheet: View {
                         }
                     }
                     Button {
-                        Task { saved = await store.saveToPhotos(shown.url) }
+                        Task {
+                            saved = await store.saveToPhotos(shown.url)
+                            // A denied Photos permission used to leave the
+                            // button exactly as it was, with nothing to say why.
+                            if !saved { message = L.s("photos_denied", lang) }
+                        }
                     } label: {
                         Label(saved ? L.s("reel_saved", lang) : L.s("reel_save", lang),
                               systemImage: saved ? "checkmark" : "square.and.arrow.down")

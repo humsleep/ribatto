@@ -51,6 +51,8 @@ final class SessionStore: ObservableObject {
     /// `load` can clear what an older build left behind.
     private func highlightURL(_ s: Session) -> URL { dir(s).appendingPathComponent("highlight.mp4") }
     func clipsDir(_ s: Session) -> URL { dir(s).appendingPathComponent("clips", isDirectory: true) }
+    /// Where a re-render builds its clips before they replace the old ones.
+    private func stagingDir(_ s: Session) -> URL { dir(s).appendingPathComponent("clips.staging", isDirectory: true) }
     private func metaURL(_ id: UUID) -> URL {
         root.appendingPathComponent(id.uuidString).appendingPathComponent("meta.json")
     }
@@ -77,6 +79,10 @@ final class SessionStore: ObservableObject {
                 continue
             }
             out.append(s)
+            purgeTemporaries(in: clipsDir(s))
+            try? fm.removeItem(at: highlightURL(s))
+            // A render killed mid-way leaves its half-built clips here.
+            try? fm.removeItem(at: stagingDir(s))
         }
         unreadableSessions = unreadable
         sessions = out.sorted { $0.playedAt > $1.playedAt }
@@ -278,34 +284,69 @@ final class SessionStore: ObservableObject {
     /// Registers a video picked from Photos without copying it. Falls back to
     /// taking a copy when the library can't be read. Returns true only when a
     /// session was actually created — the caller spends a free import on that.
+    /// - Parameter detect: false registers the session and leaves detection to
+    ///   the caller — a multi-video import registers everything first so every
+    ///   match shows up at once, then detects them one after another.
     @discardableResult
-    func importFromPhotos(identifier: String, fallback: URL?, name: String) async -> Bool {
+    func importFromPhotos(identifier: String, fallback: URL?, name: String,
+                          detect: Bool = true) async -> UUID? {
         let granted = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
         let canReference = granted == .authorized || granted == .limited
         if canReference, let asset = await Self.photoAsset(identifier) {
-            if await register(name: name, assetIdentifier: identifier,
-                              asset: asset, localCopy: nil) {
+            if let id = await register(name: name, assetIdentifier: identifier,
+                                       asset: asset, localCopy: nil, detect: detect) {
                 if let fallback { try? fm.removeItem(at: fallback) }
-                return true
+                return id
             }
             // referencing the library asset failed — fall through to the copy
         }
         if let fallback {
-            return await importVideo(from: fallback, name: name)
+            return await importVideo(from: fallback, name: name, detect: detect)
         }
-        return false
+        return nil
     }
 
     /// Moves a file into the session folder — used for in-app recordings and
     /// when Photos access is unavailable. Returns true when a session was made.
     @discardableResult
-    func importVideo(from temp: URL, name: String) async -> Bool {
-        await register(name: name, assetIdentifier: nil, asset: nil, localCopy: temp)
+    func importVideo(from temp: URL, name: String, detect: Bool = true) async -> UUID? {
+        await register(name: name, assetIdentifier: nil, asset: nil, localCopy: temp,
+                       detect: detect)
+    }
+
+    /// Detects several freshly imported sessions one after another. Running
+    /// them side by side would decode several originals at once for no gain.
+    func processQueued(_ ids: [UUID]) async {
+        for id in ids where sessions.contains(where: { $0.id == id }) {
+            await process(sessionID: id)
+        }
+    }
+
+    /// Puts an in-app recording into the Photos library and returns its
+    /// identifier, so the session can reference it like any imported video.
+    ///
+    /// A recording used to live only inside the app — the camera picker does
+    /// not write to Photos — so deleting its session deleted the match for
+    /// good, and it took the app's storage twice over nothing.
+    func saveRecordingToPhotos(_ url: URL) async -> String? {
+        let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        guard status == .authorized || status == .limited else { return nil }
+        var identifier: String?
+        do {
+            try await PHPhotoLibrary.shared().performChanges {
+                let request = PHAssetCreationRequest.forAsset()
+                let options = PHAssetResourceCreationOptions()
+                options.shouldMoveFile = false
+                request.addResource(with: .video, fileURL: url, options: options)
+                identifier = request.placeholderForCreatedAsset?.localIdentifier
+            }
+        } catch { return nil }
+        return identifier
     }
 
     @discardableResult
     private func register(name: String, assetIdentifier: String?,
-                          asset: AVAsset?, localCopy: URL?) async -> Bool {
+                          asset: AVAsset?, localCopy: URL?, detect: Bool) async -> UUID? {
         let id = UUID()
         let sdir = root.appendingPathComponent(id.uuidString)
         do {
@@ -322,6 +363,7 @@ final class SessionStore: ObservableObject {
             var s = Session(id: id, name: name, createdAt: Date(),
                             duration: info.duration,
                             width: info.width, height: info.height)
+            if let sport = lastSport { s.sport = sport }
             s.assetIdentifier = assetIdentifier
             s.capturedAt = await captureDate(assetIdentifier: assetIdentifier,
                                              asset: source)
@@ -342,8 +384,8 @@ final class SessionStore: ObservableObject {
             let at = sessions.firstIndex { $0.playedAt < s.playedAt } ?? sessions.count
             sessions.insert(s, at: at)
             resolvePlaceName(for: id)             // needs the network; don't block
-            await process(sessionID: id)          // auto-detect on import
-            return true
+            if detect { await process(sessionID: id) }   // auto-detect on import
+            return id
         } catch {
             // An in-app recording lives nowhere else — UIImagePickerController
             // does not write to Photos — so deleting the session folder on a
@@ -358,8 +400,55 @@ final class SessionStore: ObservableObject {
                     to: rescue.appendingPathComponent("\(id.uuidString).mov"))
             }
             try? fm.removeItem(at: sdir)
-            return false
+            return nil
         }
+    }
+
+    // MARK: - Recovered recordings
+
+    /// Recordings a failed import moved aside (see `register`). Nothing in the
+    /// app listed them, so a rescued match was as good as lost.
+    var recoveredDir: URL { root.appendingPathComponent("recovered", isDirectory: true) }
+    func recoveredRecordings() -> [URL] {
+        ((try? fm.contentsOfDirectory(at: recoveredDir, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension.lowercased() == "mov" }
+    }
+
+    /// Saves every rescued recording to Photos and removes the ones that made
+    /// it. Returns how many were saved.
+    func saveRecoveredToPhotos() async -> Int {
+        var saved = 0
+        for url in recoveredRecordings() where await saveToPhotos(url) {
+            try? fm.removeItem(at: url)
+            saved += 1
+        }
+        objectWillChange.send()
+        return saved
+    }
+
+    // MARK: - Storage
+
+    /// Bytes on disk for one session: its clips, and the original when the app
+    /// holds its own copy (recordings, and imports without Photos access).
+    func storage(of s: Session) -> (clips: Int64, original: Int64) {
+        func size(_ url: URL) -> Int64 {
+            (try? fm.attributesOfItem(atPath: url.path)[.size] as? Int64).flatMap { $0 } ?? 0
+        }
+        let files = (try? fm.contentsOfDirectory(at: clipsDir(s), includingPropertiesForKeys: nil)) ?? []
+        return (files.reduce(0) { $0 + size($1) }, size(sourceURL(s)))
+    }
+
+    /// Deletes the rendered clip files and keeps everything else — the rallies,
+    /// trims, favourites and settings — so Apply can make them again later.
+    /// Weekly players fill a phone with clips they have already posted.
+    @discardableResult
+    func clearClipFiles(_ s: Session) -> Bool {
+        guard !isBusy(s.id), !sourceMissing(s) else { return false }
+        try? fm.removeItem(at: clipsDir(s))
+        try? fm.removeItem(at: dir(s).appendingPathComponent("merged.mp4"))
+        // Unrecorded render: Apply offers to make the clips again.
+        mutate(s.id) { $0.renderedOrientation = nil }
+        return true
     }
 
     func deleteSession(_ s: Session) {
@@ -386,6 +475,16 @@ final class SessionStore: ObservableObject {
 
     func setSport(_ s: Session, _ sport: Sport) {
         var v = s; v.sport = sport; save(v)
+        lastSport = sport
+    }
+
+    /// The sport the next import is detected as: the one the user last chose.
+    /// Every import used to start as tennis, so a badminton player's first
+    /// detection of every match ran with the wrong strike profile.
+    static let lastSportKey = "rc_sport"
+    var lastSport: Sport? {
+        get { UserDefaults.standard.string(forKey: Self.lastSportKey).flatMap(Sport.init(rawValue:)) }
+        set { UserDefaults.standard.set(newValue?.rawValue, forKey: Self.lastSportKey) }
     }
     func setSensitivity(_ s: Session, _ sens: Sensitivity) {
         var v = s; v.sensitivity = sens; save(v)
@@ -506,6 +605,18 @@ final class SessionStore: ObservableObject {
     /// The in-app language, for strings burned into video (a caption's
     /// "Best #1").
     var lang: String { UserDefaults.standard.string(forKey: "rc_lang") ?? "en" }
+
+    /// The message a failure leaves on screen. Errors the app raises itself
+    /// carry English diagnostics meant for a log ("Unusable video settings"),
+    /// which is not a sentence to show a Korean user; those become the
+    /// localized "couldn't build that". System errors arrive localized already.
+    private func failureText(_ error: Error) -> String {
+        #if DEBUG
+        print("[store] failed: \(error)")
+        #endif
+        return (error as NSError).domain == "Ribatto" ? L.s("render_failed", lang)
+                                               : error.localizedDescription
+    }
     /// Picking a player only matters through the smart-crop path, so turn that
     /// on with it; clearing the player leaves smart crop as the user had it.
     func setTargetPlayer(_ s: Session, _ target: TargetPlayer?) {
@@ -569,7 +680,7 @@ final class SessionStore: ObservableObject {
             objectWillChange.send()
             return true
         } catch {
-            progress[session.id] = .failed(error.localizedDescription)
+            progress[session.id] = .failed(failureText(error))
             return false
         }
     }
@@ -626,21 +737,14 @@ final class SessionStore: ObservableObject {
                     return SoundCheck.apply(verdicts, to: found)
                 }.value
             }()
-            mutate(sessionID) {
-                $0.segments = segments
-                $0.detectedSport = sport
-                $0.detectedSensitivity = sens
-                $0.detectionFoundNothing = segments.isEmpty
-            }
-            await render(sessionID: sessionID, alreadyRunning: true)
+            await render(sessionID: sessionID, alreadyRunning: true,
+                         detection: Detection(segments: segments, sport: sport, sensitivity: sens))
         } catch {
-            // The clips written before the throw are in the new shape while the
-            // session still records the old one, which would make one session
-            // hold two orientations. The source is in hand, so dropping them is
-            // recoverable; leaving them is not.
-            try? fm.removeItem(at: clipsDir(s))
-            mutate(sessionID) { $0.renderedOrientation = nil }
-            progress[sessionID] = .failed(error.localizedDescription)
+            // Only reading the audio or detecting can throw here — `render`
+            // handles its own failures — so no clip has been touched yet. This
+            // used to delete the clips folder, and a Photos original that would
+            // not decode wiped every clip the session had.
+            progress[sessionID] = .failed(failureText(error))
         }
     }
 
@@ -689,9 +793,42 @@ final class SessionStore: ObservableObject {
         UIApplication.shared.endBackgroundTask(id)
     }
 
-    func render(sessionID: UUID, alreadyRunning: Bool = false) async {
+    /// A fresh detection that has not been written to the session yet.
+    struct Detection {
+        var segments: [RallySegment]
+        var sport: Sport
+        var sensitivity: Sensitivity
+    }
+
+    /// Whether the session has at least one finished clip on disk — the thing
+    /// a failed re-render must not take away.
+    private func hasFinishedClips(_ s: Session) -> Bool {
+        let files = (try? fm.contentsOfDirectory(atPath: clipsDir(s).path)) ?? []
+        return files.contains { $0.hasSuffix(".mp4") }
+    }
+
+    private func commit(_ d: Detection, to id: UUID) {
+        mutate(id) {
+            $0.segments = d.segments
+            $0.detectedSport = d.sport
+            $0.detectedSensitivity = d.sensitivity
+            $0.detectionFoundNothing = d.segments.isEmpty
+        }
+    }
+
+    /// Renders every clip of the session.
+    ///
+    /// When the session already has clips, the new ones are built in a staging
+    /// folder and swapped in only once all of them exist, together with the
+    /// detection that produced them. A render that failed part-way used to
+    /// delete the old clips first and leave the session half empty — and when
+    /// nothing was left to "apply", with no way to try again. A first render
+    /// has nothing to lose, so it writes in place and the posters show up as
+    /// they are cut.
+    func render(sessionID: UUID, alreadyRunning: Bool = false,
+                detection: Detection? = nil) async {
         guard let s = sessions.first(where: { $0.id == sessionID }),
-              let segments = s.segments else { return }
+              let segments = detection?.segments ?? s.segments else { return }
         if !alreadyRunning && isBusy(sessionID) { return }
         if !alreadyRunning { progress[sessionID] = nil }
         let bgTask = alreadyRunning ? UIBackgroundTaskIdentifier.invalid
@@ -705,8 +842,10 @@ final class SessionStore: ObservableObject {
             progress[sessionID] = .failed(missingSourceMessage)
             return
         }
+        let staged = hasFinishedClips(s)
+        let cdir = staged ? stagingDir(s) : clipsDir(s)
+        if !staged, let detection { commit(detection, to: sessionID) }
         do {
-            let cdir = clipsDir(s)
             try? fm.removeItem(at: cdir)
             try fm.createDirectory(at: cdir, withIntermediateDirectories: true)
             let orient = s.effectiveOrientation
@@ -722,7 +861,7 @@ final class SessionStore: ObservableObject {
             // 1) posters for every rally (no encoding — takes a moment, not minutes)
             for (i, seg) in segments.enumerated() {
                 let base = String(format: "clip_%02d", i + 1)
-                try? ClipExporter.writeThumbnail(
+                try? await ClipExporter.writePoster(
                     of: source, at: min(seg.start + 1.0, seg.end),
                     to: cdir.appendingPathComponent("\(base).jpg"))
             }
@@ -730,7 +869,7 @@ final class SessionStore: ObservableObject {
 
             // 2) the actual clips
             for (i, seg) in segments.enumerated() {
-                if wasDeleted(sessionID) { return }
+                if wasDeleted(sessionID) { try? fm.removeItem(at: cdir); return }
                 progress[sessionID] = .render(done: i, total: segments.count)
                 let base = String(format: "clip_%02d", i + 1)
                 try await ClipExporter.export(
@@ -746,6 +885,10 @@ final class SessionStore: ObservableObject {
                     thumbURL: cdir.appendingPathComponent("\(base).jpg"),
                     targetPlayer: useSmartCrop ? s.target(forClip: i) : nil)
             }
+            if staged {
+                try swapInStaged(s)
+                if let detection { commit(detection, to: sessionID) }
+            }
             mutate(sessionID) {
                 $0.renderedOrientation = orient
                 $0.renderedPro = pro
@@ -754,9 +897,44 @@ final class SessionStore: ObservableObject {
                 $0.renderedTargetPlayer = target
                 $0.renderedClipTargets = perClip
             }
+            objectWillChange.send()
             progress[sessionID] = nil
         } catch {
-            progress[sessionID] = .failed(error.localizedDescription)
+            if staged {
+                try? fm.removeItem(at: cdir)
+            } else {
+                // Partial clips in place: mark the render unfinished so Apply
+                // stays available to run it again.
+                mutate(sessionID) { $0.renderedOrientation = nil }
+            }
+            progress[sessionID] = .failed(failureText(error))
+        }
+    }
+
+    /// Replaces the clips folder with the staged one. If the move fails the old
+    /// folder is put back, so the session never ends up with neither.
+    private func swapInStaged(_ s: Session) throws {
+        let live = clipsDir(s), staging = stagingDir(s)
+        purgeTemporaries(in: staging)
+        let old = dir(s).appendingPathComponent("clips.old", isDirectory: true)
+        try? fm.removeItem(at: old)
+        try fm.moveItem(at: live, to: old)
+        do {
+            try fm.moveItem(at: staging, to: live)
+        } catch {
+            try? fm.moveItem(at: old, to: live)
+            throw error
+        }
+        try? fm.removeItem(at: old)
+    }
+
+    /// Half-written exports the encoder leaves behind when it is interrupted
+    /// ("tmp_clip_04.mp4", and the sandbox's own rename leftovers). They are
+    /// invisible in the app and count against the phone's storage.
+    private func purgeTemporaries(in folder: URL) {
+        for url in (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+        where url.lastPathComponent.hasPrefix("tmp_") || url.lastPathComponent.contains(".sb-") {
+            try? fm.removeItem(at: url)
         }
     }
 
@@ -817,7 +995,7 @@ final class SessionStore: ObservableObject {
             objectWillChange.send()
             return true
         } catch {
-            progress[session.id] = .failed(error.localizedDescription)
+            progress[session.id] = .failed(failureText(error))
             return false
         }
     }
@@ -902,7 +1080,7 @@ final class SessionStore: ObservableObject {
             try await HighlightMerger.merge(clips: chosen.map(\.url), to: out)
             return out
         } catch {
-            progress[session.id] = .failed(error.localizedDescription)
+            progress[session.id] = .failed(failureText(error))
             return nil
         }
     }
@@ -979,6 +1157,9 @@ final class SessionStore: ObservableObject {
             clearProgressUnlessFailed(key)
             endBackgroundTask(task)
         }
+        // Read once, before the first await: a pass that ends while the
+        // originals load must not make half the reel Pro and half free.
+        let pro = isPro
 
         // one asset load per session, however many clips it contributes
         var assets: [UUID: AVAsset] = [:]
@@ -990,7 +1171,7 @@ final class SessionStore: ObservableObject {
                 assets[sid] = a
             }
             guard let asset = assets[sid] else { continue }
-            let useSmartCrop = isPro && pair.session.smartCropEnabled
+            let useSmartCrop = pro && pair.session.smartCropEnabled
             let base = caption ?? pair.session.caption
             let styled = preset?.applied(to: base) ?? base
             items.append(ReelItem(asset: asset,
@@ -1013,7 +1194,9 @@ final class SessionStore: ObservableObject {
         // here so the catch can remove the sidecar it wrote.
         let id = "reel_" + UUID().uuidString.prefix(8).lowercased()
         let sources = ordered.map { ReelSource(sessionID: $0.session.id,
-                                               clipIndex: $0.clip.index) }
+                                               clipIndex: $0.clip.index,
+                                               start: $0.clip.segment.start,
+                                               end: $0.clip.segment.end) }
         do {
             try? fm.createDirectory(at: reelsDir, withIntermediateDirectories: true)
             let out = reelsDir.appendingPathComponent(id + ".mp4")
@@ -1027,10 +1210,10 @@ final class SessionStore: ObservableObject {
                                        place: ordered.first?.session.placeName,
                                        sources: sources, caption: caption)
             try? JSONEncoder().encode(placeholder)
-                .write(to: reelsDir.appendingPathComponent(id + ".json"))
+                .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
             let plan = try await ReelBuilder.build(
                 items: items, target: target, frame: frame, pace: pace,
-                pro: isPro, to: out) { [weak self] done, total in
+                pro: pro, to: out) { [weak self] done, total in
                     self?.progress[key] = .reel(done: done, total: total)
                 }
             // Poster and sidecar, so the Reels tab can show it without opening
@@ -1045,14 +1228,14 @@ final class SessionStore: ObservableObject {
                                 place: ordered.first?.session.placeName,
                                 sources: sources, caption: caption)
             try? JSONEncoder().encode(info)
-                .write(to: reelsDir.appendingPathComponent(id + ".json"))
+                .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
             objectWillChange.send()
             return (out, plan)
         } catch {
             // The sidecar is written before the video so a crash can't orphan
             // the file; a build that simply failed must take it with it.
             try? fm.removeItem(at: reelsDir.appendingPathComponent(id + ".json"))
-            progress[key] = .failed(error.localizedDescription)
+            progress[key] = .failed(failureText(error))
             return nil
         }
     }
@@ -1089,7 +1272,8 @@ final class SessionStore: ObservableObject {
                 guard planned.used == reel.rallies,
                       abs(planned.duration - reel.duration) < 0.05 else { continue }
                 found.append(ready.map {
-                    ReelSource(sessionID: session.id, clipIndex: $0.index)
+                    ReelSource(sessionID: session.id, clipIndex: $0.index,
+                               start: $0.segment.start, end: $0.segment.end)
                 })
                 if found.count > 1 { return found }
             }
@@ -1105,6 +1289,21 @@ final class SessionStore: ObservableObject {
         }
         let any = matches(among: sessions)
         return any.count == 1 ? any[0] : nil
+    }
+
+    /// The clip a reel source points at today. Matched by time: the rally that
+    /// overlaps the recorded one the most, as long as it covers at least half
+    /// of it — a trim still finds its rally, a deleted one finds nothing.
+    private func clip(for source: ReelSource, in session: Session) -> ClipInfo? {
+        let ready = clips(of: session).filter(\.isReady)
+        guard let start = source.start, let end = source.end, end > start else {
+            return ready.first { $0.index == source.clipIndex }
+        }
+        let best = ready.map { c -> (ClipInfo, Double) in
+            (c, min(end, c.segment.end) - max(start, c.segment.start))
+        }.max { $0.1 < $1.1 }
+        guard let best, best.1 >= (end - start) * 0.5 else { return nil }
+        return best.0
     }
 
     /// Rebuilds a finished reel with a different caption.
@@ -1123,8 +1322,7 @@ final class SessionStore: ObservableObject {
             guard let session = sessions.first(where: { $0.id == source.sessionID }) else {
                 return nil
             }
-            guard let clip = clips(of: session).first(where: { $0.index == source.clipIndex })
-            else { return nil }
+            guard let clip = clip(for: source, in: session) else { return nil }
             pairs.append((session, clip))
         }
         guard await buildReel(from: pairs,

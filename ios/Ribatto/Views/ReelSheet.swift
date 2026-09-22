@@ -1,4 +1,5 @@
 import AVKit
+import StoreKit
 import SwiftUI
 
 /// The clips a reel is being built from. Wrapped in a type so it can drive a
@@ -13,7 +14,12 @@ struct ReelRequest: Identifiable {
 struct ReelSheet: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var ads: AdsManager
+    @EnvironmentObject var pass: ProPass
     @AppStorage("rc_lang") private var lang = "en"
+    /// Set once the rating prompt has been offered, so it is asked for at
+    /// most once from here — Apple rations it further on its own.
+    @AppStorage("rc_review_asked") private var reviewAsked = false
+    @Environment(\.requestReview) private var requestReview
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     /// A row is two lines of text; held at 52pt the list showed one rally of
@@ -31,6 +37,8 @@ struct ReelSheet: View {
     @State private var player: AVPlayer?
     @State private var message: String?
     @State private var savedToPhotos = false
+    @State private var showPass = false
+    @State private var reviewPending = false
     /// The running order, with each rally's own in/out switch. Seeded from the
     /// request in timeline order and then owned by this screen, so reordering
     /// and excluding don't have to reach back into the selection that made it.
@@ -84,8 +92,16 @@ struct ReelSheet: View {
             }
             .alert(message ?? "", isPresented: Binding(
                 get: { message != nil }, set: { if !$0 { message = nil } })) {
-                Button("OK", role: .cancel) { message = nil }
+                Button("OK", role: .cancel) {
+                    message = nil
+                    if reviewPending {
+                        reviewPending = false
+                        reviewAsked = true
+                        requestReview()
+                    }
+                }
             }
+            .sheet(isPresented: $showPass) { ProPassView() }
         }
         .preferredColorScheme(.dark)
         .interactiveDismissDisabled(building)
@@ -95,6 +111,9 @@ struct ReelSheet: View {
             guard url != nil else { return }
             Task {
                 try? await Task.sleep(for: .milliseconds(600))
+                // The ad has its own sound; a reel playing underneath it
+                // talked over the ad and kept running unseen.
+                player?.pause()
                 ads.showInterstitialIfDue()
             }
         }
@@ -205,6 +224,7 @@ struct ReelSheet: View {
                 }
                 .padding(.top, 4)
             } else {
+                if !pass.isPro && ads.showing { passOffer }
                 Button {
                     Task { await build() }
                 } label: {
@@ -215,6 +235,30 @@ struct ReelSheet: View {
                 .disabled(chosen.isEmpty)
             }
         }
+    }
+
+    /// The reel is what gets posted, so this is where a watermark costs the
+    /// user the most — and where the one-hour pass is worth the most to them.
+    /// Offered, never required: the build button stays right below.
+    private var passOffer: some View {
+        Button { showPass = true } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Theme.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L.s("reel_pass_title", lang)).font(.subheadline.bold())
+                    Text(L.s("reel_pass_sub", lang))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .rcCard()
+        }
+        .buttonStyle(.plain)
     }
 
     private var buildingLabel: String {
@@ -445,7 +489,7 @@ struct ReelSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Label(String(format: L.s("reel_used_fmt", lang),
+                Label(String(format: L.s(done.plan.used == 1 ? "reel_used_one_fmt" : "reel_used_fmt", lang),
                              done.plan.used, fmtDur(done.plan.duration)),
                       systemImage: "film")
                     .font(.subheadline.bold())
@@ -454,7 +498,8 @@ struct ReelSheet: View {
                         .font(.caption).foregroundStyle(Theme.warning)
                 }
                 if done.plan.dropped > 0 {
-                    Label(String(format: L.s("reel_dropped_fmt", lang), done.plan.dropped),
+                    Label(String(format: L.s(done.plan.dropped == 1 ? "reel_dropped_one_fmt" : "reel_dropped_fmt", lang),
+                                 done.plan.dropped),
                           systemImage: "exclamationmark.circle")
                         .font(.caption).foregroundStyle(Theme.warning)
                 }
@@ -469,6 +514,10 @@ struct ReelSheet: View {
                         savedToPhotos = await store.saveToPhotos(done.url)
                         message = savedToPhotos ? L.s("reel_saved", lang)
                                                 : L.s("photos_denied", lang)
+                        // The first reel that made it to the camera roll is the
+                        // moment the app has just done its whole job.
+                        // Asked once the "saved" alert is closed, not over it.
+                        if savedToPhotos && !reviewAsked { reviewPending = true }
                     }
                 } label: {
                     Label(savedToPhotos ? L.s("reel_saved", lang) : L.s("reel_save", lang),
@@ -478,12 +527,12 @@ struct ReelSheet: View {
                 .rcPrimary()
 
                 HStack(spacing: 10) {
-                    Button { open("instagram://app", L.s("reel_open_ig", lang)) } label: {
+                    Button { open("instagram://app", "Instagram") } label: {
                         Label(L.s("reel_open_ig", lang), systemImage: "camera.aperture")
                             .frame(maxWidth: .infinity)
                     }
                     .rcSecondary()
-                    Button { open("youtube://", L.s("reel_open_yt", lang)) } label: {
+                    Button { open("youtube://", "YouTube") } label: {
                         Label(L.s("reel_open_yt", lang), systemImage: "play.rectangle")
                             .frame(maxWidth: .infinity)
                     }
@@ -537,7 +586,7 @@ struct ReelSheet: View {
     private func open(_ scheme: String, _ name: String) {
         guard let url = URL(string: scheme) else { return }
         UIApplication.shared.open(url, options: [:]) { ok in
-            if !ok { message = name }
+            if !ok { message = String(format: L.s("app_missing_fmt", lang), name) }
         }
     }
 }

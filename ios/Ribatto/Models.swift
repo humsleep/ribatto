@@ -511,8 +511,16 @@ struct ReelInfo: Codable, Identifiable, Equatable {
 }
 
 /// One rally inside a reel, addressed the way it can still be found later: by
-/// its session and its index in that session's segments.
+/// its session and where the rally sits in that recording.
+///
+/// The index alone went stale: deleting, adding or splitting a rally renumbers
+/// the session, and a caption rebuild then quietly used a different rally.
+/// `start`/`end` are the source times the reel was cut from and are what a
+/// rebuild matches on; the index is only the fallback for sidecars written
+/// before they were recorded.
 struct ReelSource: Codable, Equatable {
     let sessionID: UUID
     let clipIndex: Int
+    var start: Double? = nil
+    var end: Double? = nil
 }

@@ -2,6 +2,7 @@ import AVKit
 import PhotosUI
 import Pow
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MovieFile: Transferable {
     let url: URL
@@ -20,12 +21,19 @@ struct MovieFile: Transferable {
 struct LibraryView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var pass: ProPass
+    @EnvironmentObject var ads: AdsManager
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showLicenses = false
     @State private var showPrivacy = false
-    @State private var pickerItem: PhotosPickerItem?
+    @State private var pickerItems: [PhotosPickerItem] = []
+    @State private var showPhotoPicker = false
+    @State private var showFileImporter = false
+    /// Where the import goes once the sport has been asked.
+    @State private var pendingSource: ImportSource?
+    @State private var askSport = false
+    @State private var rescueMessage: String?
     @State private var importing = false
     @State private var showPro = false
     @State private var recording = false
@@ -38,6 +46,13 @@ struct LibraryView: View {
     @State private var sportFilter: Sport?
     @State private var placeFilter: String?
     @State private var showDebug = false
+
+    enum ImportSource { case photos, files, record, sample }
+
+    /// The bundled demo match, when the build carries one. The empty library is
+    /// the first thing a new user — and the App Review tester — sees, usually
+    /// on a phone with no match video on it.
+    static var sampleURL: URL? { Bundle.main.url(forResource: "sample_match", withExtension: "mp4") }
 
     /// Text match on the sport and the date shown on the card, plus the
     /// sport chip — enough to find "that badminton match last week".
@@ -92,6 +107,7 @@ struct LibraryView: View {
                         LazyVStack(spacing: 14) {
                             SearchField(prompt: L.s("search_sessions", lang), text: $search)
                             if importing { ProgressView().padding() }
+                            recoveredCard
                             // one session doesn't need filtering — chips would be noise
                             if store.sessions.count > 1 { sportFilterBar }
                             if visibleSessions.isEmpty {
@@ -142,15 +158,58 @@ struct LibraryView: View {
                 VideoRecorder { url in
                     importing = true
                     Task {
-                        // the store spends the free import the moment the
-                        // session is written, so nothing is counted here
-                        if await store.importVideo(from: url, name: importName()) == false {
-                            importError = L.s("import_failed", lang)
+                        let name = importName()
+                        // Into Photos first, then referenced from there like
+                        // any import: the recording survives the session being
+                        // deleted, and the app does not hold a second copy.
+                        // Without Photos access it stays a private copy.
+                        var id: UUID?
+                        if let asset = await store.saveRecordingToPhotos(url) {
+                            id = await store.importFromPhotos(identifier: asset, fallback: url,
+                                                              name: name, detect: false)
+                        } else {
+                            id = await store.importVideo(from: url, name: name, detect: false)
                         }
                         importing = false
+                        guard let id else { importError = L.s("import_failed", lang); return }
+                        await store.processQueued([id])
                     }
                 }
                 .ignoresSafeArea()
+            }
+            .photosPicker(isPresented: $showPhotoPicker, selection: $pickerItems,
+                          maxSelectionCount: 20, selectionBehavior: .ordered,
+                          matching: .videos, photoLibrary: .shared())
+            // Action cameras and screen recorders hand over files, not Photos
+            // assets: a GoPro or DJI match arrives through Files or AirDrop.
+            .fileImporter(isPresented: $showFileImporter,
+                          allowedContentTypes: [.movie, .mpeg4Movie, .quickTimeMovie],
+                          allowsMultipleSelection: true) { result in
+                guard case .success(let urls) = result, !urls.isEmpty else { return }
+                importFiles(urls)
+            }
+            .confirmationDialog(L.s("ask_sport_title", lang), isPresented: $askSport,
+                                titleVisibility: .visible) {
+                ForEach(Sport.allCases) { sp in
+                    Button("\(sp.emoji) \(L.s(sp.rawValue, lang))") {
+                        store.lastSport = sp
+                        let source = pendingSource
+                        pendingSource = nil
+                        // The dialog has to finish closing before a picker can
+                        // present, or the picker silently never appears.
+                        Task {
+                            try? await Task.sleep(for: .milliseconds(450))
+                            if let source { launch(source) }
+                        }
+                    }
+                }
+                Button(L.s("cancel", lang), role: .cancel) { pendingSource = nil }
+            } message: {
+                Text(L.s("ask_sport_msg", lang))
+            }
+            .alert(rescueMessage ?? "", isPresented: Binding(
+                get: { rescueMessage != nil }, set: { if !$0 { rescueMessage = nil } })) {
+                Button("OK", role: .cancel) { rescueMessage = nil }
             }
             .alert(L.s("camera_unavailable", lang), isPresented: $cameraAlert) {
                 Button("OK", role: .cancel) {}
@@ -173,28 +232,37 @@ struct LibraryView: View {
                     selecting = false
                 }
             }
-            .onChange(of: pickerItem) { _, item in
-                guard let item else { return }
+            .onChange(of: pickerItems) { _, items in
+                guard !items.isEmpty else { return }
                 importing = true
                 Task {
-                    // Referencing the library asset is tried FIRST, without a
-                    // copy. Loading the transferable up front duplicated the
-                    // whole file — 6.5 GB for a 26-minute 4K match — behind a
-                    // bare spinner, and then deleted it unused on the happy
-                    // path. The copy is now made only when referencing fails.
-                    var created = false
-                    let name = importName()
-                    if let id = item.itemIdentifier {
-                        created = await store.importFromPhotos(identifier: id,
-                                                               fallback: nil, name: name)
+                    // Every video is registered first so all of them show up
+                    // at once, then detected one after another — a set filmed
+                    // in three files is one import, not three trips.
+                    var ids: [UUID] = []
+                    var failed = 0
+                    for item in items {
+                        // Referencing the library asset is tried FIRST, without a
+                        // copy. Loading the transferable up front duplicated the
+                        // whole file — 6.5 GB for a 26-minute 4K match — behind a
+                        // bare spinner, and then deleted it unused on the happy
+                        // path. The copy is now made only when referencing fails.
+                        let name = importName()
+                        var id: UUID?
+                        if let ident = item.itemIdentifier {
+                            id = await store.importFromPhotos(identifier: ident, fallback: nil,
+                                                              name: name, detect: false)
+                        }
+                        if id == nil,
+                           let copy = try? await item.loadTransferable(type: MovieFile.self) {
+                            id = await store.importVideo(from: copy.url, name: name, detect: false)
+                        }
+                        if let id { ids.append(id) } else { failed += 1 }
                     }
-                    if !created,
-                       let copy = try? await item.loadTransferable(type: MovieFile.self) {
-                        created = await store.importVideo(from: copy.url, name: name)
-                    }
-                    if !created { importError = L.s("import_failed", lang) }
+                    pickerItems = []
                     importing = false
-                    pickerItem = nil
+                    if failed > 0 { importError = L.s("import_failed", lang) }
+                    await store.processQueued(ids)
                 }
             }
         }
@@ -210,16 +278,25 @@ struct LibraryView: View {
                 .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             VStack(spacing: 10) {
-                PhotosPicker(selection: $pickerItem, matching: .videos,
-                             photoLibrary: .shared()) { bigImportLabel }
+                Menu { importMenuItems } label: { bigImportLabel }
                 Button {
-                    guard VideoRecorder.isAvailable else { cameraAlert = true; return }
-                    recording = true
+                    begin(.record)
                 } label: {
                     Label(L.s("record", lang), systemImage: "video.fill")
                         .font(.subheadline.bold())
                 }
                 .rcSecondary()
+                if Self.sampleURL != nil {
+                    Button {
+                        begin(.sample)
+                    } label: {
+                        Label(L.s("try_sample", lang), systemImage: "play.circle")
+                            .font(.subheadline.bold())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                    .padding(.top, 2)
+                }
             }
             .padding(.top, 8)
         }
@@ -307,17 +384,121 @@ struct LibraryView: View {
     /// Shoot a match in-app; the recording goes straight into detection.
     @ViewBuilder private var recordButton: some View {
         Button {
-            guard VideoRecorder.isAvailable else { cameraAlert = true; return }
-            recording = true
+            begin(.record)
         } label: {
             Label(L.s("record", lang), systemImage: "video.fill")
         }
     }
 
     private var importButton: some View {
-        PhotosPicker(selection: $pickerItem, matching: .videos,
-                     photoLibrary: .shared()) {
+        Menu { importMenuItems } label: {
             Label(L.s("import_video", lang), systemImage: "plus")
+        }
+    }
+
+    @ViewBuilder private var importMenuItems: some View {
+        Button { begin(.photos) } label: {
+            Label(L.s("import_photos", lang), systemImage: "photo.on.rectangle")
+        }
+        Button { begin(.files) } label: {
+            Label(L.s("import_files", lang), systemImage: "folder")
+        }
+    }
+
+    /// Every way in asks the sport once, before the first import: detection
+    /// runs the moment a video lands, and it runs with the sport's strike
+    /// profile. After that the last choice is used and changed per session.
+    private func begin(_ source: ImportSource) {
+        if store.lastSport == nil {
+            pendingSource = source
+            askSport = true
+        } else {
+            launch(source)
+        }
+    }
+
+    private func launch(_ source: ImportSource) {
+        switch source {
+        case .photos: showPhotoPicker = true
+        case .files: showFileImporter = true
+        case .record:
+            guard VideoRecorder.isAvailable else { cameraAlert = true; return }
+            recording = true
+        case .sample: importSample()
+        }
+    }
+
+    private func importFiles(_ urls: [URL]) {
+        importing = true
+        Task {
+            var ids: [UUID] = []
+            var failed = 0
+            for url in urls {
+                // Files hands over a security-scoped URL that stops working
+                // once access ends, so the video is copied in while it lasts.
+                let copy = await Task.detached(priority: .userInitiated) { () -> URL? in
+                    let scoped = url.startAccessingSecurityScopedResource()
+                    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                    let dest = FileManager.default.temporaryDirectory
+                        .appendingPathComponent(UUID().uuidString + "." + url.pathExtension)
+                    return (try? FileManager.default.copyItem(at: url, to: dest)) != nil ? dest : nil
+                }.value
+                if let copy, let id = await store.importVideo(from: copy, name: importName(),
+                                                              detect: false) {
+                    ids.append(id)
+                } else {
+                    failed += 1
+                }
+            }
+            importing = false
+            if failed > 0 { importError = L.s("import_failed", lang) }
+            await store.processQueued(ids)
+        }
+    }
+
+    private func importSample() {
+        guard let sample = Self.sampleURL else { return }
+        importing = true
+        Task {
+            let dest = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".mp4")
+            var id: UUID?
+            if (try? FileManager.default.copyItem(at: sample, to: dest)) != nil {
+                id = await store.importVideo(from: dest, name: L.s("sample_name", lang), detect: false)
+            }
+            importing = false
+            guard let id else { importError = L.s("import_failed", lang); return }
+            await store.processQueued([id])
+        }
+    }
+
+    /// Recordings a failed import set aside. Offered back once, as a card,
+    /// until they are saved to Photos.
+    @ViewBuilder private var recoveredCard: some View {
+        let count = store.recoveredRecordings().count
+        if count > 0 {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(String(format: L.s("recovered_fmt", lang), count),
+                      systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                    .font(.subheadline.bold())
+                Text(L.s("recovered_d", lang))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    Task {
+                        let saved = await store.saveRecoveredToPhotos()
+                        rescueMessage = saved > 0 ? String(format: L.s(saved == 1 ? "saved_one_fmt" : "saved_n_fmt", lang), saved)
+                                                  : L.s("photos_denied", lang)
+                    }
+                } label: {
+                    Label(L.s("recovered_save", lang), systemImage: "square.and.arrow.down")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity)
+                }
+                .rcSecondary()
+            }
+            .padding(14)
+            .rcCard()
         }
     }
 
@@ -360,7 +541,8 @@ struct LibraryView: View {
         } onPressingChanged: { _ in }
 #endif
         .onTapGesture {
-            if !pass.isPro { showPro = true }
+            // A running pass opens the sheet too — that is where it is extended.
+            if !pass.isPro || pass.active { showPro = true }
         }
     }
 
@@ -389,6 +571,13 @@ struct LibraryView: View {
                 showLicenses = true
             } label: {
                 Label(L.s("licenses", lang), systemImage: "doc.text")
+            }
+            if ads.privacyOptionsRequired {
+                Button {
+                    Task { await ads.presentPrivacyOptions() }
+                } label: {
+                    Label(L.s("ad_privacy_options", lang), systemImage: "checkmark.shield")
+                }
             }
         } label: {
             Image(systemName: "globe")

@@ -1,5 +1,6 @@
 import AppTrackingTransparency
 import GoogleMobileAds
+import UserMessagingPlatform
 import SwiftUI
 import UIKit
 
@@ -48,9 +49,23 @@ final class AdsManager: NSObject, ObservableObject {
     /// A rewarded ad is loaded and can be shown. The Pro sheet's "watch an ad"
     /// button reads this so it never promises an ad that is not there.
     @Published private(set) var rewardedReady = false
+    /// The last rewarded load failed and no retry is scheduled. The Pro sheet
+    /// then offers "try again" instead of a spinner that never ends — this ad
+    /// is the only way into Pro, so a single network blip used to lock the
+    /// user out until the app was relaunched.
+    @Published private(set) var rewardedFailed = false
+    private var rewardedAttempts = 0
+
+    /// The user's region needs a way back into the consent choices (EEA, UK,
+    /// Switzerland). Google requires that entry point wherever this is true;
+    /// the Library's globe menu shows it.
+    @Published private(set) var privacyOptionsRequired = false
 
     private var isPro = false
     private var started = false
+    /// Consent allows ad requests. Outside the regions that need consent this
+    /// is true as soon as the check returns.
+    private var consentAllows = false
     private var interstitial: InterstitialAd?
     private var loadingInterstitial = false
     /// The rewarded ad: the highest-paying format AdMob has, and the one
@@ -77,6 +92,12 @@ final class AdsManager: NSObject, ObservableObject {
         self.isPro = isPro
         guard !isPro, !started, Self.configured else { refreshShowing(); return }
         started = true
+        // Consent first (GDPR / UK / Swiss regions, via Google's UMP form),
+        // then Apple's tracking prompt, then the SDK — the order Google
+        // documents. Serving ads to an EEA user without a consent message is
+        // an AdMob policy violation that ends in limited or no ads there.
+        await gatherConsent()
+        guard consentAllows else { refreshShowing(); return }
         if ATTrackingManager.trackingAuthorizationStatus == .notDetermined {
             _ = await ATTrackingManager.requestTrackingAuthorization()
         }
@@ -95,9 +116,42 @@ final class AdsManager: NSObject, ObservableObject {
         if !pro && !started { Task { await start(isPro: false) } }
     }
 
+    private func gatherConsent() async {
+        let info = ConsentInformation.shared
+        do {
+            try await info.requestConsentInfoUpdate(with: RequestParameters())
+            try await ConsentForm.loadAndPresentIfRequired(from: nil)
+        } catch {
+            // A failed update keeps the last stored answer; `canRequestAds`
+            // below reads that, so an offline launch still honours it.
+            #if DEBUG
+            print("[ads] consent: \(error.localizedDescription)")
+            #endif
+        }
+        consentAllows = info.canRequestAds
+        privacyOptionsRequired = info.privacyOptionsRequirementStatus == .required
+    }
+
+    /// Reopens the consent choices. Afterwards the SDK is started if the user
+    /// now allows ads and it was not running.
+    func presentPrivacyOptions() async {
+        try? await ConsentForm.presentPrivacyOptionsForm(from: nil)
+        let allowed = ConsentInformation.shared.canRequestAds
+        if allowed && !consentAllows {
+            consentAllows = true
+            await MobileAds.shared.start()
+            bannerHeight = Self.adaptiveSize(width: Self.screenWidth).size.height
+            loadInterstitial()
+        }
+        consentAllows = allowed
+        refreshShowing()
+    }
+
     private func refreshShowing() {
-        showing = started && !isPro && Self.configured
-        if showing { loadRewarded() }
+        showing = started && consentAllows && !isPro && Self.configured
+        // The rewarded ad stays loaded during a pass too: watching another one
+        // is how a pass is extended before a long render.
+        if started && consentAllows && Self.configured { loadRewarded() }
     }
 
     // MARK: - Rewarded
@@ -108,7 +162,7 @@ final class AdsManager: NSObject, ObservableObject {
     /// loaded; the caller shows nothing and the button was disabled anyway.
     @discardableResult
     func showRewarded(onReward: @escaping () -> Void) -> Bool {
-        guard showing, let ad = rewarded else { return false }
+        guard started, let ad = rewarded else { return false }
         rewarded = nil
         rewardedReady = false
         ad.present(from: nil) { onReward() }
@@ -116,7 +170,8 @@ final class AdsManager: NSObject, ObservableObject {
     }
 
     private func loadRewarded() {
-        guard showing, rewarded == nil, !loadingRewarded, !Unit.rewarded.isEmpty else { return }
+        guard started, consentAllows, Self.configured, rewarded == nil, !loadingRewarded,
+              !Unit.rewarded.isEmpty else { return }
         loadingRewarded = true
         Task {
             defer { loadingRewarded = false }
@@ -125,12 +180,34 @@ final class AdsManager: NSObject, ObservableObject {
                 ad.fullScreenContentDelegate = self
                 rewarded = ad
                 rewardedReady = true
+                rewardedFailed = false
+                rewardedAttempts = 0
             } catch {
                 #if DEBUG
                 print("[ads] rewarded load failed: \(error.localizedDescription)")
                 #endif
+                rewardedAttempts += 1
+                // Two quiet retries (10 s, then 30 s) cover a flaky network;
+                // after that the button hands the decision to the user rather
+                // than polling AdMob forever.
+                if rewardedAttempts <= 2 {
+                    let delay: UInt64 = rewardedAttempts == 1 ? 10 : 30
+                    Task {
+                        try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
+                        loadRewarded()
+                    }
+                } else {
+                    rewardedFailed = true
+                }
             }
         }
+    }
+
+    /// The user pressed "try again" after the automatic retries ran out.
+    func retryRewarded() {
+        rewardedFailed = false
+        rewardedAttempts = 0
+        loadRewarded()
     }
 
     // MARK: - Interstitial

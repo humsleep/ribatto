@@ -365,6 +365,8 @@ struct CaptionEditorView: View {
                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
             }
             Slider(value: $draft.size, in: 0.6...1.8, step: 0.05).tint(accent)
+                .accessibilityLabel(L.s("size", lang))
+                .accessibilityValue(String(format: "%.0f%%", draft.size * 100))
         }
     }
 

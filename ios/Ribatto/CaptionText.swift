@@ -48,7 +48,7 @@ enum CaptionText {
         func put(_ token: String, _ value: String) {
             out = out.replacingOccurrences(of: token, with: value)
         }
-        put("{shots}", String(format: L.s("tok_shots_fmt", lang), seg.hits))
+        put("{shots}", String(format: L.s(seg.hits == 1 ? "tok_shots_one_fmt" : "tok_shots_fmt", lang), seg.hits))
         for token in retired { put(token, "") }
         put("{tempo}", seg.tempo.map {
             String(format: L.s("tempo_fmt", lang), Int($0.rounded())) } ?? "")

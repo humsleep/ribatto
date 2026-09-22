@@ -153,6 +153,9 @@ struct ZoomableVideo: View {
                 in: 0...max(duration, 0.1),
                 onEditingChanged: { scrubbing = $0 })
             .tint(Theme.accent)
+            // Unlabelled, VoiceOver read the scrubber as a bare percentage.
+            .accessibilityLabel(L.s("playback_position", lang))
+            .accessibilityValue(fmtTs(time))
 
             HStack {
                 Text(fmtTs(time))

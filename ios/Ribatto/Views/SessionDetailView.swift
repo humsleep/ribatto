@@ -20,6 +20,13 @@ struct SessionDetailView: View {
     @State private var selection: Set<String> = []
     /// Whether the user opened the folded settings card by hand.
     @State private var settingsOpen = false
+    /// Apply would re-render Pro clips after the pass ran out.
+    @State private var confirmFreeRender = false
+    @State private var confirmClearClips = false
+    /// Whether this screen is the one in front. `destination` only covers this
+    /// screen's own sheets; switching tabs mid-render left it nil, and the
+    /// interstitial then landed on top of whatever the user had moved on to.
+    @State private var onScreen = false
 
     @State private var saveMessage: String?
     @State private var editingPlace = false
@@ -113,6 +120,22 @@ struct SessionDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    // Storage lives here rather than in a settings screen: the
+                    // question is always "what is this match costing me".
+                    let used = store.storage(of: session)
+                    Section(String(format: L.s("storage_fmt", lang),
+                                   ByteCountFormatter.string(fromByteCount: used.clips + used.original,
+                                                             countStyle: .file))) {
+                        if used.clips > 0 {
+                            Button(role: .destructive) { confirmClearClips = true } label: {
+                                Label(String(format: L.s("clear_clips_fmt", lang),
+                                             ByteCountFormatter.string(fromByteCount: used.clips,
+                                                                       countStyle: .file)),
+                                      systemImage: "externaldrive.badge.minus")
+                            }
+                            .disabled(busy || store.sourceMissing(session))
+                        }
+                    }
                     Button(role: .destructive) { confirmDeleteSession = true } label: {
                         Label(L.s("delete_session", lang), systemImage: "trash")
                     }
@@ -168,8 +191,31 @@ struct SessionDetailView: View {
         // same stage, and the interstitial presents from the top-most
         // controller — so an edit made inside the player put a full-screen ad
         // over the sheet the user was working in.
+        .confirmationDialog(L.s("clear_clips_title", lang), isPresented: $confirmClearClips,
+                            titleVisibility: .visible) {
+            Button(L.s("clear_clips", lang), role: .destructive) {
+                store.clearClipFiles(session)
+                selecting = false
+                selection.removeAll()
+            }
+            Button(L.s("cancel", lang), role: .cancel) {}
+        } message: {
+            Text(L.s("clear_clips_msg", lang))
+        }
+        .onAppear { onScreen = true }
+        .onDisappear { onScreen = false }
+        .confirmationDialog(L.s("pro_expired_title", lang), isPresented: $confirmFreeRender,
+                            titleVisibility: .visible) {
+            Button(L.s("pro_expired_watch", lang)) { destination = .pro(feature: nil) }
+            Button(L.s("pro_expired_free", lang)) {
+                Task { await store.apply(sessionID: sessionID) }
+            }
+            Button(L.s("cancel", lang), role: .cancel) {}
+        } message: {
+            Text(L.s("pro_expired_msg", lang))
+        }
         .onChange(of: store.progress[sessionID]) { old, new in
-            guard destination == nil else { return }
+            guard destination == nil, onScreen else { return }
             if case .render? = old, new == nil { ads.showInterstitialIfDue() }
         }
         .sheet(item: $destination) { dest in
@@ -334,8 +380,12 @@ struct SessionDetailView: View {
         case .normal: sensitivity = "normal"
         case .high: sensitivity = "loose"
         }
-        let quality = pass.isPro ? (frame.isPortrait ? "quality_1080" : "quality_source")
-                                 : "quality_720"
+        // What the clips below were made at, not what the next render would
+        // use: a summary that turned "4K" the moment a pass ended described
+        // clips that are still 4K as 720p, and the other way round.
+        let pro = session.renderedOrientation != nil ? (session.renderedPro ?? false) : pass.isPro
+        let quality = pro ? (frame.isPortrait ? "quality_1080" : "quality_source")
+                          : "quality_720"
         return [session.sport.emoji + " " + L.s(session.sport.rawValue, lang),
                 L.s(sensitivity, lang), frame.label, L.s(quality, lang)]
             .joined(separator: " · ")
@@ -482,7 +532,15 @@ struct SessionDetailView: View {
             let needsDetect = session.segments == nil
                 || session.segments?.isEmpty == true || session.needsRedetect
             Button {
-                Task { await store.apply(sessionID: sessionID) }
+                // Renders bake the tier in. Clips made during a pass would
+                // silently come back at 720p with a watermark because the user
+                // fixed a caption an hour later, so ask first.
+                if session.renderedPro == true && !pass.isPro
+                    && store.clips(of: session).contains(where: \.isReady) {
+                    confirmFreeRender = true
+                } else {
+                    Task { await store.apply(sessionID: sessionID) }
+                }
             } label: {
                 Text(needsDetect ? (session.segments == nil ? L.s("detect", lang)
                                                             : L.s("redetect", lang))

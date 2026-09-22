@@ -27,6 +27,9 @@ struct TrimSheet: View {
     @State private var splitAt: Double
     /// Just the reachable window of the original, for the thumbnail strip.
     @State private var windowAsset: AVAsset?
+    /// The original could not be opened (deleted from Photos). Without this
+    /// the strip spun forever and Apply went on to fail.
+    @State private var sourceMissing = false
 
     /// The strip grows with the text size — it is the main control here, not
     /// decoration — but only so far: past this it pushes the buttons off a
@@ -41,6 +44,10 @@ struct TrimSheet: View {
     }
 
     private var session: Session? { store.sessions.first { $0.id == clip.sessionID } }
+    private var sourceAspect: CGFloat {
+        guard let s = session, s.width > 0, s.height > 0 else { return 16.0 / 9.0 }
+        return CGFloat(s.width) / CGFloat(s.height)
+    }
     private var lower: Double { max(0, clip.segment.start - slack) }
     private var upper: Double {
         min(session?.duration ?? clip.segment.end + slack, clip.segment.end + slack)
@@ -72,11 +79,23 @@ struct TrimSheet: View {
     /// way to reach either.
     private var content: some View {
         VStack(spacing: 16) {
+                    // The preview plays the original, so it takes the
+                    // original's shape. Boxed at the clip's 9:16 it stood
+                    // taller than the screen and pushed every control below
+                    // the fold; the height cap keeps a portrait source in view.
                     if let player {
                         VideoPlayer(player: player)
-                            .aspectRatio(OutputFrame(clip.orientation).aspectRatio,
-                                         contentMode: .fit)
+                            .aspectRatio(sourceAspect, contentMode: .fit)
+                            .frame(maxHeight: 320)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    if sourceMissing {
+                        Label(L.s("source_missing", lang), systemImage: "exclamationmark.triangle.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.warning)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .rcCard()
                     }
 
                     VStack(spacing: 14) {
@@ -140,7 +159,7 @@ struct TrimSheet: View {
                                 .frame(maxWidth: .infinity, minHeight: 24)
                         }
                         .rcSecondary()
-                        .disabled(working || end - start < store.minClipSeconds * 2)
+                        .disabled(working || sourceMissing || end - start < store.minClipSeconds * 2)
                     }
                     .padding(14)
                     .rcCard()
@@ -169,7 +188,7 @@ struct TrimSheet: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .rcPrimary()
-                        .disabled(!changed)
+                        .disabled(!changed || sourceMissing)
                     }
                     Spacer(minLength: 0)
         }
@@ -232,7 +251,7 @@ struct TrimSheet: View {
             } else {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Theme.surfaceHigh)
-                    .overlay(ProgressView().tint(Theme.accent))
+                    .overlay { if !sourceMissing { ProgressView().tint(Theme.accent) } }
             }
         }
         .frame(maxWidth: .infinity)
@@ -312,6 +331,8 @@ struct TrimSheet: View {
                 if !editing { seek(to: preview) }
             }
             .tint(Theme.accent)
+            .accessibilityLabel(title)
+            .accessibilityValue(fmtTs(value.wrappedValue))
             .disabled(working)
         }
     }
@@ -322,7 +343,10 @@ struct TrimSheet: View {
     /// reach outside what the clip contains, and seeking a file that stops at
     /// the old out point would show nothing there.
     private func load() async {
-        guard let session, let asset = await store.loadAsset(session) else { return }
+        guard let session, let asset = await store.loadAsset(session) else {
+            sourceMissing = true
+            return
+        }
         let item = AVPlayerItem(asset: asset)
         let p = AVPlayer(playerItem: item)
         p.isMuted = true
