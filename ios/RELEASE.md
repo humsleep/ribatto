@@ -87,8 +87,8 @@
 - [ ] AdMob 결제 정보·세금 정보는 앱 심사와 무관하다. 나중에 채워도 된다
 - [ ] App Store Connect ▸ 앱 개인정보: **"사용자를 추적하는 데 사용되는 데이터"에 기기 ID·광고 데이터**, "사용자와 연결되지 않는 데이터"에 대략적 위치(IP)·제품 상호작용. 광고 SDK 표준 항목이다
 - [ ] 추적 허용 프롬프트(ATT)는 온보딩 직후 한 번 뜬다. 문구는 `INFOPLIST_KEY_NSUserTrackingUsageDescription`
-- [ ] `docs/privacy.html`의 "추적하지 않습니다" 절은 광고 절로 바뀌었다. GitHub Pages에 다시 올린다
-- EU를 켜는 날에는 UMP(동의 폼)를 붙여야 한다. `GoogleUserMessagingPlatform`은 SDK 의존성으로 이미 들어와 있다
+- [ ] `docs/privacy.html`이 2026-09-18에 다시 바뀌었다(Pro = 보상형 광고 1시간). GitHub Pages의 `index.html`을 이 파일로 다시 올린다
+- UMP 동의 폼은 2026-09-18에 연결했다(동의 → ATT → SDK). 폼이 실제로 뜨려면 AdMob ▸ 개인정보 보호 및 메시지에서 GDPR 메시지를 만들어 게시해야 한다. EU를 켜는 날 필요하다
 
 ## 4-1. 판매 지역 — EU는 1차 출시에서 제외
 
