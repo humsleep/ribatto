@@ -8,7 +8,7 @@
 |---|---|---|
 | Apple Developer Program | ✅ 가입 완료 | 2026-09-01 결제 완료 |
 | 앱 아이콘 1024px | ✅ 포함됨 | `Ribatto/Assets.xcassets/AppIcon.appiconset` |
-| 스크린샷 6.9" | ✅ 초안 포함 | `Marketing/` (필요 시 실기기 영상으로 재촬영 권장) |
+| 스크린샷 6.9" | ✅ 완료 | `marketing/01~05` (2026-09-22 광고 전용 기준으로 다시 만듦) |
 | 개인정보 처리방침 URL | ⬜ 필요 | 아래 초안 참고. GitHub Pages/노션 공개 페이지면 충분 |
 | 유료 계약(Paid Apps) | 필요 없음 | 인앱 구입이 없다(2026-09-15 광고 전용 전환). 광고 수익은 AdMob 콘솔에서 따로 정산 |
 | AdMob 앱·광고 단위 ID | ⬜ 필요 | Release 빌드 설정에 입력([RELEASE.md](RELEASE.md) 4-2). 비면 광고도 Pro도 없다 |
@@ -128,6 +128,6 @@ AdMob의 최신 공개 안내(Google "Prepare for Apple's App Store data disclos
 - [ ] Release 구성으로 Archive (`Product → Archive`) → Validate → Distribute
 - [ ] 실기기에서 최소 3개 이상의 실제 경기 영상으로 감지 품질 확인 ([DEVICE_TESTING.md](DEVICE_TESTING.md))
 - [ ] 번들 ID가 App Store Connect와 일치하는지
-- [ ] 스크린샷에 실제 UI가 아닌 요소(디바이스 프레임 위조 등)가 없는지 — 점수판·"PAY ONCE"가 찍힌 현재 5장은 다시 만들 것
+- [ ] 스크린샷에 실제 UI가 아닌 요소(디바이스 프레임 위조 등)가 없는지 — 2026-09-22 다시 만든 5장
 - [ ] Release 빌드에서 리워드 광고가 뜨고 Pro가 열리는지(TestFlight)
 - [ ] EU 판매 여부 결정 — UMP 동의 폼은 연결돼 있지 않다. 연결 전에는 EU 27개국 판매를 끈다

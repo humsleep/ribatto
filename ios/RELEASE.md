@@ -105,7 +105,7 @@ EU 27개국에 팔려면 DSA 30·31조에 따라 **거래자(trader) 신원 확�
 
 - [ ] 설명·프로모션 문구·키워드: [../marketing/app-store-copy.md](../marketing/app-store-copy.md)
 - [ ] **키워드에 `VLLO`·`블로`를 넣지 말 것.** 상표 분쟁은 대개 여기서 시작된다.
-- [ ] 스크린샷 5장 업로드 (`marketing/01_hero.png` … `05_s4_clips.png`)
+- [ ] 스크린샷 5장 업로드 (`marketing/01_hero.png` … `05_s4_season.png`, 순서대로)
 - [ ] 개인정보 URL: 2번에서 만든 새 주소 (원문은 저장소의 `docs/privacy.html`)
 - [ ] App Privacy 설문: 4-2의 광고 항목대로. 번들의 `PrivacyInfo.xcprivacy`와 답이 일치해야 한다.
 
