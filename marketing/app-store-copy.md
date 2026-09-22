@@ -51,7 +51,7 @@ YOUR SEASON
 Rallies, courts, longest point and shots per rally, month by month.
 
 IT ALL RUNS ON YOUR IPHONE
-No account. No sign-up. No server. Your video and its audio never leave the phone, and the whole thing works offline at the court. The only thing that ever leaves is a coordinate sent to Apple to name a court, and only if your video carries GPS.
+No account. No sign-up. No server. Your video and its audio never leave the phone, and detection works offline at the court. About your match, the only thing that ever leaves is a coordinate sent to Apple to name a court, and only if your video carries GPS. The free version shows ads from Google AdMob, described in the privacy policy.
 
 FREE, WITH PRO ON DEMAND
 Ribatto is free and supported by ads. Watch one short ad and every Pro feature opens for an hour: no ads, source quality with no watermark, smart vertical crop and player tracking. Clips and reels you make in that hour keep their quality.
@@ -110,7 +110,7 @@ Ribatto: 랠리 클립
 랠리 수, 코트, 최장 랠리, 랠리당 타구 수가 달마다 쌓입니다.
 
 전부 아이폰에서 처리됩니다
-계정도 가입도 서버도 없습니다. 영상과 소리는 폰을 벗어나지 않고, 코트에서 오프라인으로도 전부 동작합니다. 밖으로 나가는 것은 코트 이름을 붙일 때 애플에 보내는 좌표뿐이며, 그것도 영상에 GPS 정보가 있을 때만입니다.
+계정도 가입도 서버도 없습니다. 영상과 소리는 폰을 벗어나지 않고, 감지는 코트에서 오프라인으로도 동작합니다. 경기에 관해 밖으로 나가는 것은 코트 이름을 붙일 때 애플에 보내는 좌표뿐이며, 그것도 영상에 GPS 정보가 있을 때만입니다. 무료 버전에는 Google AdMob 광고가 표시되며, 자세한 내용은 개인정보 처리방침에 있습니다.
 
 무료, Pro는 필요할 때만
 Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 보면 1시간 동안 모든 Pro 기능이 열립니다 — 광고 없음, 워터마크 없는 원본 화질, 스마트 세로 크롭, 선수 추적. 그 사이 만든 클립과 릴스는 품질이 그대로 남습니다.
@@ -122,41 +122,18 @@ Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 
 
 ## 스크린샷 자막 (프레임별)
 
-| # | 화면 | 헤드라인 | 보조 문구 |
-|---|---|---|---|
-| 1 | 세로 클립 결과 | ONE TAP, MATCH TO REEL | Rallies found automatically, framed for Reels. |
-| 2 | 라이브러리 | SKIP THE DEAD TIME | A 30-minute match becomes the rallies worth watching. |
-| 3 | 세션 설정 | FOUND BY SOUND | No tripod, no mount, no fixed angle. It listens for the strike. |
-| 4 | 시즌 | YOUR SEASON, COUNTED | Every rally, every court, month by month. |
-| 5 | 모든 클립 | FREE. NO ACCOUNT. | Everything runs on your iPhone. Your video never leaves it. |
+`ios/Tools/make_screenshots.swift`가 실제로 굽는 문구다. 여기를 고치면 그 파일도 같이 고친다.
 
-한국어판 헤드라인
-1. 한 번에, 경기에서 릴스로 — 랠리는 자동으로 찾고 릴스에 맞게 잡습니다.
-2. 빈 시간은 건너뛰기 — 30분 경기가 볼 만한 랠리만 남습니다.
-3. 소리로 찾습니다 — 삼각대도, 거치도, 각도 맞추기도 필요 없습니다.
-4. 시즌이 쌓입니다 — 랠리, 코트, 달마다.
-5. 무료, 계정 없음 — 전부 아이폰에서 처리되고 영상은 기기 밖으로 나가지 않습니다.
+| # | 파일 | 헤드라인 | 보조 문구 |
+|---|---|---|---|
+| 1 | 01_hero | ONE TAP, MATCH TO REEL | Every rally found and cut vertical for Reels, Shorts and TikTok. |
+| 2 | 02_s1_library | SKIP THE DEAD TIME | A 30-minute match becomes the rallies worth watching. |
+| 3 | 03_s2_session | FOUND BY SOUND | It listens for the strike. Tennis, badminton, pickleball, padel. |
+| 4 | 04_s3_reel | BEST RALLIES, ONE REEL | Keep the top rallies, pick the pace, post it. |
+| 5 | 05_s4_season | YOUR SEASON, COUNTED | Every rally, every court. Your video never leaves your iPhone. |
 
 ---
 
 ## 리뷰 노트 (App Store Connect 심사용)
 
-```
-Ribatto analyses a racket-sport match video that the user imports from Photos.
-The reviewer's device is unlikely to have suitable footage, so please use this
-sample: <PUT A DIRECT DOWNLOAD LINK TO A 30-60s TENNIS CLIP HERE>
-
-Steps:
-1. Save the sample video to the device's Photos library.
-2. Open Ribatto, tap + (Import Video) and pick the sample.
-3. Detection runs automatically; clips appear within about a minute.
-4. Open a clip to play it, or tap "Make a Reel" for the vertical export.
-
-Notes:
-- Everything is processed on-device. There is no account and no login.
-- There is no in-app purchase. The app is ad-supported (Google AdMob). Watching
-  a rewarded ad to the end opens Pro features for one hour; the free tier runs
-  the whole flow at 720p with a watermark.
-- Detection works from the sound of racket impacts, so footage without racket
-  strikes will correctly report that no rallies were found.
-```
+[ios/APP_STORE.md §4-1](../ios/APP_STORE.md)에 한 벌만 둔다. 두 곳에 두었더니 서로 달라졌다.

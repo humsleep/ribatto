@@ -80,10 +80,22 @@ Pro는 리워드 광고를 끝까지 보면 1시간 열린다(`Store/ProPass.swi
 - **ATT**: 온보딩이 끝난 뒤, 첫 광고 요청 전에 묻는다. 거부해도 비맞춤 광고와 Pro 해제가 그대로 동작한다.
 
 
-### 4-1. 심사 정보 메모 (그대로 복사)
+### 4-1. 심사 정보 메모 (그대로 복사 — `<SAMPLE VIDEO LINK>`만 실제 링크로 바꾼다)
 
 ```
-No account or sign-in is required; the app is fully usable immediately.
+Ribatto analyses a racket-sport match video that the user imports from Photos.
+The reviewer's device is unlikely to have suitable footage, so please use this
+sample: <SAMPLE VIDEO LINK>
+
+Steps:
+1. Save the sample video to the device's Photos library.
+2. Open Ribatto, tap + at the top of the Library, then "From Photos".
+   On the first import the app asks which sport you play: choose Tennis.
+3. Pick the sample. Detection runs automatically; clips appear within about a minute.
+4. Open a clip to play it, or tap "Make a Reel" for the vertical export.
+5. Pro: tap "Unlock Pro" under the title, then "Watch an ad".
+
+No account or sign-in is required.
 
 Photos access: the app uses PhotosPicker to select a match video, and also
 requests Photos permission so it can read the selected video in place (via
@@ -100,9 +112,11 @@ into a court name.
 
 There are no in-app purchases. "Pro" (original-quality export, no watermark,
 no ads, smart vertical crop, player tracking, batch save, clip merge) opens
-for one hour after watching a rewarded video ad to the end: tap the pill at
-the top of the Library tab ("Unlock Pro"), then "Watch an ad". The free tier is
-fully functional without watching anything.
+for one hour after watching a rewarded video ad to the end. The free tier runs
+the whole flow at 720p with a watermark without watching anything.
+
+Detection works from the sound of racket impacts, so footage without racket
+strikes will correctly report that no rallies were found.
 ```
 
 ## 5. 개인정보 처리방침
