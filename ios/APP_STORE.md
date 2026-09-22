@@ -107,7 +107,7 @@ fully functional without watching anything.
 
 ## 5. 개인정보 처리방침
 
-공개 문서는 [docs/privacy.html](../docs/privacy.html)이다(영/한). 앱 안의 PrivacyView와 문구를 맞춘다.
+공개 문서는 https://humsleep.github.io/apps/ribatto/privacy/ 다(한/영, 원본은 `~/workspace/apps/ribatto/privacy/index.html`). 앱 안의 PrivacyView와 문구를 맞춘다.
 
 App Store Connect **앱 개인정보 보호** 설문은 더 이상 "데이터를 수집하지 않음"이 아니다.
 `Ribatto/PrivacyInfo.xcprivacy`와 같게 답한다(모두 **사용자와 연결되지 않음**):

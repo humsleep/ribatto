@@ -20,6 +20,9 @@ struct PrivacyView: View {
         ("eye.slash", "p_analytics_t", "p_analytics_d"),
     ]
 
+    /// Kept in the shared site repo (github.com/humsleep/apps, `ribatto/privacy/`).
+    static let policyURL = URL(string: "https://humsleep.github.io/apps/ribatto/privacy/")!
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -43,6 +46,17 @@ struct PrivacyView: View {
                             Spacer(minLength: 0)
                         }
                     }
+
+                    // The hosted policy (the URL given to App Store Connect).
+                    // The arrow flows in the text so large type wraps the
+                    // words, not the glyph.
+                    Link(destination: Self.policyURL) {
+                        Text("\(L.s("privacy_full", lang)) \(Image(systemName: "arrow.up.right"))")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(Theme.accent)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.top, 6)
                 }
                 .padding(20)
             }

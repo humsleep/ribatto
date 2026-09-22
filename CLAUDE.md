@@ -204,7 +204,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - 화면의 유일한 내용이 플레이어라면 `AVPlayer`를 `onAppear`가 아니라 init에서 만든다.
   첫 레이아웃에서 nil이면 NavigationStack이 배치할 것이 없어 시트가 제목까지 통째로 빈 채로 뜨고, 플레이어가 생겨도 그대로 남는다.
 - "업로드 없음"이라고 쓰지 말 것. PlaceLookup이 좌표를 애플 지오코더로 보낸다. 문구는 "영상은 기기 밖으로 나가지 않는다"로.
-  "외부 SDK 없음·광고 없음"도 더는 사실이 아니다. AdMob이 광고 식별자·IP를 보낸다. PrivacyView의 p_ads_d와 docs/privacy.html이 이를 적는다.
+  "외부 SDK 없음·광고 없음"도 더는 사실이 아니다. AdMob이 광고 식별자·IP를 보낸다. PrivacyView의 p_ads_d와 공개 방침(`~/workspace/apps/ribatto/privacy/`, 게시 https://humsleep.github.io/apps/ribatto/privacy/)이 이를 적는다.
 - 전면광고는 렌더가 **끝난 직후**만이다(SessionDetailView·ReelSheet의 onChange). 플레이어·편집 시트·가져오기 도중에는 넣지 않는다.
   `.failed`는 결과가 아니라 메시지이므로 광고를 얹지 않는다.
 - 리워드 광고를 못 불러오는 빌드(Release에 광고 ID 없음)에서는 ProPassView가 버튼 대신 "지금은 광고를 불러올 수 없음"을 보여준다.

@@ -16,7 +16,9 @@
 | 지원 언어 | en ko ja es pt de fr it zh-Hans (9종) |
 | 최소 iOS | 17.0 |
 | 스크린샷 | `marketing/01~05_*.png` · 1320×2868 (6.9인치) |
-| 개인정보 URL | **https://humsleep.github.io/Ribatto/privacy.html** (2026-09-07 발행 확인) |
+| 개인정보 URL | **https://humsleep.github.io/apps/ribatto/privacy/** (2026-09-22 공용 사이트로 이전) |
+| 지원 URL | **https://humsleep.github.io/apps/ribatto/** |
+| 마케팅 URL | **https://humsleep.github.io/apps/** |
 
 **코드는 제출 가능한 상태다.** 남은 것은 전부 App Store Connect 안에서, 사람이 눌러야 하는 일이다.
 
@@ -34,34 +36,21 @@
       "Vollio"를 버린 이유가 VLLO(vimosoft, 2019년 미국 9류 출원)와의 유사성이었으므로,
       같은 실수를 반복하지 않으려면 이번엔 선점해 두는 편이 낫다.
 
-## 2. 개인정보 처리방침 페이지 — ✅ 완료
+## 2. 개인정보 처리방침 페이지 — ✅ 완료 (2026-09-22 공용 사이트로 이전)
 
-발행 주소: **https://humsleep.github.io/Ribatto/privacy.html**
-(HTTP 200 · 영어/한국어 본문 · 문의처 `humsleep@naver.com` 확인. 원문은 `docs/privacy.html`)
+방침·안내는 앱 공용 사이트 저장소 [humsleep/apps](https://github.com/humsleep/apps)(로컬 `~/workspace/apps`)의
+`ribatto/` 폴더가 원본이다. 고칠 때는 그 저장소에서 고치고 시행일을 바꾼다. 절차는 그 저장소의 `ADD_APP.md`.
 
-- [x] `docs/privacy.html`을 GitHub Pages로 발행
-- [ ] 옛 `/vollio/privacy` 페이지가 아직 살아 있다면 내린다 (새 주소가 뜬 뒤에)
-- [ ] 문구는 코드와 일치해야 한다. **"업로드 없음"이라고 쓰지 말 것** — `PlaceLookup`이 영상의 GPS
-      태그를 애플 지오코더로 보내 코트 이름을 받아온다. 올바른 표현은 "영상은 기기 밖으로 나가지 않는다"다.
-      (앱 내 개인정보 화면·스토어 문구는 이미 이 표현으로 통일해 뒀다.)
+| App Store Connect 칸 | 주소 |
+|---|---|
+| 개인정보 처리방침 URL | https://humsleep.github.io/apps/ribatto/privacy/ (한국어 + 영어 전문) |
+| 지원 URL | https://humsleep.github.io/apps/ribatto/ (FAQ·문의) |
+| 마케팅 URL (선택) | https://humsleep.github.io/apps/ |
 
-### 개인정보 페이지 올리기 (GitHub Pages, 무료)
-
-이 저장소는 원격이 없는 로컬 저장소다. 정책 페이지만 올리는 **공개 저장소를 따로 하나** 만드는 것이
-가장 간단하고, 앱 소스는 계속 비공개로 둘 수 있다.
-
-1. github.com → **New repository** → 이름 `ribatto` → **Public** → Create
-2. 저장소 화면에서 **Add file ▸ Upload files** → `docs/privacy.html`을 끌어다 놓고,
-   업로드 후 파일명을 **`index.html`로 바꾼다**(그래야 주소가 짧아진다) → Commit
-3. **Settings ▸ Pages** → Source: **Deploy from a branch** → Branch: `main` / 폴더 `/ (root)` → Save
-4. 1~2분 뒤 주소가 뜬다: `https://<깃허브아이디>.github.io/ribatto/`
-5. 그 주소를 브라우저에서 직접 열어 **본문이 보이는지** 확인한다. App Store Connect의
-   개인정보 URL 칸에는 이 주소를 넣는다.
-
-> `github.com/<아이디>/<저장소>/blob/...` 형태의 주소는 깃허브 UI가 감싸진 페이지라 정책 URL로 쓰지 않는다.
-> 반드시 `github.io` 주소를 쓴다.
-
-파일 안의 `CONTACT@EXAMPLE.COM` 두 곳을 실제 연락 메일로 바꾼 뒤 올린다. 애플은 동작하는 연락 수단을 요구한다.
+- 옛 주소 `https://humsleep.github.io/Ribatto/privacy.html`(저장소 `humsleep/Ribatto`)은 새 주소로 보내는 리디렉트로 바꿨다.
+  옛 주소를 어딘가에 넣었어도 끊기지 않는다. 저장소는 지우지 말 것.
+- 문구는 코드와 일치해야 한다. **"업로드 없음"이라고 쓰지 말 것** — `PlaceLookup`이 영상의 GPS
+  태그를 애플 지오코더로 보내 코트 이름을 받아온다. 올바른 표현은 "영상은 기기 밖으로 나가지 않는다"다.
 
 ## 3. App Store Connect — 앱 레코드
 
@@ -87,7 +76,6 @@
 - [ ] AdMob 결제 정보·세금 정보는 앱 심사와 무관하다. 나중에 채워도 된다
 - [ ] App Store Connect ▸ 앱 개인정보: **"사용자를 추적하는 데 사용되는 데이터"에 기기 ID·광고 데이터**, "사용자와 연결되지 않는 데이터"에 대략적 위치(IP)·제품 상호작용. 광고 SDK 표준 항목이다
 - [ ] 추적 허용 프롬프트(ATT)는 온보딩 직후 한 번 뜬다. 문구는 `INFOPLIST_KEY_NSUserTrackingUsageDescription`
-- [ ] `docs/privacy.html`이 2026-09-18에 다시 바뀌었다(Pro = 보상형 광고 1시간). GitHub Pages의 `index.html`을 이 파일로 다시 올린다
 - UMP 동의 폼은 2026-09-18에 연결했다(동의 → ATT → SDK). 폼이 실제로 뜨려면 AdMob ▸ 개인정보 보호 및 메시지에서 GDPR 메시지를 만들어 게시해야 한다. EU를 켜는 날 필요하다
 
 ## 4-1. 판매 지역 — EU는 1차 출시에서 제외
@@ -106,7 +94,7 @@ EU 27개국에 팔려면 DSA 30·31조에 따라 **거래자(trader) 신원 확�
 - [ ] 설명·프로모션 문구·키워드: [../marketing/app-store-copy.md](../marketing/app-store-copy.md)
 - [ ] **키워드에 `VLLO`·`블로`를 넣지 말 것.** 상표 분쟁은 대개 여기서 시작된다.
 - [ ] 스크린샷 5장 업로드 (`marketing/01_hero.png` … `05_s4_season.png`, 순서대로)
-- [ ] 개인정보 URL: 2번에서 만든 새 주소 (원문은 저장소의 `docs/privacy.html`)
+- [ ] 개인정보 URL·지원 URL·마케팅 URL: 2번 표의 세 주소
 - [ ] App Privacy 설문: 4-2의 광고 항목대로. 번들의 `PrivacyInfo.xcprivacy`와 답이 일치해야 한다.
 
 ## 6. 빌드 업로드 · 제출
