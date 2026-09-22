@@ -41,6 +41,9 @@ ios/Ribatto/
                            Keyframe.box(디스플레이 좌표)를 채워 ClipExporter의 재프레이밍 입력이 됨
     ClipExporter.swift     클립 컷 · 화면비 · 페이드 · 워터마크/캡션 번인
                            인코딩은 리더/라이터 한 패스(`encode`). 크롭 합성 프레임에 오버레이를 얹어 바로 쓴다
+                           두 펌프는 `PumpGate`로 한 번만 재개된다. 한쪽이 실패하면 양쪽을 깨우고, 워치독이 0.5초마다
+                           writer.status를 본다 — 라이터가 append 사이에 실패하면 두 입력 모두 영영 ready가 되지 않아
+                           타임아웃도 없이 멈춘다(2026-09-18 시뮬레이터에서 재현). 한계 시간은 클립 길이×30(최소 120초)
                            비트레이트는 해상도·fps에서 계산(`bitrate`), Pro는 기기에서만 HEVC(시뮬레이터는 H.264)
                            실패하면 옛 2패스 경로(`legacyEncode`)로 떨어진다 — 조용히 떨어지므로 용량이 안 줄면 이걸 의심할 것
                            측정(2026-09-16, 18초 랠리): 무료 720p 9.50 → 2.84 Mbps · 22.0 → 6.4MB · 3.2초
@@ -63,6 +66,9 @@ ios/Ribatto/
     VideoProbe.swift       메타데이터 + 포스터
   Store/
     SessionStore.swift     세션 영속화 + 처리 파이프라인 (process → render). 모든 상태의 소유자
+                           클립이 이미 있으면 재렌더는 clips.staging에 만들고 전부 끝난 뒤에 바꿔치기한다(`swapInStaged`).
+                           감지 결과도 그때 함께 기록된다 — 중간에 실패하면 옛 클립과 옛 랠리가 그대로 남는다
+                           storage(of:)/clearClipFiles: 세션별 용량과 "클립 파일만 비우기"(기록은 남는다)
     ProPass.swift          isPro 판정. 리워드 광고를 끝까지 보면 grant()로 1시간 패스(passUntil 영속, 만료 타이머로 즉시 강등)
                            Debug 전용 debugPro 스위치(DebugProSheet). 구매는 없다
     AdsManager.swift       AdMob(SPM 12.x). 무료 등급의 배너(탭 바 아래, RibattoApp) + 전면광고(렌더·릴스 완료 직후, 3분 간격)
@@ -127,6 +133,9 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - `DebugProSheet`는 파일 전체가 `#if DEBUG`. 릴리스에 숨은 기능이 있으면 심사 2.3.1 거절 사유다.
 - 긴 렌더는 `beginBackgroundTask`로 보호된다. `.failed`는 진행 중이 아니라 메시지이므로 busy 판정은 `isBusy`를 쓴다.
 - 재렌더는 원본을 먼저 확보한 뒤 기존 클립을 지운다. 순서를 되돌리면 원본이 사라진 세션의 클립이 전부 날아간다.
+- 가져오기는 마지막에 고른 종목으로 감지한다(`SessionStore.lastSport`, 기본값 없음 → 첫 가져오기 전에 묻는다).
+  사진·파일 다중 선택은 전부 등록한 뒤 `processQueued`가 한 건씩 감지한다. 동시에 돌리면 원본을 여러 개 디코딩한다.
+- 앱에서 찍은 녹화는 먼저 사진 앱에 저장하고 그 자산을 참조한다. 권한이 없을 때만 앱 안에 복사본을 둔다.
 - 감지 결과가 0개인 것은 "완료"가 아니다. `apply`는 빈 배열도 재감지 대상으로 본다. 빼면 재감지 버튼이 죽는다.
 - 릴스 파일명은 UUID다. 설정 조합으로 이름을 만들면 같은 설정의 다음 릴스가 이전 것을 덮어쓴다.
 - 릴스 사이드카는 자기 랠리의 출처(`ReelInfo.sources`)를 적어 둔다. 그래야 완성된 릴스를 자막만 바꿔 다시 만들 수 있다.
@@ -155,7 +164,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   오디오 큐가 차는 순간 리더가 영상 공급을 멈춰 영영 끝나지 않는다(타임아웃도 없다).
 - NextLevelSessionExporter는 2026-09-16에 붙였다가 걷어냈다. 1.0.1에서 오디오 설정·구간·오버레이를 모두 빼도
   "AVAssetWriterInput ... status is 0"로 죽거나 콜백이 오지 않는다. 다시 붙이지 말 것.
-- 전면광고는 세션 화면이 앞에 있을 때만 띄운다(`destination == nil`). 트림·추적 재지정·랠리 나누기도 같은 렌더
+- 전면광고는 세션 화면이 앞에 있고(`destination == nil`) 그 화면이 화면에 있을 때만 띄운다(`onScreen`).
+  탭을 옮긴 뒤 렌더가 끝나면 다른 탭 위로 광고가 덮인다. 릴스 시트는 광고 전에 재생을 멈춘다. 트림·추적 재지정·랠리 나누기도 같은 렌더
   완료 신호를 내보내서, 확인 없이 띄우면 편집 시트 위로 광고가 덮인다.
 - 세로 고정이다(OrientationGate + AppDelegate). 가로는 클립·하이라이트 재생 화면만, 그것도 가로 영상일 때만 허용한다.
   병합 재생(HighlightPlayerSheet)도 세션의 `renderedOrientation`을 받아 같은 판정을 한다. 무조건 허용하면 세로 영상이 옆으로 눕는다.
@@ -197,3 +207,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - 전면광고는 렌더가 **끝난 직후**만이다(SessionDetailView·ReelSheet의 onChange). 플레이어·편집 시트·가져오기 도중에는 넣지 않는다.
   `.failed`는 결과가 아니라 메시지이므로 광고를 얹지 않는다.
 - 리워드 광고를 못 불러오는 빌드(Release에 광고 ID 없음)에서는 ProPassView가 버튼 대신 "지금은 광고를 불러올 수 없음"을 보여준다.
+  불러오기에 실패하면 10초·30초 뒤 두 번 자동 재시도하고, 그래도 안 되면 "다시 시도" 버튼을 준다. 영원히 도는 스피너 금지 —
+  리워드 광고가 Pro로 가는 유일한 입구다. 패스 중에도 리워드는 계속 로드한다(광고 한 편 더 = 1시간 연장).
+- 패스가 끝난 뒤 Pro로 만든 세션에 적용을 누르면 "무료 화질로 다시 만듭니다" 확인을 먼저 띄운다(SessionDetailView).
+- EEA 동의는 UMP(`UserMessagingPlatform`, GoogleMobileAds가 끌고 오는 패키지)로 받는다. 동의 → ATT → SDK 시작 순서이고,
+  `canRequestAds`가 false면 SDK를 시작하지 않는다. 동의 재설정 진입점은 라이브러리 지구본 메뉴에 있다(필요한 지역에서만 보인다).
+  AdMob 콘솔에 GDPR 메시지를 만들어 두지 않으면 폼이 뜨지 않는다.
+- `PrivacyInfo.xcprivacy`는 NSPrivacyTracking true + AdMob이 모으는 항목을 적는다. NSPrivacyTrackingDomains는 비워 둔다 —
+  여기에 도메인을 적으면 ATT 거부 시 그 도메인이 차단돼 비맞춤 광고와 리워드까지 끊긴다. App Store Connect 설문은 APP_STORE.md §5 표와 같게.

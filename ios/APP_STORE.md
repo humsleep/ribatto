@@ -10,23 +10,19 @@
 | 앱 아이콘 1024px | ✅ 포함됨 | `Ribatto/Assets.xcassets/AppIcon.appiconset` |
 | 스크린샷 6.9" | ✅ 초안 포함 | `Marketing/` (필요 시 실기기 영상으로 재촬영 권장) |
 | 개인정보 처리방침 URL | ⬜ 필요 | 아래 초안 참고. GitHub Pages/노션 공개 페이지면 충분 |
-| 유료 계약(Paid Apps) | ⬜ 필요 | IAP 판매를 위해 App Store Connect에서 은행·세금 정보 입력 |
+| 유료 계약(Paid Apps) | 필요 없음 | 인앱 구입이 없다(2026-09-15 광고 전용 전환). 광고 수익은 AdMob 콘솔에서 따로 정산 |
+| AdMob 앱·광고 단위 ID | ⬜ 필요 | Release 빌드 설정에 입력([RELEASE.md](RELEASE.md) 4-2). 비면 광고도 Pro도 없다 |
 
 ## 1. App Store Connect 앱 생성
 
 1. https://appstoreconnect.apple.com → **나의 앱 → +**
 2. 플랫폼 iOS, 이름 `Ribatto`, 기본 언어 **English (U.S.)**, 번들 ID 선택, SKU `ribatto-001`
 
-## 2. 인앱 구입 등록
+## 2. 인앱 구입 — 없음
 
-- 유형: **비소모품(Non-Consumable)**
-- 제품 ID: `com.ribatto.pro` ← 코드의 `PurchaseManager.productID` 와 반드시 일치
-- 참조명: `Ribatto Pro`
-- 가격: **US$2.99 (한국 약 ₩4,400) 티어 권장** — 아래 근거 참고. 자동 환산되는 각국 가격 확인
-  - Pro 번들이 커져(무제한·4K·스마트 크롭·일괄 저장·병합) 최초 계획(₩3,300)보다 한 단계 위가 적정
-  - 비소모품은 나중에 가격을 올려도 기존 구매자에게 영향이 없다 — 리뷰가 쌓이면 $3.99로 인상 검토
-  - 앵커: SwingVision 월 $14.99 → 우리 평생가가 그 1/5
-- 현지화(영/한/일) 표시명·설명 입력 → 심사용 스크린샷 1장 첨부 필요 (페이월 화면 사용)
+2026-09-15에 구매를 코드에서 걷어냈다. **인앱 구입을 등록하지 않는다.**
+Pro는 리워드 광고를 끝까지 보면 1시간 열린다(`Store/ProPass.swift`).
+구매를 되살릴 때의 절차는 git 태그 `pro-iap-snapshot` 시점의 이 문서에 있다.
 
 ## 3. 스토어 메타데이터 초안
 
@@ -41,14 +37,15 @@
   > Ribatto turns a 30-minute match — tennis, badminton, pickleball or padel — into the rallies worth watching.
   > Import a video and it listens for racket impacts to find every rally,
   > then cuts clean clips with smooth fades — wide for YouTube, vertical for Reels and Shorts.
-  > Merge them into one highlight reel with a tap.
+  > Build a vertical reel from your best rallies in a few taps.
   >
   > • Tennis, badminton, pickleball and padel presets
   > • Wide 16:9 and vertical 9:16 output
   > • Sensitivity control for noisy or quiet courts
-  > • Everything runs on your iPhone — your video never leaves it, no account, no subscription
+  > • Everything runs on your iPhone — your video never leaves it, no account
   >
-  > Free to try. One-time purchase for unlimited imports.
+  > Free with ads. Watch one video ad to unlock Pro — original quality, no watermark,
+  > smart vertical framing — for an hour. Nothing to buy, no subscription.
 
 **한국어**
 - 이름: `Ribatto`
@@ -56,14 +53,14 @@
 - 설명:
   > 테니스·배드민턴·피클볼·파델 — 30분 경기 영상에서 볼 만한 랠리만 남깁니다.
   > 타구음을 분석해 랠리를 찾아내고, 앞뒤 여유와 페이드까지 넣어 깔끔한 클립으로 잘라줍니다.
-  > 유튜브용 가로, 릴스·쇼츠용 세로를 모두 지원하며, 한 번의 탭으로 하이라이트 합본까지 만듭니다.
+  > 유튜브용 가로, 릴스·쇼츠용 세로를 모두 지원하며, 베스트 랠리를 골라 세로 릴스까지 만듭니다.
   >
   > • 테니스·배드민턴·피클볼·파델 전용 설정
   > • 가로 16:9 / 세로 9:16 자동 전환
   > • 코트 환경에 맞춘 민감도 3단계
-  > • 모든 처리는 아이폰 안에서 — 업로드도, 계정도, 구독도 없습니다
+  > • 모든 처리는 아이폰 안에서 — 영상은 기기 밖으로 나가지 않고, 계정도 구독도 없습니다
   >
-  > 무료로 사용해 보고, 마음에 들면 한 번만 결제하세요.
+  > 광고와 함께 무료로 쓰세요. 광고 한 편을 끝까지 보면 원본 화질·워터마크 없음·스마트 세로 크롭이 1시간 열립니다.
 
 **日本語**
 - 이름: `Ribatto`
@@ -77,8 +74,10 @@
   (`Store/SessionStore.swift`). 클립을 사진 앱에 저장할 때도 같은 권한을 쓴다.
   예전 문안("PHPicker only — no permission prompt")은 사실과 달라 5.1.1 반려를 부른다.
   아래 §4-1의 문안을 그대로 쓸 것.
-- **IAP 복원 버튼**: 페이월 우상단 `Restore` — 필수 요건이며 이미 구현되어 있다.
-- **가격 표기**: 페이월에 "구독 아님, 1회 결제"를 명시했다 (거절 사유 예방).
+- **구매 없음**: 복원 버튼 요건(3.1.1)이 해당하지 않는다. Pro 시트는 "구매할 것 없음 · 광고 1편 = 1시간"을 적는다.
+- **리워드 광고 = 기능 해제**: 광고 시청으로 앱 기능을 여는 것은 3.1.1에서 허용된다(보상형 광고). 결제를 우회하는
+  구조가 아니라 판매 자체가 없다는 점을 메모에 적는다.
+- **ATT**: 온보딩이 끝난 뒤, 첫 광고 요청 전에 묻는다. 거부해도 비맞춤 광고와 Pro 해제가 그대로 동작한다.
 
 
 ### 4-1. 심사 정보 메모 (그대로 복사)
@@ -92,29 +91,36 @@ PHImageManager) rather than duplicating a multi-gigabyte file into app
 storage, and so it can save exported clips back to the library. If access is
 denied, import still works through the picker using a local copy.
 
-All video analysis and rendering happen entirely on-device. There is no
-server of ours, no analytics and no tracking, and the video itself never
-leaves the device. The app makes exactly two kinds of network call, neither
-to us: StoreKit for the one-time purchase, and CLGeocoder to turn a video's
-own GPS tag into a court name.
+All video analysis and rendering happen entirely on-device, and the video
+itself never leaves the device. There is no server of ours and no analytics.
+Network use: Google AdMob for ads in the free tier (it receives the
+advertising identifier only if the tracking prompt is accepted, plus IP
+address and basic device data), and CLGeocoder to turn a video's own GPS tag
+into a court name.
 
-In-app purchase: "Ribatto Pro" (com.ribatto.pro) is a one-time
-non-consumable. It removes the import limit, the watermark and the 720p
-export cap, and unlocks player tracking. A Restore button is at the top
-right of the paywall. The free tier is fully functional.
+There are no in-app purchases. "Pro" (original-quality export, no watermark,
+no ads, smart vertical crop, player tracking, batch save, clip merge) opens
+for one hour after watching a rewarded video ad to the end: tap the pill at
+the top of the Library tab ("Unlock Pro"), then "Watch an ad". The free tier is
+fully functional without watching anything.
 ```
 
-## 5. 개인정보 처리방침 초안
+## 5. 개인정보 처리방침
 
-> **Ribatto Privacy Policy**
-> Ribatto does not collect, transmit, or store any personal data.
-> All video processing happens entirely on your device. Videos you import,
-> the clips created from them, and your settings never leave your iPhone and
-> are never sent to us or any third party. We do not use analytics or tracking.
-> Purchases are handled by Apple; we never see your payment details.
-> Contact: <이메일 주소>
+공개 문서는 [docs/privacy.html](../docs/privacy.html)이다(영/한). 앱 안의 PrivacyView와 문구를 맞춘다.
 
-App Store Connect의 **앱 개인정보 보호** 설문에서는 모두 "데이터를 수집하지 않음"을 선택하면 된다.
+App Store Connect **앱 개인정보 보호** 설문은 더 이상 "데이터를 수집하지 않음"이 아니다.
+`Ribatto/PrivacyInfo.xcprivacy`와 같게 답한다(모두 **사용자와 연결되지 않음**):
+
+| 데이터 | 추적에 사용 | 목적 |
+|---|---|---|
+| 식별자 › 기기 ID | 예 | 제3자 광고, 분석 |
+| 사용 데이터 › 광고 데이터 | 예 | 제3자 광고, 분석 |
+| 사용 데이터 › 제품 상호작용 | 아니요 | 제3자 광고, 분석 |
+| 위치 › 대략적 위치 | 아니요 | 제3자 광고 |
+| 진단 › 충돌·성능·기타 진단 데이터 | 아니요 | 앱 기능 |
+
+AdMob의 최신 공개 안내(Google "Prepare for Apple's App Store data disclosure")와 다르면 그쪽을 따르고 매니페스트도 같이 고친다.
 
 ## 6. 제출 전 최종 점검
 
@@ -122,4 +128,6 @@ App Store Connect의 **앱 개인정보 보호** 설문에서는 모두 "데이�
 - [ ] Release 구성으로 Archive (`Product → Archive`) → Validate → Distribute
 - [ ] 실기기에서 최소 3개 이상의 실제 경기 영상으로 감지 품질 확인 ([DEVICE_TESTING.md](DEVICE_TESTING.md))
 - [ ] 번들 ID가 App Store Connect와 일치하는지
-- [ ] 스크린샷에 실제 UI가 아닌 요소(디바이스 프레임 위조 등)가 없는지
+- [ ] 스크린샷에 실제 UI가 아닌 요소(디바이스 프레임 위조 등)가 없는지 — 점수판·"PAY ONCE"가 찍힌 현재 5장은 다시 만들 것
+- [ ] Release 빌드에서 리워드 광고가 뜨고 Pro가 열리는지(TestFlight)
+- [ ] EU 판매 여부 결정 — UMP 동의 폼은 연결돼 있지 않다. 연결 전에는 EU 27개국 판매를 끈다
