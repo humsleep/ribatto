@@ -30,9 +30,9 @@ final class AdsManager: NSObject, ObservableObject {
         static let interstitial = "ca-app-pub-3940256099942544/4411468910"
         static let rewarded = "ca-app-pub-3940256099942544/1712485313"
         #else
-        static let banner = ""
-        static let interstitial = ""
-        static let rewarded = ""
+        static let banner = "ca-app-pub-4073994600346533/4778238789"
+        static let interstitial = "ca-app-pub-4073994600346533/5843908440"
+        static let rewarded = "ca-app-pub-4073994600346533/2103973988"
         #endif
     }
 
