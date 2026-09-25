@@ -67,6 +67,7 @@ struct ReelsView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .background(Theme.background.ignoresSafeArea())
+            .adBanner()
             .sheet(item: $playing) { reel in
                 ReelPlayerSheet(reel: reel)
             }
@@ -232,6 +233,7 @@ struct ReelPlayerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel(L.s("done", lang))
                         .tint(.secondary)
                         .disabled(rebuilding)
                 }

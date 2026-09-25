@@ -166,6 +166,7 @@ struct TabHeader<Trailing: View>: View {
 struct SearchField: View {
     let prompt: String
     @Binding var text: String
+    @AppStorage("rc_lang") private var lang = "en"
 
     var body: some View {
         HStack(spacing: 8) {
@@ -181,7 +182,7 @@ struct SearchField: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
-                .accessibilityLabel("Clear")
+                .accessibilityLabel(L.s("clear", lang))
             }
         }
         .padding(.horizontal, 14)
@@ -215,8 +216,10 @@ struct AdaptiveButtonRow<Content: View>: View {
 /// buttons look like, so a badge drawn that way reads as something to press.
 /// Four of them sat on the session screen next to one real button.
 struct ProBadge: View {
+    @AppStorage("rc_lang") private var lang = "en"
+
     var body: some View {
-        Text("PRO")
+        Text(L.s("pro", lang).uppercased())
             .font(.system(size: 10, weight: .black))
             .tracking(0.5)
             .fixedSize()

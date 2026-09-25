@@ -48,6 +48,7 @@ struct TargetPlayerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel(L.s("done", lang))
                         .tint(.secondary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {

@@ -11,6 +11,7 @@ struct RibattoApp: App {
     @StateObject private var ads = AdsManager()
     @AppStorage("rc_lang") private var lang = "en"
     @AppStorage("rc_onboarded") private var onboarded = false
+    @Environment(\.scenePhase) private var scenePhase
 
     /// Before any view reads `rc_lang`: seeding it from a `.task` would let the
     /// first screen render in English and then switch, which is worse than
@@ -21,11 +22,12 @@ struct RibattoApp: App {
         WindowGroup {
             Group {
                 if onboarded {
-                    // The banner sits under the tab bar, outside every tab,
-                    // so the four tabs share one ad view and the 62pt tab-bar
-                    // clearance the lists already keep stays correct. Sheets
-                    // cover it, which is the point: no ad next to a player.
-                    VStack(spacing: 0) {
+                    // The banner is NOT attached here. A `safeAreaInset`
+                    // applied outside a tab's `NavigationStack` never reaches
+                    // the scroll views inside it, so the ad painted over the
+                    // last 63pt of every list and sliced the pinned selection
+                    // bars in half (2026-09-23). Each tab root adds the slot
+                    // inside its own stack instead.
                     TabView {
                         LibraryView()
                             .tabItem {
@@ -47,13 +49,6 @@ struct RibattoApp: App {
                             .tabItem {
                                 Label(L.s("season", lang), systemImage: "chart.bar.fill")
                             }
-                    }
-                    if ads.showing {
-                        AdBannerView()
-                            .frame(height: ads.bannerHeight)
-                            .frame(maxWidth: .infinity)
-                            .background(Theme.background)
-                    }
                     }
                 } else {
                     OnboardingView(done: $onboarded)
@@ -89,6 +84,15 @@ struct RibattoApp: App {
             // auto-locking again.
             .onChange(of: store.busyCount) { _, busy in
                 UIApplication.shared.isIdleTimerDisabled = busy > 0
+            }
+            // A consent lookup that failed on a fresh install leaves the SDK
+            // unstarted, and with it no banner, no interstitial and no
+            // rewarded ad — which is the only way into Pro. Coming back to
+            // the foreground is when the network is most likely to be back,
+            // so retry there rather than waiting for a relaunch.
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active, onboarded else { return }
+                Task { await ads.retryIfNeverStarted() }
             }
             .onChange(of: pass.isPro) { _, pro in
                 store.isPro = pro

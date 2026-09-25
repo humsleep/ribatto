@@ -71,22 +71,44 @@ ios/Ribatto/
                            storage(of:)/clearClipFiles: 세션별 용량과 "클립 파일만 비우기"(기록은 남는다)
     ProPass.swift          isPro 판정. 리워드 광고를 끝까지 보면 grant()로 1시간 패스(passUntil 영속, 만료 타이머로 즉시 강등)
                            Debug 전용 debugPro 스위치(DebugProSheet). 구매는 없다
-    AdsManager.swift       AdMob(SPM 12.x). 무료 등급의 배너(탭 바 아래, RibattoApp) + 전면광고(렌더·릴스 완료 직후, 3분 간격)
+    AdsManager.swift       AdMob(SPM 12.x). 무료 등급의 배너 + 전면광고(렌더·릴스 완료 직후, 3분 간격)
+                           배너는 하나(`banner`)를 네 탭이 나눠 쓴다. 슬롯은 `bannerLoaded`(광고가 **실제로 실림**) 뒤에만 열린다 —
+                           SDK 시작 시점에 높이를 예약하면 no-fill 동안 탭 바 밑에 빈 띠가 남는다(2026-09-23 TestFlight에서 확인)
+                           `.adBanner()`는 각 탭의 **NavigationStack 안쪽** 루트 VStack에 단다(+ 푸시되는 SessionDetailView에도).
+                           NavigationStack 바깥이나 TabView에 달면 안쪽 스크롤뷰까지 인셋이 닿지 않아 광고가 목록 마지막
+                           63pt를 **덮고** 고정 선택 바를 잘라 먹는다(2026-09-23 실측). 고정 바의 하단 여백은 8pt다 —
+                           safeAreaInset은 탭 바 안전영역을 이미 받으므로 62pt를 또 주면 두 번 띄운다
+                           `AdBannerHost`가 창에 들어온 컨테이너로 뷰를 옮긴다(선택 안 된 탭은 창에서 빠진다)
+                           로드 실패는 30초→5분 백오프로 재요청. 한 번이라도 실린 뒤의 갱신 실패로는 슬롯을 닫지 않는다(`bannerFilled`) —
+                           닫으면 보던 화면이 63pt 튄다. 패스가 시작되면 `banner`를 **해제**한다. 창 없는 뷰가 계속 갱신되면
+                           아무도 못 본 노출이 잡힌다(무효 트래픽)
+                           `refreshShowing()`이 showing 전이를 한 곳에서 처리한다 — false→true면 배너·전면을 다시 요청하고,
+                           true→false면 배너를 버린다. 로드 호출을 refreshShowing보다 **먼저** 두면 showing이 낡아 전부 조용히 반환한다
                            + 리워드 영상(ProPassView의 "광고 보기") → ProPass.grant()로 1시간 Pro 패스
-                           ATT 프롬프트 → SDK 시작 순서. 온보딩이 끝난 뒤에만 시작한다
-                           앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=빈값), 단위 ID는 Unit(Debug만 테스트값)
+                           동의 → ATT 프롬프트 → SDK 시작 순서. 온보딩이 끝난 뒤에만 시작한다
+                           `started`는 SDK가 **실제로 올라간 뒤에만** 켠다(진행 중 중복 방지는 `starting`). 동의 관문 앞에서 켜면
+                           첫 실행 때 동의 조회가 한 번 실패하는 것만으로 배너·전면·리워드가 모두 죽고, 리워드가 유일한 Pro 입구라
+                           강제 종료 전까지 복구가 없다. 포그라운드 복귀 때 `retryIfNeverStarted()`로 다시 시도한다
+                           전면광고는 `interstitial`이 비면 그 자리에서 다시 불러온다. 첫 로드 실패로 세션 내내 전면이 사라졌었다
+                           앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=실제 ID, 2026-09-22 아카이브에서 확인)
+                           단위 ID는 Unit(Debug만 테스트값)
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다
   Views/                   SessionDetailView(설정 카드는 클립이 생기면 한 줄 요약으로 접힌다) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더. 썸네일 스트립은 TrimmerBar+PryntTrimmerView,
                            타구 위치를 눈금으로 찍고 VoiceOver용 스테퍼를 함께 둔다) · TargetPlayerSheet(추적 대상 선택)
                            LibraryView · StatsView · CaptionEditorView · ProPassView(Pro 안내 + 리워드 광고 버튼) 등
-                           SortMenu.swift: ClipSort(6종 정렬) + 정렬 메뉴 — 세션 화면·모든클립 탭 공용
+                           SortMenu.swift: ClipSort(8종 정렬: 시간·베스트·긴·짧은·타구많은·타구적은·환호·즐겨찾기) + 정렬 메뉴 — 세션 화면·모든클립 탭 공용
                            AddRallySheet(놓친 랠리 수동 추가) · PrivacyView(앱 내 개인정보 설명 — 코드 동작과 항상 일치시킬 것)
                            ReelsView: 완성된 릴스 보관함. 파일은 sessions/reels/ 에 id.mp4 + id.jpg + id.json(ReelInfo)
                            OrientationGate.swift: 세로 고정 + 재생 화면만 가로 허용
 ```
 
-## Pro 티어 경계 (isPro 로 게이팅)
+## 패스 경계 (isPro 로 게이팅)
+
+**UI 용어는 "Pro"가 아니라 "패스"다**(2026-09-25). 구입이 없는데 "Pro 해제"라고 쓰면 영구 등급을 약속하는 셈이고,
+App Store 제품 페이지의 "앱 내 구입 없음" 표시와 어긋난다. 코드의 `isPro`·`ProPass`·`ProBadge`는 그대로 두되
+사용자에게 보이는 문구는 전부 이용권으로 말한다(en PASS · ko 패스 · ja パス · es PASE · pt PASSE · de/fr/it PASS · zh 通行证).
+배지는 짧게 유지할 것 — 긴 문구로 바꾸면 독일어·이탈리아어에서 잘린다.
 
 **인앱 구입은 없다.** 2026-09-15에 StoreKit·페이월·복원·오너 패스프레이즈를 코드에서 걷어냈다(광고 전용 운영).
 나중에 구매를 되살릴 때는 git 태그 `pro-iap-snapshot`의 `PurchaseManager.swift`·`PaywallView.swift`·`Ribatto.storekit`에서 가져온다.

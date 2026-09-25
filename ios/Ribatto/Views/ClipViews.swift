@@ -165,6 +165,21 @@ struct ClipPlayerSheet: View {
     private var session: Session? {
         store.sessions.first { $0.id == clip.sessionID }
     }
+    /// The segment as the store holds it *now*. `clip` is the snapshot the
+    /// sheet opened with, so after a trim applied from inside this sheet the
+    /// title still read the original in/out points while the file on disk was
+    /// already the shorter one.
+    private var live: RallySegment {
+        session?.segments?[safe: clip.index] ?? clip.segment
+    }
+
+    /// A trim rewrites the clip at the same URL, so the existing `AVPlayer`
+    /// keeps serving the old asset and its old duration. Replacing the item
+    /// is the only way to pick the new file up without closing the sheet.
+    private func reloadPlayer() {
+        player?.pause()
+        player = AVPlayer(url: clip.url)
+    }
     /// Re-pointing only means anything where the crop can move: a portrait
     /// clip that was rendered with smart crop on, on a Pro entitlement.
     private var canRetarget: Bool {
@@ -280,6 +295,12 @@ struct ClipPlayerSheet: View {
             }
             .background(Color.black.ignoresSafeArea())
             .onAppear { if player == nil { player = AVPlayer(url: clip.url) } }
+            // A trim rewrites the file at the same URL, so neither `onAppear`
+            // nor the URL changing brings the new length in. Rebuild the
+            // player when the segment's bounds move; the header reads `live`
+            // for the same reason.
+            .onChange(of: live.start) { _, _ in reloadPlayer() }
+            .onChange(of: live.end) { _, _ in reloadPlayer() }
             // Only a wide clip gains anything from turning the phone; a 9:16
             // rally would just be letterboxed on its side.
                 .navigationBarTitleDisplayMode(.inline)
@@ -290,11 +311,20 @@ struct ClipPlayerSheet: View {
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 0) {
                         Text("#" + String(clip.index + 1)).font(.headline)
-                        Text(fmtTs(clip.segment.start) + "–" + fmtTs(clip.segment.end))
+                        Text(fmtTs(live.start) + "–" + fmtTs(live.end))
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                     .lineLimit(1)
                     .dynamicTypeSize(...DynamicTypeSize.large)
+                }
+                // The landscape variant has its own X over the video; without
+                // this the portrait sheet's only exit was a drag with no
+                // affordance, and testers got stuck in the player.
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(L.s("done", lang))
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button(role: .destructive) { confirmDelete = true } label: {
@@ -565,7 +595,7 @@ struct AllClipsView: View {
                         if selecting {
                             selectionBar
                                 .padding(.horizontal)
-                                .padding(.bottom, 62)
+                                .padding(.bottom, 8)
                         }
                     }
                 }
@@ -573,6 +603,7 @@ struct AllClipsView: View {
             }
             .background(Theme.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
+            .adBanner()
             .confirmationDialog(String(format: L.s(selection.count == 1 ? "delete_one_clip"
                                                                      : "delete_n_clips", lang),
                                     selection.count),

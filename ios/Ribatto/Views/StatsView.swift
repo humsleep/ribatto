@@ -65,6 +65,7 @@ struct StatsView: View {
             }
             }
             .toolbar(.hidden, for: .navigationBar)
+            .adBanner()
         }
     }
 

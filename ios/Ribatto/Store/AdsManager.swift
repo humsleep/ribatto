@@ -4,7 +4,7 @@ import UserMessagingPlatform
 import SwiftUI
 import UIKit
 
-/// Ads for the free tier: a banner under the tab bar, an interstitial after a
+/// Ads for the free tier: a banner above the tab bar, an interstitial after a
 /// render, and the rewarded ad that opens Pro. A pass removes the first two.
 ///
 /// Why ads: a free app can go through review without the paid-apps agreement,
@@ -43,9 +43,22 @@ final class AdsManager: NSObject, ObservableObject {
 
     /// True while ads should be on screen: SDK started, user not Pro.
     @Published private(set) var showing = false
-    /// Height the banner needs, so the layout can reserve it before the ad
-    /// arrives and nothing jumps when it does.
+    /// Height the banner takes once an ad is on it.
     @Published private(set) var bannerHeight: CGFloat = 0
+    /// An ad is actually on the banner. The slot above the tab bar opens only
+    /// then: reserving the height at SDK start left a blank strip under the
+    /// tab bar for as long as AdMob had nothing to fill it with — every
+    /// TestFlight build of a not-yet-reviewed app looked broken.
+    @Published private(set) var bannerLoaded = false
+    /// One banner for the four tabs: each tab's slot re-parents this view when
+    /// it comes on screen (`AdBannerHost`). Four views would mean four
+    /// requests, three of them for tabs nobody is looking at.
+    private(set) var banner: BannerView?
+    private var bannerAttempts = 0
+    private var loadingBanner = false
+    /// An ad has rendered on this banner at least once. Distinguishes "never
+    /// filled" (hide the slot) from "a later refresh failed" (keep showing).
+    private var bannerFilled = false
     /// A rewarded ad is loaded and can be shown. The Pro sheet's "watch an ad"
     /// button reads this so it never promises an ad that is not there.
     @Published private(set) var rewardedReady = false
@@ -63,6 +76,10 @@ final class AdsManager: NSObject, ObservableObject {
 
     private var isPro = false
     private var started = false
+    /// `start` is between the consent gate and the SDK handshake. Keeps a
+    /// second call from running the sequence twice without claiming the SDK
+    /// is up, which `started` would.
+    private var starting = false
     /// Consent allows ad requests. Outside the regions that need consent this
     /// is true as soon as the check returns.
     private var consentAllows = false
@@ -90,22 +107,40 @@ final class AdsManager: NSObject, ObservableObject {
     /// never shared — then starts the SDK. A Pro user never sees the prompt.
     func start(isPro: Bool) async {
         self.isPro = isPro
-        guard !isPro, !started, Self.configured else { refreshShowing(); return }
-        started = true
+        guard !isPro, !starting, !started, Self.configured else { refreshShowing(); return }
+        // `starting`, not `started`: marking the SDK started before the
+        // consent gate below meant that one failed consent call on a fresh
+        // install left `started == true` with `consentAllows == false`, and
+        // nothing could ever re-enter. That kills the banner, the
+        // interstitial AND the rewarded ad — and the rewarded ad is the only
+        // way into Pro, so a single first-launch network blip locked the user
+        // out of every paid feature until they force-quit the app.
+        starting = true
+        defer { starting = false }
         // Consent first (GDPR / UK / Swiss regions, via Google's UMP form),
         // then Apple's tracking prompt, then the SDK — the order Google
         // documents. Serving ads to an EEA user without a consent message is
         // an AdMob policy violation that ends in limited or no ads there.
         await gatherConsent()
+        // Not consented (or the consent lookup failed): leave `started`
+        // false so a later attempt — foreground, pass expiry, the privacy
+        // options form — can run the whole sequence again.
         guard consentAllows else { refreshShowing(); return }
         if ATTrackingManager.trackingAuthorizationStatus == .notDetermined {
             _ = await ATTrackingManager.requestTrackingAuthorization()
         }
         await MobileAds.shared.start()
+        started = true
         bannerHeight = Self.adaptiveSize(width: Self.screenWidth).size.height
         refreshShowing()
-        loadInterstitial()
-        loadRewarded()
+    }
+
+    /// Re-runs `start` when an earlier attempt never got past the consent
+    /// gate. Called when the app comes back to the foreground, which is the
+    /// natural moment for "the user turned the network back on".
+    func retryIfNeverStarted() async {
+        guard !started, !starting, !isPro else { return }
+        await start(isPro: isPro)
     }
 
     /// A pass switches ads off the moment it is granted, and back on the
@@ -140,15 +175,59 @@ final class AdsManager: NSObject, ObservableObject {
         if allowed && !consentAllows {
             consentAllows = true
             await MobileAds.shared.start()
+            started = true
             bannerHeight = Self.adaptiveSize(width: Self.screenWidth).size.height
-            loadInterstitial()
         }
         consentAllows = allowed
+        // `refreshShowing` loads the banner and the interstitial on the
+        // false -> true edge. Calling them before it left `showing` stale at
+        // false, so both guards bailed and an EEA user who re-consented got
+        // no ads at all for the rest of the session.
         refreshShowing()
     }
 
+    // MARK: - Banner
+
+    /// Creates the shared banner on first use and requests an ad. The view is
+    /// only sized and shown by the tab slot after `bannerViewDidReceiveAd`.
+    private func loadBanner() {
+        guard showing, !Unit.banner.isEmpty, !loadingBanner else { return }
+        loadingBanner = true
+        if banner == nil {
+            let view = BannerView(adSize: Self.adaptiveSize(width: Self.screenWidth))
+            view.adUnitID = Unit.banner
+            view.delegate = self
+            banner = view
+        }
+        // `rootViewController` stays nil on purpose: the SDK then presents
+        // from the controller that actually contains the banner, which is the
+        // right one for a view that moves between tabs.
+        banner?.load(Request())
+    }
+
+    /// Recomputes `showing` and arms whatever that transition calls for.
+    /// Every caller that changes tier or consent goes through here, so the
+    /// "who reloads what" question has exactly one answer.
     private func refreshShowing() {
+        let was = showing
         showing = started && consentAllows && !isPro && Self.configured
+        if showing && !was {
+            // false -> true: a pass expired, or consent was just granted.
+            // Nothing re-requested here meant the banner and the interstitial
+            // stayed dead for the rest of the session.
+            loadBanner()
+            loadInterstitial()
+        } else if !showing && was {
+            // true -> false: a pass started. Release the banner — the SDK
+            // keeps its refresh timer running on a view with no window, and
+            // an impression recorded for an ad nobody can see is exactly what
+            // the invalid-traffic rules are about. There is no pause API.
+            banner?.removeFromSuperview()
+            banner = nil
+            bannerLoaded = false
+            bannerFilled = false
+            bannerAttempts = 0
+        }
         // The rewarded ad stays loaded during a pass too: watching another one
         // is how a pass is extended before a long render.
         if started && consentAllows && Self.configured { loadRewarded() }
@@ -216,8 +295,13 @@ final class AdsManager: NSObject, ObservableObject {
     /// one, then preloads the next. Safe to call after every render; the
     /// interval does the rationing.
     func showInterstitialIfDue() {
-        guard showing, let ad = interstitial,
-              Date().timeIntervalSince(lastInterstitial) >= Self.interstitialInterval
+        // Reload first: a single failed load used to end interstitials for
+        // the whole session, because the guard below returns on a nil ad and
+        // the only reload sat after a successful present. No-fill is the
+        // normal answer for a new app, so that was the common case.
+        guard showing else { return }
+        guard let ad = interstitial else { loadInterstitial(); return }
+        guard Date().timeIntervalSince(lastInterstitial) >= Self.interstitialInterval
         else { return }
         interstitial = nil
         lastInterstitial = Date()
@@ -282,23 +366,104 @@ extension AdsManager: FullScreenContentDelegate {
     }
 }
 
-/// The banner, sized to the screen width. Lives under the tab bar in
-/// `RibattoApp`, so every tab shares one view and one ad request.
-struct AdBannerView: UIViewRepresentable {
-    func makeUIView(context: Context) -> BannerView {
-        let banner = BannerView(adSize: AdsManager.adaptiveSize(width: AdsManager.screenWidth))
-        banner.adUnitID = AdsManager.Unit.banner
-        banner.rootViewController = Self.rootController
-        banner.load(Request())
-        return banner
+extension AdsManager: BannerViewDelegate {
+    nonisolated func bannerViewDidReceiveAd(_ bannerView: BannerView) {
+        Task { @MainActor in
+            loadingBanner = false
+            bannerLoaded = true
+            bannerFilled = true
+            bannerAttempts = 0
+        }
     }
 
-    func updateUIView(_ uiView: BannerView, context: Context) {}
+    nonisolated func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
+        Task { @MainActor in
+            #if DEBUG
+            print("[ads] banner load failed: \(error.localizedDescription)")
+            #endif
+            loadingBanner = false
+            // Only collapse the slot if nothing has ever rendered. A failed
+            // auto-refresh of an ad that is already on screen is not a reason
+            // to remove it: doing so dropped the tab bar 63pt mid-scroll and
+            // put it back again on the next success.
+            if !bannerFilled { bannerLoaded = false }
+            // No fill is the normal answer for a new app for hours at a time.
+            // Back off (30 s, 1, 2, 4, 5 min, then every 5 min) instead of
+            // either hammering AdMob or giving up until the next launch.
+            bannerAttempts += 1
+            let delay = min(30 * pow(2, Double(bannerAttempts - 1)), 300)
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                self?.loadBanner()
+            }
+        }
+    }
+}
 
-    private static var rootController: UIViewController? {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive }?
-            .keyWindow?.rootViewController
+/// The slot each tab keeps above its tab bar. Empty until an ad has loaded,
+/// so a tab bar with no ad under it sits on the bottom edge like any other
+/// app's, and grows to the banner's height the moment there is something to
+/// show. Sheets cover it, which is the point: no ad next to a player.
+struct AdBannerSlot: View {
+    @EnvironmentObject private var ads: AdsManager
+
+    var body: some View {
+        if ads.showing, ads.bannerLoaded, let banner = ads.banner {
+            AdBannerHost(banner: banner)
+                .frame(height: ads.bannerHeight)
+                .frame(maxWidth: .infinity)
+                .background(Theme.background)
+        }
+    }
+}
+
+extension View {
+    /// Puts the free tier's banner between this tab's content and the tab bar.
+    /// Applied to each tab root rather than the `TabView`: an inset on the
+    /// `TabView` lands *under* the tab bar and lifts it off the screen edge.
+    func adBanner() -> some View {
+        safeAreaInset(edge: .bottom, spacing: 0) { AdBannerSlot() }
+    }
+}
+
+/// Hosts the shared `BannerView`. The container claims the banner whenever it
+/// enters a window — `UITabBarController` takes a deselected tab's view out
+/// of the window, so the one container that has a window is always the tab
+/// the user is looking at. That is more reliable than SwiftUI's `onAppear`,
+/// which fires for tabs the user has never opened.
+struct AdBannerHost: UIViewRepresentable {
+    let banner: BannerView
+
+    func makeUIView(context: Context) -> Container {
+        let container = Container()
+        container.banner = banner
+        container.clipsToBounds = true
+        return container
+    }
+
+    func updateUIView(_ uiView: Container, context: Context) {
+        uiView.banner = banner
+        uiView.claimIfVisible()
+    }
+
+    final class Container: UIView {
+        var banner: BannerView?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            claimIfVisible()
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            banner?.frame = bounds
+        }
+
+        func claimIfVisible() {
+            guard window != nil, let banner, banner.superview !== self else { return }
+            banner.removeFromSuperview()
+            addSubview(banner)
+            banner.frame = bounds
+        }
     }
 }

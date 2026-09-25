@@ -103,9 +103,10 @@ struct SessionDetailView: View {
             if selecting {
                 selectionBar(session, busy: busy)
                     .padding(.horizontal)
-                    .padding(.bottom, 62)
+                    .padding(.bottom, 8)
             }
         }
+        .adBanner()
         .navigationTitle(L.dateTime(session.playedAt, lang))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -140,6 +141,7 @@ struct SessionDetailView: View {
                         Label(L.s("delete_session", lang), systemImage: "trash")
                     }
                 } label: { Image(systemName: "ellipsis.circle") }
+                .accessibilityLabel(L.s("more", lang))
             }
         }
         .alert(L.s("place", lang), isPresented: $editingPlace) {
@@ -604,6 +606,10 @@ struct SessionDetailView: View {
             Text("4:5").tag(AspectSetting.portrait45)
         }
         .pickerStyle(.segmented)
+        // Four segments, and only two of them are numbers. Italian
+        // "Orizzontale" and Portuguese "Horizontal" clipped to "Oriz…" at the
+        // DEFAULT text size, not just the accessibility ones.
+        .dynamicTypeSize(...DynamicTypeSize.large)
     }
 
     /// Label beside control, until the text gets big enough that the control

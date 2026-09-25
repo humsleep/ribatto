@@ -11,7 +11,7 @@
 | 스크린샷 6.9" | ✅ 완료 | `marketing/01~05` (2026-09-22 광고 전용 기준으로 다시 만듦) |
 | 개인정보 처리방침 URL | ⬜ 필요 | 아래 초안 참고. GitHub Pages/노션 공개 페이지면 충분 |
 | 유료 계약(Paid Apps) | 필요 없음 | 인앱 구입이 없다(2026-09-15 광고 전용 전환). 광고 수익은 AdMob 콘솔에서 따로 정산 |
-| AdMob 앱·광고 단위 ID | ⬜ 필요 | Release 빌드 설정에 입력([RELEASE.md](RELEASE.md) 4-2). 비면 광고도 Pro도 없다 |
+| AdMob 앱·광고 단위 ID | ⬜ 필요 | Release 빌드 설정에 입력([RELEASE.md](RELEASE.md) 4-2). 비면 광고도 패스도 없다 |
 
 ## 1. App Store Connect 앱 생성
 
@@ -21,10 +21,14 @@
 ## 2. 인앱 구입 — 없음
 
 2026-09-15에 구매를 코드에서 걷어냈다. **인앱 구입을 등록하지 않는다.**
-Pro는 리워드 광고를 끝까지 보면 1시간 열린다(`Store/ProPass.swift`).
+패스는 리워드 광고를 끝까지 보면 1시간 열린다(`Store/ProPass.swift`).
 구매를 되살릴 때의 절차는 git 태그 `pro-iap-snapshot` 시점의 이 문서에 있다.
 
-## 3. 스토어 메타데이터 초안
+## 3. 스토어 메타데이터 초안 — ⚠️ 사용하지 말 것 (옛 초안)
+
+> **실제 제출 문안은 [`../marketing/app-store-copy.md`](../marketing/app-store-copy.md) 한 군데다.**
+> 아래 초안은 이름·부제·키워드가 그것과 전부 어긋난다(이름 `Ribatto` vs `Ribatto: Rally Clips` 등).
+> 두 곳을 다 남겨 두면 제출할 때 어느 쪽을 붙여넣었는지 알 수 없다. 참고용으로만 남긴다.
 
 > 이름은 30자, 부제는 30자 제한. "rally"는 테니스·배드민턴·피클볼·파델에서 모두 쓰는
 > 공통 용어라 이름은 그대로 두고, 종목 범위는 부제와 키워드로 드러낸다.
@@ -44,7 +48,7 @@ Pro는 리워드 광고를 끝까지 보면 1시간 열린다(`Store/ProPass.swi
   > • Sensitivity control for noisy or quiet courts
   > • Everything runs on your iPhone — your video never leaves it, no account
   >
-  > Free with ads. Watch one video ad to unlock Pro — original quality, no watermark,
+  > Free with ads, nothing to buy. Watch one video ad for a one-hour pass — original quality, no watermark,
   > smart vertical framing — for an hour. Nothing to buy, no subscription.
 
 **한국어**
@@ -74,10 +78,10 @@ Pro는 리워드 광고를 끝까지 보면 1시간 열린다(`Store/ProPass.swi
   (`Store/SessionStore.swift`). 클립을 사진 앱에 저장할 때도 같은 권한을 쓴다.
   예전 문안("PHPicker only — no permission prompt")은 사실과 달라 5.1.1 반려를 부른다.
   아래 §4-1의 문안을 그대로 쓸 것.
-- **구매 없음**: 복원 버튼 요건(3.1.1)이 해당하지 않는다. Pro 시트는 "구매할 것 없음 · 광고 1편 = 1시간"을 적는다.
+- **구매 없음**: 복원 버튼 요건(3.1.1)이 해당하지 않는다. 패스 시트는 "구매할 것 없음 · 광고 1편 = 1시간"을 적는다.
 - **리워드 광고 = 기능 해제**: 광고 시청으로 앱 기능을 여는 것은 3.1.1에서 허용된다(보상형 광고). 결제를 우회하는
   구조가 아니라 판매 자체가 없다는 점을 메모에 적는다.
-- **ATT**: 온보딩이 끝난 뒤, 첫 광고 요청 전에 묻는다. 거부해도 비맞춤 광고와 Pro 해제가 그대로 동작한다.
+- **ATT**: 온보딩이 끝난 뒤, 첫 광고 요청 전에 묻는다. 거부해도 비맞춤 광고와 패스 열기가 그대로 동작한다.
 
 
 ### 4-1. 심사 정보 메모 (그대로 복사 — `<SAMPLE VIDEO LINK>`만 실제 링크로 바꾼다)
@@ -93,7 +97,17 @@ Steps:
    On the first import the app asks which sport you play: choose Tennis.
 3. Pick the sample. Detection runs automatically; clips appear within about a minute.
 4. Open a clip to play it, or tap "Make a Reel" for the vertical export.
-5. Pro: tap "Unlock Pro" under the title, then "Watch an ad".
+5. The free pass: tap "Free pass" under the title, then "Watch an ad".
+
+Please note about step 5: the pass is opened by watching a rewarded video ad,
+and Google AdMob does not serve ads to an app that is not yet published on the
+App Store. On a pre-release build that button will therefore report that no ad
+can be loaded, and the pass cannot be reached that way during review. So that
+its output can still be judged, the sample link above also contains a clip
+exported under a pass (original quality, no watermark, vertical crop) next to
+the same rally exported without one (720p, watermarked). The pass changes only
+export quality and framing; every detection and editing feature is available
+without it. There are no in-app purchases of any kind.
 
 No account or sign-in is required.
 
@@ -110,10 +124,10 @@ advertising identifier only if the tracking prompt is accepted, plus IP
 address and basic device data), and CLGeocoder to turn a video's own GPS tag
 into a court name.
 
-There are no in-app purchases. "Pro" (original-quality export, no watermark,
-no ads, smart vertical crop, player tracking, batch save, clip merge) opens
-for one hour after watching a rewarded video ad to the end. The free tier runs
-the whole flow at 720p with a watermark without watching anything.
+There are no in-app purchases. A one-hour pass (original-quality export, no
+watermark, no ads, smart vertical crop, player tracking, batch save, clip
+merge) opens after watching a rewarded video ad to the end. Without it the app
+still runs the whole flow at 720p with a watermark, watching nothing.
 
 Detection works from the sound of racket impacts, so footage without racket
 strikes will correctly report that no rallies were found.
@@ -143,5 +157,5 @@ AdMob의 최신 공개 안내(Google "Prepare for Apple's App Store data disclos
 - [ ] 실기기에서 최소 3개 이상의 실제 경기 영상으로 감지 품질 확인 ([DEVICE_TESTING.md](DEVICE_TESTING.md))
 - [ ] 번들 ID가 App Store Connect와 일치하는지
 - [ ] 스크린샷에 실제 UI가 아닌 요소(디바이스 프레임 위조 등)가 없는지 — 2026-09-22 다시 만든 5장
-- [ ] Release 빌드에서 리워드 광고가 뜨고 Pro가 열리는지(TestFlight)
+- [ ] Release 빌드에서 리워드 광고가 뜨고 패스가 열리는지(TestFlight — 테스트 기기 등록 후에만 가능)
 - [ ] EU 판매 여부 결정 — UMP 동의 폼은 연결돼 있지 않다. 연결 전에는 EU 27개국 판매를 끈다

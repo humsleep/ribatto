@@ -18,7 +18,7 @@ Tennis & padel rally clips
 
 **Keywords** (max 100, comma separated, no spaces) — 98 chars
 ```
-pickleball,badminton,squash,highlight,editor,trim,video,court,match,serve,coach,slowmo,vlog,sports
+pickleball,badminton,padel,highlight,editor,trim,video,court,match,serve,coach,slowmo,vlog,sports
 ```
 Sport terms that already appear in the name or subtitle are left out on purpose: Apple indexes the
 three fields together, so repeating a word spends space without adding reach.
@@ -53,8 +53,8 @@ Rallies, courts, longest point and shots per rally, month by month.
 IT ALL RUNS ON YOUR IPHONE
 No account. No sign-up. No server. Your video and its audio never leave the phone, and detection works offline at the court. About your match, the only thing that ever leaves is a coordinate sent to Apple to name a court, and only if your video carries GPS. The free version shows ads from Google AdMob, described in the privacy policy.
 
-FREE, WITH PRO ON DEMAND
-Ribatto is free and supported by ads. Watch one short ad and every Pro feature opens for an hour: no ads, source quality with no watermark, smart vertical crop and player tracking. Clips and reels you make in that hour keep their quality.
+FREE, WITH A FREE PASS ON DEMAND
+Ribatto is free and supported by ads. There is nothing to buy. Watch one short ad and a one-hour pass opens everything: no ads, source quality with no watermark, smart vertical crop and player tracking. Clips and reels you make in that hour keep their quality.
 
 Free: unlimited imports, 720p, watermark.
 ```
@@ -80,7 +80,7 @@ Ribatto: 랠리 클립
 
 **키워드** (100자)
 ```
-피클볼,배드민턴,스쿼시,패들,하이라이트,자르기,영상,코트,경기,서브,레슨,슬로우모션,브이로그,숏폼,동영상편집,클립,라켓,동호회,스포츠
+피클볼,배드민턴,패들,하이라이트,자르기,영상,코트,경기,서브,레슨,슬로우모션,브이로그,숏폼,동영상편집,클립,라켓,동호회,스포츠
 ```
 
 **프로모션 문구** (170자)
@@ -112,8 +112,8 @@ Ribatto: 랠리 클립
 전부 아이폰에서 처리됩니다
 계정도 가입도 서버도 없습니다. 영상과 소리는 폰을 벗어나지 않고, 감지는 코트에서 오프라인으로도 동작합니다. 경기에 관해 밖으로 나가는 것은 코트 이름을 붙일 때 애플에 보내는 좌표뿐이며, 그것도 영상에 GPS 정보가 있을 때만입니다. 무료 버전에는 Google AdMob 광고가 표시되며, 자세한 내용은 개인정보 처리방침에 있습니다.
 
-무료, Pro는 필요할 때만
-Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 보면 1시간 동안 모든 Pro 기능이 열립니다 — 광고 없음, 워터마크 없는 원본 화질, 스마트 세로 크롭, 선수 추적. 그 사이 만든 클립과 릴스는 품질이 그대로 남습니다.
+무료, 패스는 필요할 때만
+Ribatto는 광고로 운영되는 무료 앱입니다. 결제는 없습니다. 짧은 광고 한 편을 보면 1시간짜리 패스가 열려 모든 기능을 씁니다 — 광고 없음, 워터마크 없는 원본 화질, 스마트 세로 크롭, 선수 추적. 그 사이 만든 클립과 릴스는 품질이 그대로 남습니다.
 
 무료: 가져오기 무제한, 720p, 워터마크.
 ```

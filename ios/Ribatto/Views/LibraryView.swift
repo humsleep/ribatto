@@ -145,6 +145,7 @@ struct LibraryView: View {
             }
             .background(Theme.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
+            .adBanner()
             .navigationDestination(for: UUID.self) { id in
                 SessionDetailView(sessionID: id)
             }
