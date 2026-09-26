@@ -138,6 +138,16 @@ final class SessionStore: ObservableObject {
 
     /// Whether any session has a clip on disk, without building the whole
     /// list — it stops at the first one it finds.
+    /// Whether this session still has rendered clip files. One `stat`, not a
+    /// directory listing: the Library card asks this for every session on every
+    /// redraw. "Free up clip files" leaves the rallies behind, so the card was
+    /// still advertising 13 clips with nothing on disk.
+    func hasClipFiles(_ s: Session) -> Bool {
+        guard let segments = s.segments, !segments.isEmpty else { return false }
+        let first = clipsDir(s).appendingPathComponent("clip_01.mp4")
+        return fm.fileExists(atPath: first.path)
+    }
+
     var hasAnyClips: Bool {
         sessions.contains { s in
             guard let segments = s.segments, !segments.isEmpty else { return false }
@@ -516,6 +526,16 @@ final class SessionStore: ObservableObject {
         guard !isBusy(session.id), end - start >= minClipSeconds,
               let live = sessions.first(where: { $0.id == session.id })
         else { return false }
+        // A rally that lands on top of one already there is a double tap, not a
+        // second point: the sheet opens at the same default position every time,
+        // so accepting it twice produced two clips of the same moment. Split is
+        // the tool for cutting an existing rally; this one is for a missed one.
+        let existing = live.segments ?? []
+        let overlapsExisting = existing.contains { seg in
+            let overlap = min(seg.end, end) - max(seg.start, start)
+            return overlap > 0.5 * min(seg.end - seg.start, end - start)
+        }
+        guard !overlapsExisting else { return false }
         // The sheet was handed a snapshot; anything written while it was open
         // would be lost if we edited that copy.
         var segments = live.segments ?? []

@@ -695,7 +695,13 @@ struct SessionCard: View {
         if let stage = store.progress[session.id] {
             StageLabel(stage: stage)
         } else if let segs = session.segments {
-            Text("\(String(segs.count)) \(L.s(segs.count == 1 ? "clip_one" : "clips", lang))")
+            // Rallies survive "free up clip files"; the clips do not. Counting
+            // segments and calling them clips left the card promising 13 clips
+            // for a session whose files had been cleared.
+            let unit = store.hasClipFiles(session)
+                ? L.s(segs.count == 1 ? "clip_one" : "clips", lang)
+                : L.s("rallies", lang)
+            Text("\(String(segs.count)) \(unit)")
                 .font(.caption.bold()).foregroundStyle(.secondary)
         } else {
             Text(L.s("not_detected", lang))

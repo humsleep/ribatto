@@ -8,6 +8,11 @@ struct ClipCard: View {
     @AppStorage("rc_lang") private var lang = "en"
     let clip: ClipInfo
     var showSession: String? = nil
+    /// Forces every card in the grid to one shape. A session's own grid shares
+    /// one orientation so it can size to the clip, but All Clips mixes them and
+    /// a row is as tall as its tallest card — a wide clip beside a vertical one
+    /// sat under a void twice its own height.
+    var uniformAspect: CGFloat? = nil
     /// nil = not in selection mode
     var selected: Bool? = nil
     let onTap: () -> Void
@@ -22,8 +27,13 @@ struct ClipCard: View {
                     // — a stale one, or a session re-rendered to a new frame —
                     // grow the cell and overlap its neighbours in the grid.
                     Color.clear
-                        .aspectRatio(OutputFrame(clip.orientation).aspectRatio,
+                        .aspectRatio(uniformAspect
+                                        ?? OutputFrame(clip.orientation).aspectRatio,
                                      contentMode: .fit)
+                        // The poster fills the cell and is clipped, so a
+                        // vertical rally in a wide cell shows its middle rather
+                        // than sitting in black bars. The duration and time
+                        // labels say what it is.
                         .overlay { thumb }
                         .clipped()
                     Text(String(Int(clip.duration)) + L.s("sec", lang))
@@ -571,6 +581,7 @@ struct AllClipsView: View {
                                 ClipCard(clip: pair.clip,
                                          showSession: pair.session.placeName
                                              ?? L.dateOnly(pair.session.playedAt, lang),
+                                         uniformAspect: 16.0 / 9.0,
                                          selected: selecting ? selection.contains(pair.clip.id) : nil) {
                                     if selecting {
                                         if selection.contains(pair.clip.id) {

@@ -80,6 +80,10 @@ struct TargetPlayerSheet: View {
             }
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
+            // Capped: these are two explanatory paragraphs above the canvas the
+            // player is picked in. Uncapped at AX5 they took the whole sheet and
+            // the boxes had no height left to be tapped in.
+            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
             .padding(.horizontal, 20).padding(.top, 12)
 
             GeometryReader { geo in
@@ -109,6 +113,8 @@ struct TargetPlayerSheet: View {
                         .onEnded { _ in dragStart = nil }
                 )
             }
+            // The canvas keeps a usable height whatever the text above does.
+            .frame(minHeight: 220)
 
             // A single still can easily be the moment the player is behind the
             // opponent, out of frame, or not yet on court, so the frame is

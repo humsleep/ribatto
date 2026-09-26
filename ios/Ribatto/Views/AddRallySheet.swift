@@ -18,6 +18,7 @@ struct AddRallySheet: View {
     @State private var length: Double = 12
     @State private var working = false
     @State private var failed = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Kept inside the source, and never shorter than a clip is allowed to be.
     private var start: Double { max(0, min(centre - length / 2, session.duration - length)) }
@@ -25,6 +26,10 @@ struct AddRallySheet: View {
 
     var body: some View {
         NavigationStack {
+            // Scrolls only at accessibility sizes: in a ScrollView at normal
+            // sizes the player would collapse to its ideal height instead of
+            // filling the sheet. Same rule as TrimSheet.
+            AdaptiveScroll(scrolls: typeSize.isAccessibilitySize) {
             VStack(spacing: 16) {
                 if let player {
                     VideoPlayer(player: player)
@@ -60,6 +65,7 @@ struct AddRallySheet: View {
                 Spacer(minLength: 0)
             }
             .padding()
+            }
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle(L.s("add_rally", lang))
             .navigationBarTitleDisplayMode(.inline)
