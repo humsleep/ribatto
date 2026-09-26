@@ -90,10 +90,15 @@ ios/Ribatto/
                            첫 실행 때 동의 조회가 한 번 실패하는 것만으로 배너·전면·리워드가 모두 죽고, 리워드가 유일한 Pro 입구라
                            강제 종료 전까지 복구가 없다. 포그라운드 복귀 때 `retryIfNeverStarted()`로 다시 시도한다
                            전면광고는 `interstitial`이 비면 그 자리에서 다시 불러온다. 첫 로드 실패로 세션 내내 전면이 사라졌었다
-                           단위 ID는 `Unit.Test`(구글 공개 테스트)와 `Unit.Live`(실제) 둘로 나뉜다. Debug는 항상 Test.
-                           Release도 `RIBATTO_TEST_ADS=1`로 빌드하면 Test를 쓴다 — 출시 전 TestFlight에서 연동을 보는 유일한 방법이다.
-                           AdMob은 스토어에 게시되지 않은 앱에 실제 광고를 주지 않기 때문이다(2026-09-26 확인).
-                           켜고 빌드하면 컴파일 경고가 뜨고 패스 화면에 주황색 "TEST ADS"가 뜬다. **스토어 빌드에 절대 넣지 말 것** — 수익이 0이 된다
+                           단위 ID는 `Unit.Test`(구글 공개 테스트)와 `Unit.Live`(실제)로 나뉘고, **런타임에** 고른다(`distribution`).
+                           App Store 설치만 Live를 쓴다. TestFlight·Xcode 설치·Ad-hoc은 전부 Test로 떨어진다.
+                           `#if DEBUG`만 봐서는 안 된다 — TestFlight도 Release 빌드라 실제 단위를 요청하게 되고,
+                           AdMob은 미게시 앱에 광고를 주지 않아 아무것도 안 뜬다(2026-09-26 확인). 게시된 뒤에는 더 나쁘다:
+                           개발자가 테스트하며 누른 광고가 무효 트래픽으로 잡혀 계정이 정지될 수 있다.
+                           판별: 시뮬레이터·DEBUG → debug · `embedded.mobileprovision` 있으면 → debug ·
+                           영수증이 `sandboxReceipt`면 → testflight · 그 외 → appstore.
+                           FC Scope(`~/workspace/fcscope-ios/FCScope/Core/Config.swift`)가 같은 계정에서 쓰는 방식을 가져왔다.
+                           테스트 단위일 때 패스 화면에 주황색 "TEST ADS — <경로> install"이 뜬다. 스토어 설치에서는 나올 수 없다
                            앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=실제 ID, 2026-09-22 아카이브에서 확인)
                            단위 ID는 Unit(Debug만 테스트값)
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다

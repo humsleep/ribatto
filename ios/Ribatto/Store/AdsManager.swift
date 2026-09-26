@@ -4,13 +4,6 @@ import UserMessagingPlatform
 import SwiftUI
 import UIKit
 
-// A Release build carrying the test units earns nothing on every
-// impression, so it must never reach the store. This makes that build
-// impossible to produce quietly.
-#if !DEBUG && RIBATTO_TEST_ADS
-#warning("TEST ADS ARE ON. This build shows Google's test ads and earns nothing — TestFlight only, never the App Store.")
-#endif
-
 /// Ads for the free tier: a banner above the tab bar, an interstitial after a
 /// render, and the rewarded ad that opens Pro. A pass removes the first two.
 ///
@@ -50,27 +43,47 @@ final class AdsManager: NSObject, ObservableObject {
             static let rewarded = "ca-app-pub-4073994600346533/2103973988"
         }
 
-        /// Debug always uses the test units. A Release build uses them too when
-        /// it is built with `RIBATTO_TEST_ADS=1` — that is the TestFlight build
-        /// you make to prove the integration works end to end before release.
-        ///
-        /// **A store build must never carry this.** With the test units in
-        /// place every impression is worth nothing, so the app would ship and
-        /// earn zero. The build emits a warning whenever the flag is on, and
-        /// `usesTestAds` is shown in the app's own Pro screen so a wrong build
-        /// is visible without a debugger.
-        #if DEBUG || RIBATTO_TEST_ADS
-        static let usesTestAds = true
-        static let banner = Test.banner
-        static let interstitial = Test.interstitial
-        static let rewarded = Test.rewarded
-        #else
-        static let usesTestAds = false
-        static let banner = Live.banner
-        static let interstitial = Live.interstitial
-        static let rewarded = Live.rewarded
-        #endif
+        /// Which set this install uses. Decided at runtime from `distribution`,
+        /// not from the build configuration: TestFlight and Xcode installs are
+        /// Release builds too, so `#if DEBUG` alone left them asking for real
+        /// ads — which AdMob will not fill before the app is published, and
+        /// which would count developer taps as invalid traffic once it is.
+        static var usesTestAds: Bool { distribution != .appstore }
+        static var banner: String { usesTestAds ? Test.banner : Live.banner }
+        static var interstitial: String {
+            usesTestAds ? Test.interstitial : Live.interstitial
+        }
+        static var rewarded: String { usesTestAds ? Test.rewarded : Live.rewarded }
     }
+
+    /// How this copy of the app was installed.
+    ///
+    /// The distinction matters because only an App Store install may request
+    /// real ads. A developer testing a TestFlight build taps their own ads;
+    /// AdMob counts that as invalid traffic and suspends accounts that keep
+    /// doing it. Checking the build configuration is not enough — TestFlight,
+    /// Xcode installs and Ad-hoc are all Release builds.
+    ///
+    /// - `embedded.mobileprovision` exists in development and Ad-hoc installs
+    ///   and in neither App Store nor TestFlight builds.
+    /// - A TestFlight receipt is named `sandboxReceipt`; a store one is not.
+    ///
+    /// Borrowed from FC Scope, which ships the same check on this account.
+    enum Distribution: String { case debug, testflight, appstore }
+
+    static let distribution: Distribution = {
+        #if DEBUG || targetEnvironment(simulator)
+        return .debug
+        #else
+        if Bundle.main.path(forResource: "embedded", ofType: "mobileprovision") != nil {
+            return .debug
+        }
+        if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
+            return .testflight
+        }
+        return .appstore
+        #endif
+    }()
 
     /// Shortest gap between two interstitials. A render can finish every few
     /// seconds when the user trims several clips in a row; one ad per trim
