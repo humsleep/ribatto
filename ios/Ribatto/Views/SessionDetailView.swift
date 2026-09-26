@@ -272,9 +272,57 @@ struct SessionDetailView: View {
                 }
                 .rcSecondary()
                 .padding(.top, 4)
+                // A session that finds nothing is the only signal that the
+                // detector did not generalise beyond the one recording its
+                // thresholds were fitted to, and it is invisible from App Store
+                // Connect — the user just leaves. Shown only when the device
+                // can actually open a mail draft.
+                if let url = reportURL(session), UIApplication.shared.canOpenURL(url) {
+                    Button {
+                        UIApplication.shared.open(url)
+                    } label: {
+                        Label(L.s("report_none", lang), systemImage: "envelope")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 2)
+                }
             }
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40).padding(.horizontal, 8)
+    }
+
+    /// A mail the user sends themselves when detection found nothing.
+    ///
+    /// The app sends nothing. This hands the user's own mail client a draft
+    /// they read, edit and choose to send, so "your video never leaves the
+    /// phone" is untouched: no frames, no audio, no coordinates — only the
+    /// settings that produced the empty result, listed in plain text where the
+    /// user can see and delete them before sending.
+    private func reportURL(_ session: Session) -> URL? {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        var sys = utsname()
+        uname(&sys)
+        let model = withUnsafeBytes(of: &sys.machine) { raw in
+            String(cString: raw.baseAddress!.assumingMemoryBound(to: CChar.self))
+        }
+        let facts = ["sport: \(session.sport.rawValue)",
+                     "sensitivity: \(session.sensitivity.rawValue)",
+                     "source: \(Int(session.duration))s \(session.width)x\(session.height)",
+                     "app: \(version) (\(build))",
+                     "ios: \(UIDevice.current.systemVersion)",
+                     "device: \(model)"]
+        let body = L.s("report_body", lang) + "\n\n----\n" + facts.joined(separator: "\n")
+        var c = URLComponents()
+        c.scheme = "mailto"
+        c.path = "humsleep@naver.com"
+        c.queryItems = [URLQueryItem(name: "subject",
+                                     value: "[Ribatto] " + L.s("report_subject", lang)),
+                        URLQueryItem(name: "body", value: body)]
+        return c.url
     }
 
     // MARK: - Settings

@@ -222,6 +222,9 @@ enum L {
             
             "no_rallies": "No rallies found in this video.",
             "no_rallies_hint": "Try Loose sensitivity and detect again, check the sport is right, or add a rally by hand. Detection listens for racket impacts, so a very quiet or very noisy recording can come back empty.",
+            "report_none": "Tell me what you filmed",
+            "report_subject": "Detection found nothing",
+            "report_body": "Detection found no rallies in this video. If you can spare a minute, tell me roughly what this recording was and I will use it to tune the detector.\n\nWhere was it filmed — indoors or outdoors?\nWere other courts close by?\nHow far away was the phone, roughly?\nAnything else you noticed?\n\n(Answer in any language. Nothing is attached — only the lines below, which describe the settings, not the video.)",
             "privacy": "Privacy",
             "privacy_head": "Everything happens on this iPhone.",
             "privacy_full": "Full privacy policy",
@@ -503,6 +506,9 @@ enum L {
             
             "no_rallies": "이 영상에서 랠리를 찾지 못했습니다.",
             "no_rallies_hint": "민감도를 '느슨하게'로 바꿔 다시 감지하거나, 종목이 맞는지 확인하거나, 랠리를 직접 추가해 보세요. 타구음을 듣는 방식이라 소리가 아주 작거나 주변이 시끄러우면 결과가 비어 있을 수 있습니다.",
+            "report_none": "어떤 영상인지 알려주기",
+            "report_subject": "감지 결과가 없습니다",
+            "report_body": "이 영상에서 랠리를 하나도 찾지 못했습니다. 잠깐 시간이 되시면 어떤 녹화였는지 알려주세요. 감지기를 다듬는 데 쓰겠습니다.\n\n실내인가요, 실외인가요?\n옆 코트가 가까이 있었나요?\n폰은 대략 얼마나 떨어져 있었나요?\n그 밖에 눈에 띈 점이 있나요?\n\n(어떤 언어로 답하셔도 됩니다. 첨부되는 것은 없습니다. 아래 줄은 설정 값이며 영상 내용이 아닙니다.)",
             "privacy": "개인정보",
             "privacy_head": "모든 처리는 이 아이폰에서 이뤄집니다.",
             "privacy_full": "개인정보처리방침 전문",
@@ -784,6 +790,9 @@ enum L {
             
             "no_rallies": "この映像からラリーを検出できませんでした。",
             "no_rallies_hint": "感度を「ゆるめ」にして再検出する、種目が合っているか確認する、またはラリーを手動で追加してみてください。打球音を聞き取る方式のため、音が小さすぎたり騒がしいと結果が空になることがあります。",
+            "report_none": "何を撮ったか知らせる",
+            "report_subject": "検出できませんでした",
+            "report_body": "この動画からラリーを1つも見つけられませんでした。よろしければ、どんな録画だったか教えてください。検出の調整に使わせていただきます。\n\n屋内ですか、屋外ですか？\n隣のコートは近かったですか？\nスマホはおよそどのくらい離れていましたか？\nほかに気づいたことはありますか？\n\n（どの言語でも構いません。添付はありません。以下の行は設定値で、動画の内容ではありません。）",
             "privacy": "プライバシー",
             "privacy_head": "すべての処理はこの iPhone で行われます。",
             "privacy_full": "プライバシーポリシー全文",
@@ -1125,6 +1134,9 @@ enum L {
             
             "no_rallies": "No se han encontrado puntos en este vídeo.",
             "no_rallies_hint": "Prueba con sensibilidad Amplia y detecta otra vez, comprueba que el deporte es el correcto o añade un punto a mano. La detección escucha los golpes de raqueta, así que una grabación muy silenciosa o muy ruidosa puede salir vacía.",
+            "report_none": "Cuéntame qué grabaste",
+            "report_subject": "No se detectó nada",
+            "report_body": "No se ha encontrado ningún punto en este vídeo. Si puedes dedicar un minuto, cuéntame más o menos cómo era la grabación y lo usaré para afinar la detección.\n\n¿Fue en interior o al aire libre?\n¿Había otras pistas cerca?\n¿A qué distancia estaba el móvil, más o menos?\n¿Algo más que notaras?\n\n(Responde en el idioma que quieras. No se adjunta nada: las líneas de abajo describen los ajustes, no el vídeo.)",
             "privacy": "Privacidad",
             "privacy_head": "Todo ocurre en este iPhone.",
             "privacy_full": "Política de privacidad completa",
@@ -1494,6 +1506,9 @@ enum L {
             
             "no_rallies": "Nenhum ponto encontrado neste vídeo.",
             "no_rallies_hint": "Tente a sensibilidade Ampla e detecte de novo, confira se o esporte está certo ou adicione um ponto à mão. A detecção escuta as batidas da raquete, então uma gravação muito silenciosa ou muito barulhenta pode voltar vazia.",
+            "report_none": "Conte o que você gravou",
+            "report_subject": "Nada foi detectado",
+            "report_body": "Não encontrei nenhum rally neste vídeo. Se puder dedicar um minuto, conte mais ou menos como foi a gravação e vou usar isso para ajustar a detecção.\n\nFoi em local fechado ou ao ar livre?\nHavia outras quadras por perto?\nA que distância estava o celular, mais ou menos?\nNotou mais alguma coisa?\n\n(Responda no idioma que preferir. Nada é anexado: as linhas abaixo descrevem os ajustes, não o vídeo.)",
             "privacy": "Privacidade",
             "privacy_head": "Tudo acontece neste iPhone.",
             "privacy_full": "Política de privacidade completa",
@@ -1863,6 +1878,9 @@ enum L {
             
             "no_rallies": "In diesem Video wurden keine Ballwechsel gefunden.",
             "no_rallies_hint": "Probier die Empfindlichkeit Locker und such erneut, prüf die Sportart oder füge einen Ballwechsel von Hand hinzu. Die Erkennung hört auf Schlaggeräusche, deshalb kann eine sehr leise oder sehr laute Aufnahme leer bleiben.",
+            "report_none": "Erzähl mir, was du gefilmt hast",
+            "report_subject": "Nichts erkannt",
+            "report_body": "In diesem Video wurde kein einziger Ballwechsel gefunden. Wenn du eine Minute übrig hast, schreib mir grob, was das für eine Aufnahme war — ich nutze das, um die Erkennung nachzujustieren.\n\nDrinnen oder draußen?\nWaren andere Plätze in der Nähe?\nWie weit war das Handy ungefähr weg?\nIst dir sonst etwas aufgefallen?\n\n(Antworte in jeder Sprache. Es wird nichts angehängt — die Zeilen unten beschreiben die Einstellungen, nicht das Video.)",
             "privacy": "Datenschutz",
             "privacy_head": "Alles passiert auf diesem iPhone.",
             "privacy_full": "Vollständige Datenschutzerklärung",
@@ -2232,6 +2250,9 @@ enum L {
             
             "no_rallies": "Aucun échange trouvé dans cette vidéo.",
             "no_rallies_hint": "Essayez la sensibilité Large puis relancez, vérifiez le sport, ou ajoutez un échange à la main. La détection écoute les frappes de raquette : un enregistrement très silencieux ou très bruyant peut ne rien donner.",
+            "report_none": "Dites-moi ce que vous avez filmé",
+            "report_subject": "Rien n'a été détecté",
+            "report_body": "Aucun échange n'a été trouvé dans cette vidéo. Si vous avez une minute, dites-moi à peu près ce qu'était cet enregistrement : cela me servira à affiner la détection.\n\nEn intérieur ou en extérieur ?\nY avait-il d'autres courts à proximité ?\nÀ quelle distance était le téléphone, environ ?\nAutre chose que vous auriez remarqué ?\n\n(Répondez dans la langue de votre choix. Rien n'est joint — les lignes ci-dessous décrivent les réglages, pas la vidéo.)",
             "privacy": "Confidentialité",
             "privacy_head": "Tout se passe sur cet iPhone.",
             "privacy_full": "Politique de confidentialité complète",
@@ -2601,6 +2622,9 @@ enum L {
             
             "no_rallies": "Nessuno scambio trovato in questo video.",
             "no_rallies_hint": "Prova la sensibilità Ampia e cerca di nuovo, controlla che lo sport sia giusto oppure aggiungi uno scambio a mano. Il rilevamento ascolta i colpi di racchetta, quindi una registrazione molto silenziosa o molto rumorosa può risultare vuota.",
+            "report_none": "Dimmi cosa hai ripreso",
+            "report_subject": "Non è stato rilevato nulla",
+            "report_body": "In questo video non è stato trovato nessuno scambio. Se hai un minuto, raccontami più o meno com'era la registrazione: lo userò per tarare meglio il rilevamento.\n\nAl chiuso o all'aperto?\nC'erano altri campi vicini?\nQuanto era lontano il telefono, all'incirca?\nAltro che hai notato?\n\n(Rispondi nella lingua che preferisci. Non viene allegato nulla: le righe qui sotto descrivono le impostazioni, non il video.)",
             "privacy": "Privacy",
             "privacy_head": "Tutto avviene su questo iPhone.",
             "privacy_full": "Informativa sulla privacy completa",
@@ -2970,6 +2994,9 @@ enum L {
             
             "no_rallies": "这段视频里没有找到回合。",
             "no_rallies_hint": "试试把灵敏度调成“宽松”再检测一次，确认运动项目选对了，或者手动添加一个回合。检测依靠球拍击球声，所以录音太轻或太吵都可能什么也找不到。",
+            "report_none": "告诉我你拍的是什么",
+            "report_subject": "没有检测到内容",
+            "report_body": "这个视频里没有找到任何回合。如果方便，请告诉我这段录像大概是什么情况，我会用来调整识别。\n\n是室内还是室外？\n旁边有别的球场吗？\n手机大概放在多远的地方？\n还有别的情况吗？\n\n（用什么语言回复都可以。不会附带任何内容，下面几行是设置值，不是视频内容。）",
             "privacy": "隐私",
             "privacy_head": "一切都在这台 iPhone 上完成。",
             "privacy_full": "完整隐私政策",

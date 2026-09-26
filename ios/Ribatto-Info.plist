@@ -14,6 +14,15 @@
 	     the generator only honours the keys it knows, and this is not one of
 	     them. Without the declaration the store page lists English alone, and
 	     the nine languages the app actually ships are invisible to buyers. -->
+	<!-- Queried by `canOpenURL` before the "tell me what you filmed" button is
+	     shown on a session that detected nothing. Since iOS 9 a scheme has to be
+	     declared here to be queryable, including the system ones — without this
+	     the check returns false on a real device too and the button never
+	     appears, which is exactly the feedback we would never receive. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>mailto</string>
+	</array>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
