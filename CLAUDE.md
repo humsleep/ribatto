@@ -90,6 +90,10 @@ ios/Ribatto/
                            첫 실행 때 동의 조회가 한 번 실패하는 것만으로 배너·전면·리워드가 모두 죽고, 리워드가 유일한 Pro 입구라
                            강제 종료 전까지 복구가 없다. 포그라운드 복귀 때 `retryIfNeverStarted()`로 다시 시도한다
                            전면광고는 `interstitial`이 비면 그 자리에서 다시 불러온다. 첫 로드 실패로 세션 내내 전면이 사라졌었다
+                           단위 ID는 `Unit.Test`(구글 공개 테스트)와 `Unit.Live`(실제) 둘로 나뉜다. Debug는 항상 Test.
+                           Release도 `RIBATTO_TEST_ADS=1`로 빌드하면 Test를 쓴다 — 출시 전 TestFlight에서 연동을 보는 유일한 방법이다.
+                           AdMob은 스토어에 게시되지 않은 앱에 실제 광고를 주지 않기 때문이다(2026-09-26 확인).
+                           켜고 빌드하면 컴파일 경고가 뜨고 패스 화면에 주황색 "TEST ADS"가 뜬다. **스토어 빌드에 절대 넣지 말 것** — 수익이 0이 된다
                            앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=실제 ID, 2026-09-22 아카이브에서 확인)
                            단위 ID는 Unit(Debug만 테스트값)
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다

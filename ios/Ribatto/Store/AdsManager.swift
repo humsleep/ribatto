@@ -4,6 +4,13 @@ import UserMessagingPlatform
 import SwiftUI
 import UIKit
 
+// A Release build carrying the test units earns nothing on every
+// impression, so it must never reach the store. This makes that build
+// impossible to produce quietly.
+#if !DEBUG && RIBATTO_TEST_ADS
+#warning("TEST ADS ARE ON. This build shows Google's test ads and earns nothing — TestFlight only, never the App Store.")
+#endif
+
 /// Ads for the free tier: a banner above the tab bar, an interstitial after a
 /// render, and the rewarded ad that opens Pro. A pass removes the first two.
 ///
@@ -25,14 +32,43 @@ final class AdsManager: NSObject, ObservableObject {
     /// console (RELEASE.md 4-2); while they are empty a Release build runs
     /// without ads instead of crashing on an invalid unit.
     enum Unit {
-        #if DEBUG
-        static let banner = "ca-app-pub-3940256099942544/2435281174"
-        static let interstitial = "ca-app-pub-3940256099942544/4411468910"
-        static let rewarded = "ca-app-pub-3940256099942544/1712485313"
+        /// Google's public test units. They fill on any device, for any
+        /// account, whether or not the app is on the store — which is the only
+        /// way to see an ad before release, because AdMob does not serve real
+        /// ads to an app it has not reviewed, and it cannot review one that is
+        /// not published yet.
+        enum Test {
+            static let banner = "ca-app-pub-3940256099942544/2435281174"
+            static let interstitial = "ca-app-pub-3940256099942544/4411468910"
+            static let rewarded = "ca-app-pub-3940256099942544/1712485313"
+        }
+        /// The real units, from the AdMob console. They pay; they also return
+        /// nothing until the app is published and reviewed.
+        enum Live {
+            static let banner = "ca-app-pub-4073994600346533/4778238789"
+            static let interstitial = "ca-app-pub-4073994600346533/5843908440"
+            static let rewarded = "ca-app-pub-4073994600346533/2103973988"
+        }
+
+        /// Debug always uses the test units. A Release build uses them too when
+        /// it is built with `RIBATTO_TEST_ADS=1` — that is the TestFlight build
+        /// you make to prove the integration works end to end before release.
+        ///
+        /// **A store build must never carry this.** With the test units in
+        /// place every impression is worth nothing, so the app would ship and
+        /// earn zero. The build emits a warning whenever the flag is on, and
+        /// `usesTestAds` is shown in the app's own Pro screen so a wrong build
+        /// is visible without a debugger.
+        #if DEBUG || RIBATTO_TEST_ADS
+        static let usesTestAds = true
+        static let banner = Test.banner
+        static let interstitial = Test.interstitial
+        static let rewarded = Test.rewarded
         #else
-        static let banner = "ca-app-pub-4073994600346533/4778238789"
-        static let interstitial = "ca-app-pub-4073994600346533/5843908440"
-        static let rewarded = "ca-app-pub-4073994600346533/2103973988"
+        static let usesTestAds = false
+        static let banner = Live.banner
+        static let interstitial = Live.interstitial
+        static let rewarded = Live.rewarded
         #endif
     }
 

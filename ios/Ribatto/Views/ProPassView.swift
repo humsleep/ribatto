@@ -186,6 +186,16 @@ struct ProPassView: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, minHeight: 52)
             }
+            // Not localised on purpose: this line must never be seen by a real
+            // user, and its whole job is to make a wrong build obvious at a
+            // glance to whoever is testing it. A store build cannot show it —
+            // the units are chosen at compile time and this reads the same flag.
+            if AdsManager.Unit.usesTestAds {
+                Text("TEST ADS — this build earns nothing")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.orange)
+                    .padding(.top, 2)
+            }
         }
     }
 }
