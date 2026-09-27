@@ -84,12 +84,12 @@
 - **ATT**: 온보딩이 끝난 뒤, 첫 광고 요청 전에 묻는다. 거부해도 비맞춤 광고와 패스 열기가 그대로 동작한다.
 
 
-### 4-1. 심사 정보 메모 (그대로 복사 — `<SAMPLE VIDEO LINK>`만 실제 링크로 바꾼다)
+### 4-1. 심사 정보 메모 (그대로 복사)
 
 ```
 Ribatto analyses a racket-sport match video that the user imports from Photos.
 The reviewer's device is unlikely to have suitable footage, so please use this
-sample: <SAMPLE VIDEO LINK>
+sample: https://humsleep.github.io/apps/ribatto/review/
 
 Steps:
 1. Save the sample video to the device's Photos library.
@@ -103,9 +103,9 @@ Please note about step 5: the pass is opened by watching a rewarded video ad,
 and Google AdMob does not serve ads to an app that is not yet published on the
 App Store. On a pre-release build that button will therefore report that no ad
 can be loaded, and the pass cannot be reached that way during review. So that
-its output can still be judged, the sample link above also contains a clip
-exported under a pass (original quality, no watermark, vertical crop) next to
-the same rally exported without one (720p, watermarked). The pass changes only
+its output can still be judged, the page above also has the same rally
+exported both ways: rally-pass.mp4 (full quality, no watermark, re-framed
+vertically) and rally-free.mp4 (720p, watermarked). The pass changes only
 export quality and framing; every detection and editing feature is available
 without it. There are no in-app purchases of any kind.
 
