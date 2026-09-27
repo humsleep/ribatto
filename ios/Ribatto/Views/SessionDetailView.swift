@@ -89,11 +89,16 @@ struct SessionDetailView: View {
                     toolbar(session, busy: busy)
                     clipGrid(clips)
                     if !selecting { saveAllButton(session, busy: busy) }
-                    // clear the floating tab bar
-                    Color.clear.frame(height: 62)
                 } else if !busy {
                     emptyClips(session)
                 }
+                // Outside the branch on purpose. Inside it, a session with no
+                // clips had no clearance at all — and that is exactly the state
+                // where the settings card is force-expanded and "Apply changes"
+                // sits at the bottom. The button drew above the translucent tab
+                // bar but the tap went to the tab bar, so the one action the
+                // screen exists for could not be pressed without scrolling.
+                Color.clear.frame(height: 62)
             }
             .padding()
         }
