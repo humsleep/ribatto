@@ -58,7 +58,7 @@ let frames: [Frame] = [
           full: false),
     Frame(file: "s2_session.png",
           headline: ["FOUND BY", "SOUND"],
-          sub: "It listens for the strike. Tennis, badminton, pickleball, padel.",
+          sub: "It listens for the strike, not the picture. Tennis and other racket sports.",
           full: false),
     Frame(file: "s3_reel.png",
           headline: ["BEST RALLIES,", "ONE REEL"],

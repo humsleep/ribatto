@@ -6,17 +6,17 @@ Character limits are Apple's. Counts are given so you can edit safely.
 
 ## English (primary)
 
-**App Name** (max 30) — 19 chars
+**App Name** (max 30) — 20 chars
 ```
 Ribatto: Rally Clips
 ```
 
-**Subtitle** (max 30) — 26 chars
+**Subtitle** (max 30) — 29 chars
 ```
-Tennis & padel rally clips
+Rally clips for racket sports
 ```
 
-**Keywords** (max 100, comma separated, no spaces) — 98 chars
+**Keywords** (max 100, comma separated, no spaces) — 96 chars
 ```
 pickleball,badminton,padel,reel,shorts,clip,highlights,cut,point,trim,editor,racquet,match,court
 ```
@@ -24,7 +24,7 @@ Sport terms that already appear in the name or subtitle are left out on purpose:
 three fields together, so repeating a word spends space without adding reach.
 Do not repeat words already in the name or subtitle — Apple indexes those separately.
 
-**Promotional text** (max 170, editable without a new build) — 138 chars
+**Promotional text** (max 170, editable without a new build) — 116 chars
 ```
 Free, no account, and your video never leaves your iPhone. Your match is analysed right on the device, even offline.
 ```
@@ -36,7 +36,7 @@ Film your match. Ribatto keeps only the rallies.
 Point your phone at the court and play. Ribatto listens for the sound of the strike, finds every rally, and cuts the dead time away. A 30-minute match becomes the handful of points worth watching — ready to post.
 
 NO COURT-SIDE RIG, NO SETUP
-Detection works from sound, not from a fixed camera angle, so the phone does not have to see the whole court. Prop it on a bag, a fence or a bench — anywhere it can sit still. Tennis, padel, pickleball and badminton each get their own tuning.
+Detection works from sound, not from a fixed camera angle, so the phone does not have to see the whole court. Prop it on a bag, a fence or a bench — anywhere it can sit still. Tuned on outdoor tennis, with settings for other racket sports. It listens for the strike, so it does best where that sound carries clearly.
 
 BUILT FOR REELS
 Every rally is exported vertical for Reels, Shorts and TikTok, or 4:5 for the feed. Wide footage is re-framed from the original video, not cropped down the middle.
@@ -68,22 +68,22 @@ First release.
 
 ## 한국어
 
-**앱 이름** (30자)
+**앱 이름** (30자) — 14 chars
 ```
 Ribatto: 랠리 클립
 ```
 
-**부제** (30자)
+**부제** (30자) — 16 chars
 ```
-테니스·파델 랠리 자동 편집
+테니스·라켓 스포츠 랠리 편집
 ```
 
-**키워드** (100자)
+**키워드** (100자) — 60 chars
 ```
 피클볼,배드민턴,패들,릴스,숏츠,하이라이트,자르기,편집,영상,코트,경기,클립,라켓,동호회,테니스영상,경기영상
 ```
 
-**프로모션 문구** (170자)
+**프로모션 문구** (170자) — 68 chars
 ```
 무료, 계정 없음. 영상은 아이폰 밖으로 나가지 않습니다. 경기 영상은 아이폰 안에서 분석되며, 오프라인에서도 동작합니다.
 ```
@@ -95,7 +95,7 @@ Ribatto: 랠리 클립
 폰을 코트로 향해 두고 경기하세요. Ribatto가 타구음을 듣고 랠리를 찾아내 사이의 빈 시간을 잘라냅니다. 30분짜리 경기가 볼 만한 포인트 몇 개로 정리되고, 바로 올릴 수 있는 상태가 됩니다.
 
 거창한 거치대도 세팅도 필요 없습니다
-영상이 아니라 소리로 찾기 때문에 카메라 각도를 맞출 필요가 없고, 코트 전체가 화면에 들어오지 않아도 됩니다. 가방 위, 펜스, 벤치 — 흔들리지 않게 둘 수 있는 곳이면 됩니다. 테니스·패들·피클볼·배드민턴은 각각 다른 설정으로 감지합니다.
+영상이 아니라 소리로 찾기 때문에 카메라 각도를 맞출 필요가 없고, 코트 전체가 화면에 들어오지 않아도 됩니다. 가방 위, 펜스, 벤치 — 흔들리지 않게 둘 수 있는 곳이면 됩니다. 실외 테니스를 기준으로 맞췄고, 다른 라켓 스포츠용 설정도 있습니다. 타구음을 듣기 때문에 그 소리가 잘 전달되는 곳에서 가장 정확합니다.
 
 릴스에 맞춘 결과물
 모든 랠리를 릴스·쇼츠·틱톡용 세로로, 또는 피드용 4:5로 내보냅니다. 가로 영상은 가운데를 자르는 게 아니라 원본에서 다시 프레이밍합니다.
@@ -127,9 +127,9 @@ Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 
 ラリー切り抜き Ribatto
 ```
 
-**Subtitle** (max 30) — 13 chars
+**Subtitle** (max 30) — 16 chars
 ```
-テニス・パデルのラリー編集
+テニス・ラケット競技のラリー編集
 ```
 
 **Keywords** (max 100) — 67 chars
@@ -149,7 +149,7 @@ Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 
 コートにiPhoneを向けて、あとはプレーするだけ。Ribattoは打球音を聞き取ってラリーを見つけ、待ち時間を切り落とします。30分の試合が、見る価値のある数ポイントに変わります。
 
 大がかりな三脚は不要
-映像ではなく音で探すので、カメラの角度を合わせる必要がありません。コート全体が画面に入らなくても大丈夫。バッグの上、フェンス、ベンチ — 動かずに置ける場所ならどこでも。テニス・パデル・ピックルボール・バドミントンはそれぞれ別の設定で検出します。
+映像ではなく音で探すので、カメラの角度を合わせる必要がありません。コート全体が画面に入らなくても大丈夫。バッグの上、フェンス、ベンチ — 動かずに置ける場所ならどこでも。屋外テニスを基準に調整しており、ほかのラケット競技用の設定もあります。打球音を聞き取るので、その音がよく通る場所で最も正確です。
 
 リール向けの書き出し
 すべてのラリーをリール・ショート・TikTok用の縦型、またはフィード用の4:5で書き出します。横長の映像は真ん中を切り抜くのではなく、元の動画から構図を取り直します。
@@ -181,9 +181,9 @@ Ribattoは広告で運営される無料アプリです。短い広告を1本見
 
 ## Español (es)
 
-**App Name** (max 30) — 26 chars
+**App Name** (max 30) — 28 chars
 ```
-Rally Clips: tenis y pádel
+Rally Clips: tenis y raqueta
 ```
 
 **Subtitle** (max 30) — 27 chars
@@ -208,7 +208,7 @@ Graba tu partido. Ribatto se queda solo con los puntos.
 Apunta el móvil a la pista y juega. Ribatto escucha el golpeo, encuentra cada punto y elimina el tiempo muerto. Un partido de 30 minutos se convierte en los puntos que merece la pena ver, listos para publicar.
 
 SIN TRÍPODE, SIN MONTAJE
-La detección funciona por sonido, no por el ángulo de cámara, así que el móvil no necesita ver toda la pista. Apóyalo en una bolsa, una valla o un banco: donde pueda quedarse quieto. Tenis, pádel, pickleball y bádminton tienen cada uno su propio ajuste.
+La detección funciona por sonido, no por el ángulo de cámara, así que el móvil no necesita ver toda la pista. Apóyalo en una bolsa, una valla o un banco: donde pueda quedarse quieto. Ajustado con tenis al aire libre, con opciones para otros deportes de raqueta. Escucha el golpeo, así que funciona mejor donde ese sonido se oye bien.
 
 PENSADO PARA REELS
 Cada punto se exporta en vertical para Reels, Shorts y TikTok, o en 4:5 para el feed. El vídeo horizontal se reencuadra a partir del original, no se recorta por el centro.
@@ -240,9 +240,9 @@ Primera versión.
 
 ## Português (pt-BR)
 
-**App Name** (max 30) — 26 chars
+**App Name** (max 30) — 28 chars
 ```
-Rally Clips: tênis e padel
+Rally Clips: tênis e raquete
 ```
 
 **Subtitle** (max 30) — 29 chars
@@ -267,7 +267,7 @@ Grave sua partida. O Ribatto guarda só os rallies.
 Aponte o celular para a quadra e jogue. O Ribatto escuta o som da batida, encontra cada rally e corta o tempo morto. Uma partida de 30 minutos vira os poucos pontos que valem a pena assistir, prontos para postar.
 
 SEM TRIPÉ, SEM PREPARO
-A detecção funciona pelo som, não pelo ângulo da câmera, então o celular não precisa enxergar a quadra inteira. Apoie numa bolsa, na grade ou num banco — onde ele puder ficar parado. Tênis, padel, pickleball e badminton têm cada um seu próprio ajuste.
+A detecção funciona pelo som, não pelo ângulo da câmera, então o celular não precisa enxergar a quadra inteira. Apoie numa bolsa, na grade ou num banco — onde ele puder ficar parado. Ajustado com tênis ao ar livre, com opções para outros esportes de raquete. Ele escuta a batida, então funciona melhor onde esse som se propaga bem.
 
 FEITO PARA REELS
 Cada rally é exportado na vertical para Reels, Shorts e TikTok, ou em 4:5 para o feed. O vídeo horizontal é reenquadrado a partir do original, não cortado pelo meio.
@@ -299,12 +299,12 @@ Primeira versão.
 
 ## Deutsch (de)
 
-**App Name** (max 30) — 26 chars
+**App Name** (max 30) — 28 chars
 ```
-Rally Clips: Tennis, Padel
+Rally Clips: Tennis und mehr
 ```
 
-**Subtitle** (max 30) — 33 chars
+**Subtitle** (max 30) — 30 chars
 ```
 Ballwechsel automatisch cutten
 ```
@@ -326,7 +326,7 @@ Nimm dein Match auf. Ribatto behält nur die Ballwechsel.
 Richte das iPhone auf den Platz und spiel. Ribatto hört den Schlag, findet jeden Ballwechsel und schneidet die Wartezeit weg. Aus 30 Minuten Match werden die wenigen Punkte, die man sehen will — fertig zum Posten.
 
 KEIN STATIV, KEIN AUFBAU
-Die Erkennung läuft über den Ton, nicht über den Kamerawinkel. Das Handy muss den Platz nicht ganz im Bild haben. Stell es auf eine Tasche, an den Zaun oder auf eine Bank — irgendwohin, wo es still stehen kann. Tennis, Padel, Pickleball und Badminton haben jeweils ihre eigene Abstimmung.
+Die Erkennung läuft über den Ton, nicht über den Kamerawinkel. Das Handy muss den Platz nicht ganz im Bild haben. Stell es auf eine Tasche, an den Zaun oder auf eine Bank — irgendwohin, wo es still stehen kann. Abgestimmt auf Tennis im Freien, mit Einstellungen für andere Schlägersportarten. Die Erkennung hört den Schlag, funktioniert also dort am besten, wo dieser Ton gut trägt.
 
 FÜR REELS GEMACHT
 Jeder Ballwechsel wird hochkant für Reels, Shorts und TikTok exportiert, oder in 4:5 für den Feed. Querformat wird aus dem Originalvideo neu gerahmt, nicht mittig beschnitten.
@@ -358,12 +358,12 @@ Erste Version.
 
 ## Français (fr)
 
-**App Name** (max 30) — 27 chars
+**App Name** (max 30) — 28 chars
 ```
-Rally Clips : tennis, padel
+Rally Clips : tennis et plus
 ```
 
-**Subtitle** (max 30) — 33 chars
+**Subtitle** (max 30) — 28 chars
 ```
 Échanges découpés tout seuls
 ```
@@ -385,7 +385,7 @@ Filmez votre match. Ribatto ne garde que les échanges.
 Posez le téléphone face au court et jouez. Ribatto écoute le bruit de la frappe, trouve chaque échange et coupe les temps morts. Un match de 30 minutes devient les quelques points qui méritent d'être vus, prêts à publier.
 
 PAS DE TRÉPIED, PAS D'INSTALLATION
-La détection se fait au son, pas à l'angle de caméra : le téléphone n'a pas besoin de voir tout le court. Posez-le sur un sac, contre un grillage ou sur un banc — partout où il peut rester immobile. Tennis, padel, pickleball et badminton ont chacun leur propre réglage.
+La détection se fait au son, pas à l'angle de caméra : le téléphone n'a pas besoin de voir tout le court. Posez-le sur un sac, contre un grillage ou sur un banc — partout où il peut rester immobile. Réglé sur du tennis en extérieur, avec des options pour d'autres sports de raquette. La détection écoute la frappe : elle est donc plus juste là où ce son porte bien.
 
 PENSÉ POUR LES REELS
 Chaque échange est exporté en vertical pour Reels, Shorts et TikTok, ou en 4:5 pour le fil. Une vidéo horizontale est recadrée depuis l'original, pas rognée en son milieu.
@@ -419,7 +419,7 @@ Première version.
 
 **App Name** (max 30) — 27 chars
 ```
-Rally Clips: tennis e padel
+Rally Clips: tennis e altro
 ```
 
 **Subtitle** (max 30) — 29 chars
@@ -427,7 +427,7 @@ Rally Clips: tennis e padel
 Scambi tagliati in automatico
 ```
 
-**Keywords** (max 100) — 104 chars
+**Keywords** (max 100) — 94 chars
 ```
 badminton,pickleball,reel,shorts,clip,scambi,highlights,tagliare,video,campo,partita,racchetta
 ```
@@ -444,7 +444,7 @@ Riprendi la partita. Ribatto tiene solo gli scambi.
 Punta il telefono sul campo e gioca. Ribatto ascolta il suono del colpo, trova ogni scambio e taglia i tempi morti. Una partita di 30 minuti diventa i pochi punti che vale la pena guardare, pronti da pubblicare.
 
 NIENTE TREPPIEDE, NIENTE PREPARAZIONE
-Il rilevamento funziona con il suono, non con l'angolo di ripresa: il telefono non deve inquadrare tutto il campo. Appoggialo su una borsa, alla rete o su una panchina — dove può stare fermo. Tennis, padel, pickleball e badminton hanno ciascuno la propria taratura.
+Il rilevamento funziona con il suono, non con l'angolo di ripresa: il telefono non deve inquadrare tutto il campo. Appoggialo su una borsa, alla rete o su una panchina — dove può stare fermo. Tarato sul tennis all'aperto, con impostazioni per altri sport con racchetta. Ascolta il colpo, quindi funziona meglio dove quel suono si sente bene.
 
 FATTO PER I REEL
 Ogni scambio viene esportato in verticale per Reel, Shorts e TikTok, o in 4:5 per il feed. Il video orizzontale viene reinquadrato dall'originale, non tagliato al centro.
@@ -503,7 +503,7 @@ Rally Clips 回合剪辑
 把手机对着球场，然后专心打球。Ribatto 听击球声找出每一个回合，把空档全部剪掉。30 分钟的比赛，变成几个真正值得看的球，随手就能发。
 
 不用三脚架，不用架设
-靠声音识别，不靠拍摄角度，手机不必拍到整个球场。放在包上、挂在围网、搁在长椅上都行，只要能放稳。网球、板式网球、匹克球、羽毛球各有各的参数。
+靠声音识别，不靠拍摄角度，手机不必拍到整个球场。放在包上、挂在围网、搁在长椅上都行，只要能放稳。以室外网球为基准调校，也提供其他球拍项目的设置。它靠击球声识别，所以在声音传得清楚的地方最准确。
 
 为短视频而做
 每个回合都可以导出竖版，适配 Reels、Shorts 和抖音，也可以导出 4:5 发动态。横屏素材是从原片重新取景，不是从中间硬裁。
