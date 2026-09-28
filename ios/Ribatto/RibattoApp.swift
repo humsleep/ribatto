@@ -12,6 +12,9 @@ struct RibattoApp: App {
     @AppStorage("rc_lang") private var lang = "en"
     @AppStorage("rc_onboarded") private var onboarded = false
     @Environment(\.scenePhase) private var scenePhase
+    /// The title card on top of everything for a moment after launch. The
+    /// app underneath loads at the same time, so it costs no startup time.
+    @State private var showIntro = true
 
     /// Before any view reads `rc_lang`: seeding it from a `.task` would let the
     /// first screen render in English and then switch, which is worse than
@@ -52,6 +55,14 @@ struct RibattoApp: App {
                     }
                 } else {
                     OnboardingView(done: $onboarded)
+                }
+            }
+            .overlay {
+                if showIntro {
+                    IntroView {
+                        withAnimation(.easeOut(duration: 0.35)) { showIntro = false }
+                    }
+                    .transition(.opacity)
                 }
             }
             .environmentObject(store)

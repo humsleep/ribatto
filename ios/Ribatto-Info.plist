@@ -23,6 +23,16 @@
 	<array>
 		<string>mailto</string>
 	</array>
+	<!-- Same background as the app and the logo IntroView starts from, so
+	     launch → title card → app has no flash and no jump. A dictionary in
+	     the generated plist would be empty (plain system background). -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>AppLogo</string>
+	</dict>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
