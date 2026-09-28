@@ -186,11 +186,12 @@ struct ProPassView: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, minHeight: 52)
             }
-            // Not localised on purpose: a store install cannot show it, because
-            // `usesTestAds` is false there. Its whole job is to tell whoever is
-            // testing a TestFlight build that the ads they see are Google's
-            // test ads, so an empty AdMob report afterwards is expected.
-            if AdsManager.Unit.usesTestAds {
+            // Not localised on purpose: only a developer install can show it.
+            // TestFlight used to show it too, but App Review installs carry the
+            // same sandbox receipt, so the reviewer would have met an orange
+            // debug line on the pass sheet. Google's own "Test mode" tag on
+            // every test ad already tells a TestFlight tester what they see.
+            if AdsManager.distribution == .debug {
                 Text("TEST ADS — \(AdsManager.distribution.rawValue) install")
                     .font(.caption2.bold())
                     .foregroundStyle(.orange)

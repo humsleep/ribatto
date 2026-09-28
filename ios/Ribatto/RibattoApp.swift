@@ -57,6 +57,7 @@ struct RibattoApp: App {
                     OnboardingView(done: $onboarded)
                 }
             }
+            .accessibilityHidden(showIntro)
             .overlay {
                 if showIntro {
                     IntroView {
@@ -70,8 +71,13 @@ struct RibattoApp: App {
             .environmentObject(ads)
             // Ads wait for onboarding: the tracking prompt on top of the
             // welcome pages would be the first thing a new user sees.
-            .task(id: onboarded) {
-                guard onboarded else { return }
+            // ...and for the title card: the consent form or the tracking
+            // prompt would otherwise land on it mid-animation. Waiting it out
+            // also puts the tracking request after launch has settled — one
+            // made before the scene is active is dropped without a prompt, and
+            // an ATT prompt that never appears is a 2.1 rejection.
+            .task(id: onboarded && !showIntro) {
+                guard onboarded, !showIntro else { return }
                 await ads.start(isPro: pass.isPro)
             }
             .task {
@@ -102,7 +108,7 @@ struct RibattoApp: App {
             // the foreground is when the network is most likely to be back,
             // so retry there rather than waiting for a relaunch.
             .onChange(of: scenePhase) { _, phase in
-                guard phase == .active, onboarded else { return }
+                guard phase == .active, onboarded, !showIntro else { return }
                 Task { await ads.retryIfNeverStarted() }
             }
             .onChange(of: pass.isPro) { _, pro in

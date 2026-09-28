@@ -719,8 +719,9 @@ final class SessionStore: ObservableObject {
         #if DEBUG
         print("[store] failed: \(error)")
         #endif
-        return (error as NSError).domain == "Ribatto" ? L.s("render_failed", lang)
-                                               : error.localizedDescription
+        let e = error as NSError
+        guard e.domain == "Ribatto" else { return error.localizedDescription }
+        return e.code == AudioLoader.noAudioCode ? L.s("no_audio", lang) : L.s("render_failed", lang)
     }
     /// Picking a player only matters through the smart-crop path, so turn that
     /// on with it; clearing the player leaves smart crop as the user had it.

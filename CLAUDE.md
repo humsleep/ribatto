@@ -98,11 +98,14 @@ ios/Ribatto/
                            판별: 시뮬레이터·DEBUG → debug · `embedded.mobileprovision` 있으면 → debug ·
                            영수증이 `sandboxReceipt`면 → testflight · 그 외 → appstore.
                            FC Scope(`~/workspace/fcscope-ios/FCScope/Core/Config.swift`)가 같은 계정에서 쓰는 방식을 가져왔다.
-                           테스트 단위일 때 패스 화면에 주황색 "TEST ADS — <경로> install"이 뜬다. 스토어 설치에서는 나올 수 없다
+                           개발 설치(debug)에서만 패스 화면에 주황색 "TEST ADS — debug install"이 뜬다. TestFlight에서는 숨긴다 —
+                           심사 설치도 sandboxReceipt라 심사자에게 디버그 문구가 보였을 것이다(2026-09-28). 심사자는 구글 테스트 광고로 패스를 연다
                            앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=실제 ID, 2026-09-22 아카이브에서 확인)
                            단위 ID는 Unit(Debug만 테스트값)
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다
-  Views/                   SessionDetailView(설정 카드는 클립이 생기면 한 줄 요약으로 접힌다) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
+  Views/                   IntroView(실행 때마다 1.6초 타이틀 카드, 영어 고정. 시스템 시작 화면이 같은 로고를 같은 자리에 그린다.
+                           광고 시작(동의·ATT)은 카드가 사라진 뒤 — 카드 위에 프롬프트가 겹치지 않게)
+                           SessionDetailView(설정 카드는 클립이 생기면 한 줄 요약으로 접힌다) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더. 썸네일 스트립은 TrimmerBar+PryntTrimmerView,
                            타구 위치를 눈금으로 찍고 VoiceOver용 스테퍼를 함께 둔다) · TargetPlayerSheet(추적 대상 선택)
                            LibraryView · StatsView · CaptionEditorView · ProPassView(Pro 안내 + 리워드 광고 버튼) 등

@@ -208,7 +208,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 68BP5NY48R;
 				ENABLE_PREVIEWS = YES;
 				GAD_APPLICATION_ID = "ca-app-pub-3940256099942544~1458002511";
@@ -216,10 +216,10 @@
 				INFOPLIST_FILE = "Ribatto-Info.plist";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Ribatto records your match with the camera.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ribatto listens to racket impacts to find rallies.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ribatto records sound with your match video so it can find rallies by the sound of the ball.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Ribatto saves the clips it makes to your Photos library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Ribatto reads the match videos you pick so it never has to copy them.";
-				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Lets ads in the free version be more relevant. Your video and clips are never shared.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Allows tracking so ads in the free version can be more relevant. Your videos and clips are never shared.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -247,7 +247,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 68BP5NY48R;
 				ENABLE_PREVIEWS = YES;
 				GAD_APPLICATION_ID = "ca-app-pub-4073994600346533~7436936571";
@@ -255,10 +255,10 @@
 				INFOPLIST_FILE = "Ribatto-Info.plist";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Ribatto records your match with the camera.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ribatto listens to racket impacts to find rallies.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ribatto records sound with your match video so it can find rallies by the sound of the ball.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Ribatto saves the clips it makes to your Photos library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Ribatto reads the match videos you pick so it never has to copy them.";
-				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Lets ads in the free version be more relevant. Your video and clips are never shared.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Allows tracking so ads in the free version can be more relevant. Your videos and clips are never shared.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

@@ -3,6 +3,10 @@ import AVFoundation
 /// Extracts the audio track of a video as mono 16 kHz Float32 samples.
 enum AudioLoader {
     static let sampleRate = 16_000
+    /// Screen recordings and some action-camera files carry no audio track.
+    /// Detection runs on sound alone, so the store tells the user that rather
+    /// than showing the generic "couldn't build that".
+    static let noAudioCode = 1
 
     static func loadMono16k(url: URL) async throws -> [Float] {
         try await loadMono16k(asset: AVURLAsset(url: url))
@@ -11,7 +15,7 @@ enum AudioLoader {
     static func loadMono16k(asset: AVAsset) async throws -> [Float] {
         let tracks = try await asset.loadTracks(withMediaType: .audio)
         guard let track = tracks.first else {
-            throw NSError(domain: "Ribatto", code: 1,
+            throw NSError(domain: "Ribatto", code: noAudioCode,
                           userInfo: [NSLocalizedDescriptionKey: "No audio track"])
         }
         let reader = try AVAssetReader(asset: asset)
@@ -30,7 +34,9 @@ enum AudioLoader {
         reader.startReading()
 
         var samples: [Float] = []
-        samples.reserveCapacity(Int(CMTimeGetSeconds(try await asset.load(.duration))) * sampleRate + sampleRate)
+        // An indefinite duration is NaN here, and Int(NaN) traps.
+        let seconds = CMTimeGetSeconds(try await asset.load(.duration))
+        samples.reserveCapacity((seconds.isFinite ? Int(seconds) : 0) * sampleRate + sampleRate)
 
         while let buf = output.copyNextSampleBuffer() {
             guard let block = CMSampleBufferGetDataBuffer(buf) else { continue }

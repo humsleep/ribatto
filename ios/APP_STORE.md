@@ -99,15 +99,15 @@ Steps:
 4. Open a clip to play it, or tap "Make a Reel" for the vertical export.
 5. The free pass: tap "Free pass" under the title, then "Watch an ad".
 
-Please note about step 5: the pass is opened by watching a rewarded video ad,
-and Google AdMob does not serve ads to an app that is not yet published on the
-App Store. On a pre-release build that button will therefore report that no ad
-can be loaded, and the pass cannot be reached that way during review. So that
-its output can still be judged, the page above also has the same rally
-exported both ways: rally-pass.mp4 (full quality, no watermark, re-framed
-vertically) and rally-free.mp4 (720p, watermarked). The pass changes only
-export quality and framing; every detection and editing feature is available
-without it. There are no in-app purchases of any kind.
+Please note about step 5: review builds request Google's public test ad
+units (a sandbox receipt is treated as a pre-release install), so the rewarded
+ad plays as a Google test ad labelled "Test mode". Watching it to the end opens
+the one-hour pass. App Store installs use live ad units. For reference, the
+page above also has the same rally exported both ways: rally-pass.mp4 (full
+quality, no watermark, re-framed vertically) and rally-free.mp4 (720p,
+watermarked). The pass changes only export quality and framing; every
+detection and editing feature is available without it. There are no in-app
+purchases of any kind.
 
 No account or sign-in is required.
 
@@ -158,4 +158,4 @@ AdMob의 최신 공개 안내(Google "Prepare for Apple's App Store data disclos
 - [ ] 번들 ID가 App Store Connect와 일치하는지
 - [ ] 스크린샷에 실제 UI가 아닌 요소(디바이스 프레임 위조 등)가 없는지 — 2026-09-22 다시 만든 5장
 - [ ] Release 빌드에서 리워드 광고가 뜨고 패스가 열리는지(TestFlight — 테스트 기기 등록 후에만 가능)
-- [ ] EU 판매 여부 결정 — UMP 동의 폼은 연결돼 있지 않다. 연결 전에는 EU 27개국 판매를 끈다
+- [ ] AdMob 콘솔에 GDPR 메시지(EU/UK/스위스)를 게시 — UMP 동의 폼은 코드에 연결돼 있다(AdsManager `gatherConsent`). 메시지가 없으면 폼이 안 뜬다
