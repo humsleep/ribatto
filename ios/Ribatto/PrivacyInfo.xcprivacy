@@ -11,15 +11,16 @@
 	     PlaceLookup, which sends a video's GPS coordinate to Apple to name the
 	     court; that is not tracking.
 
-	     NSPrivacyTrackingDomains stays empty on purpose. Domains listed here
+	     NSPrivacyTrackingDomains is left out on purpose. Domains listed there
 	     are blocked outright when the user declines ATT, which would stop the
 	     non-personalised ads (and the rewarded ad that opens Pro) as well.
-	     Google's SDK ships its own manifest for its endpoints.
+	     Google's SDK ships its own manifest for its endpoints. The key is
+	     absent rather than an empty array: build 11 carrying `<array/>` was
+	     refused at upload with ITMS-91064 "Invalid tracking information"
+	     (2026-09-30), although the rule the mail quotes is satisfied.
 	     Keep this in step with Views/PrivacyView.swift and docs/privacy.html. -->
 	<key>NSPrivacyTracking</key>
 	<true/>
-	<key>NSPrivacyTrackingDomains</key>
-	<array/>
 
 	<!-- What the AdMob SDK collects, per Google's App Store data disclosure
 	     guidance. None of it is linked to the user by this app (there is no

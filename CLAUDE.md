@@ -248,5 +248,5 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - EEA 동의는 UMP(`UserMessagingPlatform`, GoogleMobileAds가 끌고 오는 패키지)로 받는다. 동의 → ATT → SDK 시작 순서이고,
   `canRequestAds`가 false면 SDK를 시작하지 않는다. 동의 재설정 진입점은 라이브러리 지구본 메뉴에 있다(필요한 지역에서만 보인다).
   AdMob 콘솔에 GDPR 메시지를 만들어 두지 않으면 폼이 뜨지 않는다.
-- `PrivacyInfo.xcprivacy`는 NSPrivacyTracking true + AdMob이 모으는 항목을 적는다. NSPrivacyTrackingDomains는 비워 둔다 —
+- `PrivacyInfo.xcprivacy`는 NSPrivacyTracking true + AdMob이 모으는 항목을 적는다. NSPrivacyTrackingDomains 키는 아예 뺀다(빈 배열로 두면 업로드가 ITMS-91064로 거절됐다, 2026-09-30) —
   여기에 도메인을 적으면 ATT 거부 시 그 도메인이 차단돼 비맞춤 광고와 리워드까지 끊긴다. App Store Connect 설문은 APP_STORE.md §5 표와 같게.
