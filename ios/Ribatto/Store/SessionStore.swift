@@ -22,7 +22,13 @@ struct ClipInfo: Identifiable, Equatable {
 @MainActor
 final class SessionStore: ObservableObject {
     @Published var sessions: [Session] = []
-    @Published var progress: [UUID: ProcessingStage] = [:]
+    @Published var progress: [UUID: ProcessingStage] = [:] {
+        didSet { syncBackground() }
+    }
+    /// Clips keep encoding with the app in the background (iOS 26, a device
+    /// with background GPU, and the entitlement). Drives the progress card's
+    /// "you can switch apps" line.
+    @Published private(set) var rendersInBackground = false
     /// Mirrored from ProPass so the export path knows the tier.
     @Published var isPro = false
 
@@ -40,7 +46,168 @@ final class SessionStore: ObservableObject {
         return docs.appendingPathComponent("sessions", isDirectory: true)
     }
 
-    init() { load() }
+    init() {
+        load()
+        background.onChange = { [weak self] in
+            guard let self else { return }
+            self.rendersInBackground = self.background.canRenderInBackground
+        }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.didEnterBackground() }
+        }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.pausedNotified = false
+                BackgroundWork.withdraw(id: "paused")
+            }
+        }
+    }
+
+    // MARK: - Background
+
+    /// How many times the app has left the screen. A clip whose encode spans
+    /// a change in this count was cut off by iOS, not by the video: the
+    /// encoder and the crop both run on the GPU, which iOS refuses to apps in
+    /// the background, and the encode then fails with the generic "operation
+    /// could not be completed". A 14-minute 4K match failed that way on clip 9
+    /// (2026-10-01) — the same clip encodes fine on a Mac.
+    private var backgroundTrips = 0
+
+    /// Holds a render between clips while the app is in the background, so it
+    /// does not start GPU work iOS will refuse. Once suspended this simply
+    /// resumes on return.
+    private func waitForForeground() async {
+        while UIApplication.shared.applicationState == .background
+                && !background.canRenderInBackground {
+            background.pause()
+            notifyPaused()
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+    }
+
+    private let background = BackgroundWork()
+    /// The session whose stage the system progress UI is showing.
+    private var backgroundSessionID: UUID?
+    private var pausedNotified = false
+
+    private func didEnterBackground() {
+        backgroundTrips += 1
+        #if DEBUG
+        DebugLog.write("entered background busy=\(busyCount) keeps=\(background.keepsRunning) gpu=\(background.canRenderInBackground)")
+        #endif
+        // Without a continued task iOS suspends the app within seconds, maybe
+        // before the render loop reaches its wait — so say it now.
+        if busyCount > 0 && !background.keepsRunning { notifyPaused() }
+    }
+
+    private func notifyPaused() {
+        guard !pausedNotified else { return }
+        pausedNotified = true
+        BackgroundWork.notify(id: "paused", title: L.s("notif_paused_title", lang),
+                              body: L.s("notif_paused_body", lang))
+    }
+
+    /// Starts the system's background progress for a pipeline run the user
+    /// just asked for. Must be called while the app is in front.
+    private func beginWork(_ id: UUID) {
+        BackgroundWork.requestNotificationPermission()
+        backgroundSessionID = id
+        let subtitle = sessions.first { $0.id == id }.map { L.dateTime($0.playedAt, lang) } ?? ""
+        background.begin(title: L.s("stage_audio", lang), subtitle: subtitle)
+        syncBackground()
+    }
+
+    /// Ends it, and tells a user who has gone elsewhere how it turned out.
+    private func endWork(_ id: UUID) {
+        var ok = true
+        if case .failed(let message) = progress[id] {
+            ok = false
+            BackgroundWork.notify(id: "failed-" + id.uuidString,
+                                  title: L.s("notif_failed_title", lang), body: message)
+        } else if let s = sessions.first(where: { $0.id == id }), s.segments != nil {
+            let ready = clips(of: s).filter(\.isReady).count
+            BackgroundWork.notify(
+                id: "done-" + id.uuidString,
+                title: L.s("notif_done_title", lang),
+                body: ready > 0 ? String(format: L.s("notif_done_fmt", lang), ready)
+                                : L.s("notif_none", lang))
+        }
+        if backgroundSessionID == id { backgroundSessionID = nil }
+        background.end(success: ok)
+    }
+
+    /// Mirrors the running session's stage into the system progress UI.
+    private func syncBackground() {
+        guard let id = backgroundSessionID, let stage = progress[id],
+              let s = sessions.first(where: { $0.id == id }) else { return }
+        let fraction: Double, key: String
+        switch stage {
+        case .queued, .audio: fraction = 0.02; key = "stage_audio"
+        case .detect: fraction = 0.08; key = "stage_detect"
+        case .render(let d, let t):
+            fraction = 0.1 + 0.9 * Double(d) / Double(max(t, 1)); key = "stage_render"
+        default: return
+        }
+        background.update(fraction: fraction, title: L.s(key, lang),
+                          subtitle: L.dateTime(s.playedAt, lang))
+    }
+
+    #if DEBUG
+    /// Launched with `-diagRender`: encodes rallies 10–13 of the first session
+    /// into tmp and traces memory and errors to Documents/debug.log, so a
+    /// device failure can be read without anyone tapping through the app.
+    func runDiagnostics() async {
+        DebugLog.write("diag start availMB=\(ClipExporter.availableMB())")
+        guard let s = sessions.first, let segs = s.segments,
+              let source = await loadAsset(s) else {
+            DebugLog.write("diag: no session/source"); return
+        }
+        DebugLog.write("diag asset \(type(of: source)) \((source as? AVURLAsset)?.url.lastPathComponent ?? "-")")
+        ClipExporter.trace = { DebugLog.write($0) }
+        let dir = fm.temporaryDirectory.appendingPathComponent("diag", isDirectory: true)
+        try? fm.removeItem(at: dir)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        for i in [9, 10, 11, 12, segs.count - 1] where i < segs.count {
+            let seg = segs[i]
+            DebugLog.write("clip \(i + 1) \(seg.start)-\(seg.end) start availMB=\(ClipExporter.availableMB())")
+            do {
+                try await ClipExporter.export(
+                    source: source, segment: seg, orientation: s.effectiveOrientation, pro: false,
+                    caption: nil, smartCrop: false,
+                    clipURL: dir.appendingPathComponent("d\(i + 1).mp4"), thumbURL: nil)
+                DebugLog.write("clip \(i + 1) OK availMB=\(ClipExporter.availableMB())")
+            } catch {
+                let e = error as NSError
+                DebugLog.write("clip \(i + 1) FAIL \(e.domain) \(e.code) \(e.userInfo)")
+            }
+        }
+        // The heaviest path: pass quality, vertical, smart crop (frame
+        // analysis on the 4K source right before the encode).
+        for i in [10, segs.count - 1] where i < segs.count {
+            DebugLog.write("pro clip \(i + 1) start availMB=\(ClipExporter.availableMB())")
+            do {
+                try await ClipExporter.export(
+                    source: source, segment: segs[i], orientation: "vertical", pro: true,
+                    caption: nil, smartCrop: true,
+                    clipURL: dir.appendingPathComponent("p\(i + 1).mp4"), thumbURL: nil)
+                DebugLog.write("pro clip \(i + 1) OK availMB=\(ClipExporter.availableMB())")
+            } catch {
+                let e = error as NSError
+                DebugLog.write("pro clip \(i + 1) FAIL \(e.domain) \(e.code) \(e.userInfo)")
+            }
+        }
+        DebugLog.write("diag end")
+    }
+    #endif
+
+    /// Clears a failure message the user has dismissed.
+    func dismissFailure(_ id: UUID) {
+        if case .failed = progress[id] { progress[id] = nil }
+    }
 
     // MARK: - Paths
 
@@ -130,7 +297,11 @@ final class SessionStore: ObservableObject {
             guard ready || fm.fileExists(atPath: thumb.path) else { continue }
             out.append(ClipInfo(id: gid, index: i, url: url, thumbURL: thumb,
                                 segment: seg,
-                                orientation: s.renderedOrientation ?? "landscape",
+                                // An unfinished render's clips are already in
+                                // its frame; drawing them 16:9 squashed a
+                                // half-made vertical session.
+                                orientation: s.renderedOrientation
+                                    ?? s.partialRender?.orientation ?? "landscape",
                                 sessionID: s.id, isReady: ready))
         }
         return out
@@ -327,6 +498,12 @@ final class SessionStore: ObservableObject {
     /// Detects several freshly imported sessions one after another. Running
     /// them side by side would decode several originals at once for no gain.
     func processQueued(_ ids: [UUID]) async {
+        // One background task for the whole queue: a new one can only be
+        // requested with the app in front, and by the second video the user
+        // has usually left.
+        guard let first = ids.first else { return }
+        beginWork(first)
+        defer { background.end(success: true) }
         for id in ids where sessions.contains(where: { $0.id == id }) {
             await process(sessionID: id)
         }
@@ -715,13 +892,33 @@ final class SessionStore: ObservableObject {
     /// carry English diagnostics meant for a log ("Unusable video settings"),
     /// which is not a sentence to show a Korean user; those become the
     /// localized "couldn't build that". System errors arrive localized already.
-    private func failureText(_ error: Error) -> String {
+    /// System errors are mapped too: AVFoundation's own text for most of them
+    /// is "The operation could not be completed", which tells the user nothing
+    /// they can act on. The code is kept on the end for support.
+    private func failureText(_ error: Error, interrupted: Bool = false) -> String {
         #if DEBUG
         print("[store] failed: \(error)")
         #endif
         let e = error as NSError
-        guard e.domain == "Ribatto" else { return error.localizedDescription }
-        return e.code == AudioLoader.noAudioCode ? L.s("no_audio", lang) : L.s("render_failed", lang)
+        if e.domain == "Ribatto" {
+            return e.code == AudioLoader.noAudioCode ? L.s("no_audio", lang) : L.s("render_failed", lang)
+        }
+        if Self.isDiskFull(e) { return L.s("disk_full", lang) }
+        if interrupted || Self.isInterruption(e) { return interruptedMessage }
+        return L.s("process_failed", lang) + " (\(e.code))"
+    }
+
+    private static func isDiskFull(_ e: NSError) -> Bool {
+        if e.domain == AVFoundationErrorDomain && e.code == AVError.Code.diskFull.rawValue { return true }
+        if e.domain == NSCocoaErrorDomain && e.code == NSFileWriteOutOfSpaceError { return true }
+        if e.domain == NSPOSIXErrorDomain && e.code == Int(ENOSPC) { return true }
+        if let under = e.userInfo[NSUnderlyingErrorKey] as? NSError { return isDiskFull(under) }
+        return false
+    }
+
+    private static func isInterruption(_ e: NSError) -> Bool {
+        e.domain == AVFoundationErrorDomain
+            && e.code == AVError.Code.operationInterrupted.rawValue
     }
     /// Picking a player only matters through the smart-crop path, so turn that
     /// on with it; clearing the player leaves smart crop as the user had it.
@@ -817,6 +1014,8 @@ final class SessionStore: ObservableObject {
         progress[sessionID] = nil
         let task = beginBackgroundTask()
         defer { endBackgroundTask(task) }
+        beginWork(sessionID)
+        defer { endWork(sessionID) }
         do {
             progress[sessionID] = .audio
             guard let source = await loadAsset(s) else {
@@ -940,32 +1139,47 @@ final class SessionStore: ObservableObject {
         let bgTask = alreadyRunning ? UIBackgroundTaskIdentifier.invalid
                                     : beginBackgroundTask()
         defer { endBackgroundTask(bgTask) }
+        if !alreadyRunning { beginWork(sessionID) }
+        defer { if !alreadyRunning { endWork(sessionID) } }
         // The source has to be in hand BEFORE the old clips are deleted: this
         // used to wipe every clip and only then discover the original was gone
         // from Photos, leaving the user with nothing at all.
         progress[sessionID] = .audio
-        guard let source = await loadAsset(s) else {
+        guard var source = await loadAsset(s) else {
             progress[sessionID] = .failed(missingSourceMessage)
             return
         }
-        let staged = hasFinishedClips(s)
+        let orient = s.effectiveOrientation
+        let pro = isPro
+        let caption = s.caption
+        let useSmartCrop = isPro && s.effectiveSmartCrop
+        let target = useSmartCrop ? s.targetPlayer : nil
+        let perClip = useSmartCrop ? (s.clipTargets ?? [:]) : [:]
+        let stamp = RenderStamp(orientation: orient, pro: pro, smartCrop: useSmartCrop,
+                                caption: caption, clipTargets: perClip,
+                                targetPlayer: target, rallies: segments, lang: lang)
+        // A first render that stopped part-way, with nothing changed since:
+        // keep its clips and make only the missing ones. Redoing all of them
+        // used to take as long as the first try and meet the same failure.
+        let resuming = detection == nil && s.renderedOrientation == nil
+            && s.partialRender?.matches(stamp) == true
+        let staged = !resuming && hasFinishedClips(s)
         let cdir = staged ? stagingDir(s) : clipsDir(s)
         if !staged, let detection { commit(detection, to: sessionID) }
+        if !staged { mutate(sessionID) { $0.partialRender = stamp } }
         do {
-            try? fm.removeItem(at: cdir)
+            if !resuming { try? fm.removeItem(at: cdir) }
             try fm.createDirectory(at: cdir, withIntermediateDirectories: true)
-            let orient = s.effectiveOrientation
-            let pro = isPro
-            let caption = s.caption
-            let useSmartCrop = isPro && s.effectiveSmartCrop
-            let target = useSmartCrop ? s.targetPlayer : nil
-            let perClip = useSmartCrop ? (s.clipTargets ?? [:]) : [:]
+            purgeTemporaries(in: cdir)
+            func clipURL(_ i: Int) -> URL {
+                cdir.appendingPathComponent(String(format: "clip_%02d.mp4", i + 1))
+            }
             // `renderedOrientation` is the record of a finished render, so it
             // is written only on the success path below. Setting it here made a
             // render that threw halfway look complete: needsRerender went false
             // and Apply then had nothing to do, stranding the session.
             // 1) posters for every rally (no encoding — takes a moment, not minutes)
-            for (i, seg) in segments.enumerated() {
+            for (i, seg) in segments.enumerated() where !fm.fileExists(atPath: clipURL(i).path) {
                 let base = String(format: "clip_%02d", i + 1)
                 try? await ClipExporter.writePoster(
                     of: source, at: min(seg.start + 1.0, seg.end),
@@ -974,22 +1188,73 @@ final class SessionStore: ObservableObject {
             objectWillChange.send()
 
             // 2) the actual clips
+            var failed = 0
+            var lastError: Error?
+            var lastInterrupted = false
             for (i, seg) in segments.enumerated() {
                 if wasDeleted(sessionID) { try? fm.removeItem(at: cdir); return }
+                if resuming && fm.fileExists(atPath: clipURL(i).path) { continue }
                 progress[sessionID] = .render(done: i, total: segments.count)
                 let base = String(format: "clip_%02d", i + 1)
-                try await ClipExporter.export(
-                    source: source, segment: seg, orientation: orient, pro: pro,
-                    caption: CaptionText.resolve(caption, session: s, segments: segments,
-                                                 index: i, lang: lang),
-                    smartCrop: useSmartCrop,
-                    clipURL: cdir.appendingPathComponent("\(base).mp4"),
-                    // Replaces the source-aspect placeholder written above with
-                    // a poster cut from the finished clip. Without this a
-                    // portrait clip kept a 16:9 still, and the card had to
-                    // stretch to hold it.
-                    thumbURL: cdir.appendingPathComponent("\(base).jpg"),
-                    targetPlayer: useSmartCrop ? s.target(forClip: i) : nil)
+                // Two tries. The usual failure is iOS refusing the GPU after
+                // the user left the app; waiting for them to come back and
+                // encoding again succeeds where the first try could not.
+                var attempt = 0
+                while true {
+                    await waitForForeground()
+                    let trips = backgroundTrips
+                    #if DEBUG
+                    DebugLog.write("clip \(i + 1) start state=\(UIApplication.shared.applicationState.rawValue)")
+                    #endif
+                    do {
+                        try await ClipExporter.export(
+                            source: source, segment: seg, orientation: orient, pro: pro,
+                            caption: CaptionText.resolve(caption, session: s, segments: segments,
+                                                         index: i, lang: lang),
+                            smartCrop: useSmartCrop,
+                            clipURL: clipURL(i),
+                            // Replaces the source-aspect placeholder written above with
+                            // a poster cut from the finished clip. Without this a
+                            // portrait clip kept a 16:9 still, and the card had to
+                            // stretch to hold it.
+                            thumbURL: cdir.appendingPathComponent("\(base).jpg"),
+                            targetPlayer: useSmartCrop ? s.target(forClip: i) : nil)
+                        #if DEBUG
+                        DebugLog.write("clip \(i + 1) done state=\(UIApplication.shared.applicationState.rawValue)")
+                        #endif
+                        break
+                    } catch {
+                        #if DEBUG
+                        DebugLog.write("clip \(i + 1) FAILED state=\(UIApplication.shared.applicationState.rawValue) \(error)")
+                        #endif
+                        // A fresh asset before anything else touches it. When
+                        // iOS resets the media server (-11819) the old one is
+                        // dead for good — every later clip failed instantly on
+                        // its tracks — and a second later a new one loads fine.
+                        try? await Task.sleep(for: .seconds(1))
+                        if let fresh = await loadAsset(s) { source = fresh }
+                        attempt += 1
+                        if attempt < 2 { continue }
+                        // A re-render is all or nothing: the old clips stay
+                        // until every new one exists.
+                        if staged { throw error }
+                        // A first render keeps going. One bad rally used to
+                        // abort the session and leave the rest unmade.
+                        failed += 1
+                        lastError = error
+                        lastInterrupted = backgroundTrips != trips
+                        break
+                    }
+                }
+            }
+            if let lastError {
+                purgeTemporaries(in: cdir)
+                mutate(sessionID) { $0.renderedOrientation = nil }
+                objectWillChange.send()
+                progress[sessionID] = .failed(failed == segments.count
+                    ? failureText(lastError, interrupted: lastInterrupted)
+                    : String(format: L.s("clips_failed_fmt", lang), failed))
+                return
             }
             if staged {
                 try swapInStaged(s)
@@ -1002,6 +1267,7 @@ final class SessionStore: ObservableObject {
                 $0.renderedSmartCrop = useSmartCrop
                 $0.renderedTargetPlayer = target
                 $0.renderedClipTargets = perClip
+                $0.partialRender = nil
             }
             objectWillChange.send()
             progress[sessionID] = nil
@@ -1010,7 +1276,9 @@ final class SessionStore: ObservableObject {
                 try? fm.removeItem(at: cdir)
             } else {
                 // Partial clips in place: mark the render unfinished so Apply
-                // stays available to run it again.
+                // stays available to run it again — and, with `partialRender`
+                // still set, to continue it.
+                purgeTemporaries(in: cdir)
                 mutate(sessionID) { $0.renderedOrientation = nil }
             }
             progress[sessionID] = .failed(failureText(error))
@@ -1086,18 +1354,25 @@ final class SessionStore: ObservableObject {
         }
         let base = String(format: "clip_%02d", index + 1)
         let dir = clipsDir(session)
+        // A first render that has not finished has no `rendered*` record yet;
+        // its clips are being made with the stamp's settings, so an edited
+        // clip must match them — it used to come out uncaptioned and uncropped.
+        let partial = session.renderedOrientation == nil ? session.partialRender : nil
+        let smart = session.renderedSmartCrop ?? partial?.smartCrop ?? false
         do {
             try await ClipExporter.export(
                 source: source, segment: segment,
-                orientation: session.renderedOrientation ?? session.effectiveOrientation,
-                pro: session.renderedPro ?? isPro,
-                caption: CaptionText.resolve(session.renderedCaption, session: session,
+                orientation: session.renderedOrientation ?? partial?.orientation
+                    ?? session.effectiveOrientation,
+                pro: session.renderedPro ?? partial?.pro ?? isPro,
+                caption: CaptionText.resolve(session.renderedCaption ?? partial?.caption,
+                                             session: session,
                                              segments: segments, index: index, lang: lang),
-                smartCrop: session.renderedSmartCrop ?? false,
+                smartCrop: smart,
                 clipURL: dir.appendingPathComponent("\(base).mp4"),
                 thumbURL: dir.appendingPathComponent("\(base).jpg"),
-                targetPlayer: (session.renderedSmartCrop ?? false)
-                    ? session.target(forClip: index) : nil)
+                targetPlayer: smart ? session.target(forClip: index) : nil)
+            syncPartialStamp(session.id)
             objectWillChange.send()
             return true
         } catch {
@@ -1151,8 +1426,40 @@ final class SessionStore: ObservableObject {
         s.renderedClipTargets = remap(s.renderedClipTargets, survivors: survivors)
         // The user removed these; a later empty screen must not blame detection.
         s.detectionFoundNothing = false
+        // Deleting the clips that failed is the obvious thing to do after a
+        // partial render. The stamp follows the rallies, and when every
+        // remaining clip exists the render is simply complete.
+        if s.renderedOrientation == nil, var stamp = s.partialRender {
+            stamp.rallies = s.segments ?? []
+            s.partialRender = stamp
+            let all = (s.segments ?? []).indices.allSatisfy {
+                fm.fileExists(atPath: cdir.appendingPathComponent(
+                    String(format: "clip_%02d.mp4", $0 + 1)).path)
+            }
+            if all {
+                s.renderedOrientation = stamp.orientation
+                s.renderedPro = stamp.pro
+                s.renderedCaption = stamp.caption
+                s.renderedSmartCrop = stamp.smartCrop
+                s.renderedTargetPlayer = stamp.targetPlayer
+                s.renderedClipTargets = stamp.smartCrop ? (s.clipTargets ?? [:]) : [:]
+                s.partialRender = nil
+            }
+        }
         save(s)
         return true
+    }
+
+    /// After a single clip was re-cut in an unfinished render, the stamp
+    /// takes the session's current rallies — a trim or split moved them, and
+    /// a stale stamp turned the next Apply into a full re-render.
+    private func syncPartialStamp(_ id: UUID) {
+        mutate(id) {
+            guard $0.renderedOrientation == nil, var stamp = $0.partialRender,
+                  let segs = $0.segments else { return }
+            stamp.rallies = segs
+            $0.partialRender = stamp
+        }
     }
 
     /// Saves the given clips (or all of them when `ids` is nil) to Photos.
@@ -1288,7 +1595,8 @@ final class SessionStore: ObservableObject {
                                       index: pair.clip.index, lang: lang),
                                   smartCrop: useSmartCrop,
                                   targetPlayer: useSmartCrop
-                                      ? pair.session.target(forClip: pair.clip.index) : nil))
+                                      ? pair.session.target(forClip: pair.clip.index) : nil,
+                                  sessionID: sid))
         }
         guard !items.isEmpty else {
             progress[key] = .failed(missingSourceMessage)
@@ -1319,7 +1627,12 @@ final class SessionStore: ObservableObject {
                 .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
             let plan = try await ReelBuilder.build(
                 items: items, target: target, frame: frame, pace: pace,
-                pro: pro, to: out) { [weak self] done, total in
+                pro: pro, to: out,
+                reload: { [weak self] sid in
+                    guard let self,
+                          let s = self.sessions.first(where: { $0.id == sid }) else { return nil }
+                    return await self.loadAsset(s)
+                }) { [weak self] done, total in
                     self?.progress[key] = .reel(done: done, total: total)
                 }
             // Poster and sidecar, so the Reels tab can show it without opening

@@ -86,7 +86,7 @@ struct ReelSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel(L.s("done", lang))
+                        .accessibilityLabel(L.s("close", lang))
                         .tint(.secondary)
                         .disabled(building)
                 }

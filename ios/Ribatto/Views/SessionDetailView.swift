@@ -6,7 +6,6 @@ struct SessionDetailView: View {
     @EnvironmentObject var pass: ProPass
     @EnvironmentObject var ads: AdsManager
     @AppStorage("rc_lang") private var lang = "en"
-    @Environment(\.horizontalSizeClass) private var hSize
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     let sessionID: UUID
@@ -56,7 +55,6 @@ struct SessionDetailView: View {
     }
 
     private var session: Session? { store.sessions.first { $0.id == sessionID } }
-    private var statColumns: Int { hSize == .compact ? 2 : 4 }
 
     var body: some View {
         Group {
@@ -75,20 +73,25 @@ struct SessionDetailView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                settingsCard(session, busy: busy)
-
+                // Above the settings: right after an import the card is held
+                // open and ran ~700pt tall, so the progress — the only thing
+                // happening — was off the bottom of the screen.
                 if let stage = store.progress[sessionID] {
-                    progressCard(stage)
+                    if case .failed(let message) = stage {
+                        failureCard(session, message: message)
+                    } else {
+                        progressCard(stage)
+                    }
                 }
+
+                settingsCard(session, busy: busy)
 
                 if !clips.isEmpty {
                     if pass.isPro && session.renderedPro != true {
                         upgradeBanner()
                     }
-                    statsRow(clips)
-                    toolbar(session, busy: busy)
+                    toolbar(session, clips: clips, busy: busy)
                     clipGrid(clips)
-                    if !selecting { saveAllButton(session, busy: busy) }
                 } else if !busy {
                     emptyClips(session)
                 }
@@ -126,6 +129,18 @@ struct SessionDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    if !clips.isEmpty {
+                        Button { destination = .addRally } label: {
+                            Label(L.s("add_rally", lang), systemImage: "plus")
+                        }
+                        .disabled(busy || store.sourceMissing(session))
+                        Button { saveAll(session) } label: {
+                            Label(L.s("save_all", lang),
+                                  systemImage: pass.isPro ? "square.and.arrow.down.on.square"
+                                                          : "lock.fill")
+                        }
+                        .disabled(busy)
+                    }
                     // Storage lives here rather than in a settings screen: the
                     // question is always "what is this match costing me".
                     let used = store.storage(of: session)
@@ -355,8 +370,10 @@ struct SessionDetailView: View {
         // once there are clips, and is held open whenever it has something to
         // say: never detected, found nothing, unapplied changes, or a missing
         // original.
-        let forced = session.segments?.isEmpty != false || session.hasPendingChanges
-            || store.sourceMissing(session)
+        // Not while working: the form cannot be applied then, and held open
+        // it pushed everything under it off the screen.
+        let forced = (session.segments?.isEmpty != false || session.hasPendingChanges
+            || store.sourceMissing(session)) && !busy
         let expanded = forced || settingsOpen
         return VStack(spacing: 14) {
             // the place comes from the video's metadata, but reverse geocoding
@@ -587,15 +604,7 @@ struct SessionDetailView: View {
             let needsDetect = session.segments == nil
                 || session.segments?.isEmpty == true || session.needsRedetect
             Button {
-                // Renders bake the tier in. Clips made during a pass would
-                // silently come back at 720p with a watermark because the user
-                // fixed a caption an hour later, so ask first.
-                if session.renderedPro == true && !pass.isPro
-                    && store.clips(of: session).contains(where: \.isReady) {
-                    confirmFreeRender = true
-                } else {
-                    Task { await store.apply(sessionID: sessionID) }
-                }
+                runApply(session)
             } label: {
                 Text(needsDetect ? (session.segments == nil ? L.s("detect", lang)
                                                             : L.s("redetect", lang))
@@ -774,21 +783,76 @@ struct SessionDetailView: View {
         }
     }
 
+    /// Renders bake the tier in. Clips made during a pass would silently come
+    /// back at 720p with a watermark because the user fixed a caption an hour
+    /// later, so ask first.
+    private func runApply(_ session: Session) {
+        if session.renderedPro == true && !pass.isPro
+            && store.clips(of: session).contains(where: \.isReady) {
+            confirmFreeRender = true
+        } else {
+            Task { await store.apply(sessionID: sessionID) }
+        }
+    }
+
     private func progressCard(_ stage: ProcessingStage) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             StageLabel(stage: stage)
             if case .render(let d, let t) = stage, t > 0 {
                 ProgressView(value: Double(d), total: Double(t))
-            } else if case .failed = stage {
-                EmptyView()
             } else {
                 ProgressView().progressViewStyle(.linear)
             }
-            if case .failed = stage {} else {
-                Label(L.s("keep_awake", lang), systemImage: "iphone.gen3.radiowaves.left.and.right")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 2)
+            // Leaving the app is what stops a long render, so this is body
+            // text, not a footnote.
+            Label(L.s(store.rendersInBackground ? "keep_awake_bg" : "keep_awake", lang),
+                  systemImage: "iphone.gen3.radiowaves.left.and.right")
+                .font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 2)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface,
+                    in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// A failure with the way out next to it. It used to be a grey caption in
+    /// the progress card's style, and the only retry was the Apply button
+    /// further down.
+    private func failureCard(_ session: Session, message: String) -> some View {
+        // Trying again cannot bring back a deleted original or add sound.
+        // …and Apply only acts on pending work. A failed trim or re-target
+        // leaves nothing pending, and the button did nothing at all.
+        let pending = session.hasPendingChanges || session.segments == nil
+            || session.segments?.isEmpty == true
+        let canRetry = pending && !store.sourceMissing(session)
+            && message != L.s("no_audio", lang)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Theme.warning)
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                Text(message)
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button { store.dismissFailure(sessionID) } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .padding(6)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L.s("close", lang))
+            }
+            if canRetry {
+                Button { runApply(session) } label: {
+                    Label(L.s("try_again", lang), systemImage: "arrow.clockwise")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity, minHeight: 24)
+                }
+                .rcPrimary()
             }
         }
         .padding(14)
@@ -824,28 +888,20 @@ struct SessionDetailView: View {
                     in: RoundedRectangle(cornerRadius: 14))
     }
 
-    private func saveAllButton(_ session: Session, busy: Bool) -> some View {
-        Button {
-            guard pass.isPro else {
-                destination = .pro(feature: L.s("save_all", lang))
-                return
-            }
-            Task {
-                if let n = await store.saveClipsToPhotos(session) {
-                    saveMessage = String(format: L.s(n == 1 ? "saved_one_fmt" : "saved_n_fmt", lang), n)
-                } else {
-                    saveMessage = L.s("photos_denied", lang)
-                }
-            }
-        } label: {
-            Label(L.s("save_all", lang),
-                  systemImage: pass.isPro ? "square.and.arrow.down.on.square" : "lock.fill")
-                .font(.subheadline.bold())
-                .frame(maxWidth: .infinity, minHeight: 24)
+    /// Every clip to Photos — Pro. Lives in the ⋯ menu; a full-width button
+    /// under the grid repeated what Select → Save already does.
+    private func saveAll(_ session: Session) {
+        guard pass.isPro else {
+            destination = .pro(feature: L.s("save_all", lang))
+            return
         }
-        .rcSecondary()
-        .disabled(busy)
-        .padding(.top, 2)
+        Task {
+            if let n = await store.saveClipsToPhotos(session) {
+                saveMessage = String(format: L.s(n == 1 ? "saved_one_fmt" : "saved_n_fmt", lang), n)
+            } else {
+                saveMessage = L.s("photos_denied", lang)
+            }
+        }
     }
 
     // MARK: - Selection
@@ -947,48 +1003,20 @@ struct SessionDetailView: View {
         .disabled(n == 0)
     }
 
-    // MARK: - Stats
-
-    private func statsRow(_ clips: [ClipInfo]) -> some View {
-        let total = clips.reduce(0) { $0 + $1.duration }
-        let longest = clips.map(\.duration).max() ?? 0
-        let hits = clips.reduce(0) { $0 + $1.segment.hits }
-        return LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: 10),
-                           count: statColumns),
-            spacing: 10) {
-            stat(L.s("rallies", lang), String(clips.count))
-            stat(L.s("total", lang), fmtDur(total))
-            stat(L.s("longest", lang), String(Int(longest)) + L.s("sec", lang))
-            stat(L.s("shots", lang), String(hits))
-        }
-    }
-
-    private func stat(_ k: String, _ v: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(k)
-                .font(.caption2).foregroundStyle(.secondary)
-                .lineLimit(1).minimumScaleFactor(0.75)
-            Text(v)
-                .font(.headline.monospacedDigit())
-                .lineLimit(1).minimumScaleFactor(0.7)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(Theme.surface,
-                    in: RoundedRectangle(cornerRadius: 10))
-    }
-
     // MARK: - Toolbar
 
-    private func toolbar(_ session: Session, busy: Bool) -> some View {
-        let title = Text(L.s("clips_title", lang)).font(.headline)
-        let addRally = Button { destination = .addRally } label: {
-            Label(L.s("add_rally", lang), systemImage: "plus")
-                .font(.caption.bold())
+    private func toolbar(_ session: Session, clips: [ClipInfo], busy: Bool) -> some View {
+        // Count and total length beside the title. Four stat tiles used to sit
+        // here and pushed the first clip below the middle of the screen; the
+        // shot total among them is the number CLAUDE.md calls unreliable.
+        let total = clips.reduce(0) { $0 + $1.duration }
+        let title = HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(L.s("clips_title", lang)).font(.headline)
+            Text(String(clips.count) + " · " + fmtDur(total))
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(Theme.accent)
 
         // One row when it fits. At accessibility sizes, or in a language whose
         // labels run long, sharing the width breaks words mid-way — the sort
@@ -998,19 +1026,17 @@ struct SessionDetailView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     title
                     SortMenu(sort: $sort)
-                    addRally
                 }
             } else {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) {
                         title
                         Spacer(minLength: 8)
-                        addRally
                         SortMenu(sort: $sort)
                     }
                     VStack(alignment: .leading, spacing: 10) {
-                        HStack { title; Spacer(); SortMenu(sort: $sort) }
-                        addRally
+                        title
+                        SortMenu(sort: $sort)
                     }
                 }
             }

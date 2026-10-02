@@ -87,6 +87,11 @@ struct RibattoApp: App {
                 store.placeLocale = L.locale(lang)
                 store.resolveMissingPlaceNames()
                 store.backfillCaptureDates()
+                #if DEBUG
+                if CommandLine.arguments.contains("-diagRender") {
+                    await store.runDiagnostics()
+                }
+                #endif
             }
             .onChange(of: lang) { _, l in
                 store.missingSourceMessage = L.s("source_missing", l)

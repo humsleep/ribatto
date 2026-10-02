@@ -88,16 +88,30 @@ enum FrameSequence {
         let step = 1.0 / fps
         var nextEmit = start
         var delivered = 0
-        while let sample = output.copyNextSampleBuffer() {
-            let time = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample))
-            guard time.isFinite, time + 1e-6 >= nextEmit else { continue }
-            // advance the grid past this frame rather than by one step, so a
-            // gap in the source doesn't produce a burst of catch-up frames
-            while nextEmit <= time { nextEmit += step }
-            guard let buffer = CMSampleBufferGetImageBuffer(sample),
-                  let image = makeImage(buffer) else { continue }
-            delivered += 1
-            if !body(time, image) { break }
+        // A pool per frame, as in ClipExporter.pump: the whole rally runs in
+        // one job, and without it every decoded frame and its CGImage copy
+        // stayed alive until tracking ended — the same growth that took a
+        // 42 s rally past the iPhone's memory ceiling (2026-10-02).
+        var more = true
+        while more {
+            more = autoreleasepool {
+                guard let sample = output.copyNextSampleBuffer() else { return false }
+                let time = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample))
+                guard time.isFinite, time + 1e-6 >= nextEmit else { return true }
+                // advance the grid past this frame rather than by one step, so a
+                // gap in the source doesn't produce a burst of catch-up frames
+                while nextEmit <= time { nextEmit += step }
+                guard let buffer = CMSampleBufferGetImageBuffer(sample),
+                      let image = makeImage(buffer) else { return true }
+                delivered += 1
+                return body(time, image)
+            }
+        }
+        // A reader that died part-way (the media server reset) ended the loop
+        // like a finished clip. Handing back the partial frames as success
+        // framed the crop on half a rally.
+        if reader.status == .failed {
+            throw reader.error ?? NSError(domain: "Ribatto", code: 64)
         }
         return delivered
     }
@@ -137,11 +151,14 @@ enum FrameSequence {
         var time = start
         var delivered = 0
         while time < end {
-            if let image = try? generator.copyCGImage(
-                at: CMTime(seconds: time, preferredTimescale: 600), actualTime: nil) {
+            let more: Bool = autoreleasepool {
+                guard let image = try? generator.copyCGImage(
+                    at: CMTime(seconds: time, preferredTimescale: 600), actualTime: nil)
+                else { return true }
                 delivered += 1
-                if !body(time, image) { break }
+                return body(time, image)
             }
+            if !more { break }
             time += step
         }
         return delivered

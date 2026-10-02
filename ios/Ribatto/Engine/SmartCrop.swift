@@ -79,15 +79,19 @@ enum SmartCrop {
         var profiles: [(time: Double, energy: [Double], width: Int)] = []
 
         for time in times {
-            let cm = CMTime(seconds: time, preferredTimescale: 600)
-            guard let frame = try? generator.copyCGImage(at: cm, actualTime: nil),
-                  let gray = grayscale(frame) else { continue }
-            defer { previous = gray }
-            guard let last = previous, last.width == gray.width,
-                  last.height == gray.height else { continue }
-            if let energy = motionProfile(last.gray, gray.gray,
-                                          width: gray.width, height: gray.height) {
-                profiles.append((time, energy, gray.width))
+            // A pool per seek: each decoded frame is autoreleased by the
+            // generator and otherwise lived until the rally was done.
+            autoreleasepool {
+                let cm = CMTime(seconds: time, preferredTimescale: 600)
+                guard let frame = try? generator.copyCGImage(at: cm, actualTime: nil),
+                      let gray = grayscale(frame) else { return }
+                defer { previous = gray }
+                guard let last = previous, last.width == gray.width,
+                      last.height == gray.height else { return }
+                if let energy = motionProfile(last.gray, gray.gray,
+                                              width: gray.width, height: gray.height) {
+                    profiles.append((time, energy, gray.width))
+                }
             }
         }
         guard profiles.count > 1 else { return [] }

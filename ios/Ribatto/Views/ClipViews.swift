@@ -5,6 +5,7 @@ import SwiftUI
 // MARK: - Clip card
 
 struct ClipCard: View {
+    @EnvironmentObject var store: SessionStore
     @AppStorage("rc_lang") private var lang = "en"
     let clip: ClipInfo
     var showSession: String? = nil
@@ -44,7 +45,16 @@ struct ClipCard: View {
                         .padding(6)
                     if !clip.isReady {
                         Color.black.opacity(0.45)
-                        ProgressView().tint(.white)
+                        // Spinning only while something is making it. After a
+                        // failed render the unmade clips spun forever.
+                        if store.isBusy(clip.sessionID) {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.title3)
+                                .foregroundStyle(Theme.warning)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                     }
                     if let selected {
                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")

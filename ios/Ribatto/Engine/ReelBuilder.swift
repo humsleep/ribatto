@@ -152,6 +152,8 @@ struct ReelItem {
     let caption: CaptionSettings?
     let smartCrop: Bool
     let targetPlayer: TargetPlayer?
+    /// Which session the asset came from, so a dead one can be reloaded.
+    var sessionID: UUID? = nil
 }
 
 /// What actually made it in, so the UI can be honest about a cap that bit.
@@ -236,6 +238,7 @@ enum ReelBuilder {
                       pace: ReelPace = .full,
                       pro: Bool,
                       to output: URL,
+                      reload: ((UUID) async -> AVAsset?)? = nil,
                       progress: @MainActor @escaping (Int, Int) -> Void) async throws -> ReelPlan {
         guard !items.isEmpty else {
             throw NSError(domain: "Ribatto", code: 50,
@@ -263,6 +266,10 @@ enum ReelBuilder {
 
         // 2) Render every piece to the chosen portrait frame.
         var parts: [URL] = []
+        // Assets replaced after a failure. When the media server resets, the
+        // asset every remaining piece of that session shares is dead, so
+        // without this one failure took the rest of the reel with it.
+        var fresh: [UUID: AVAsset] = [:]
         for (i, entry) in planned.enumerated() {
             await progress(i, planned.count)
             let seg = RallySegment(start: entry.segment.start,
@@ -270,15 +277,28 @@ enum ReelBuilder {
                                    hits: entry.segment.hits,
                                    hitTimes: entry.item.segment.hitTimes)
             let part = work.appendingPathComponent(String(format: "part_%03d.mp4", i))
-            try await ClipExporter.export(source: entry.item.asset,
-                                          segment: seg,
-                                          orientation: frame.rawValue,
-                                          pro: pro,
-                                          caption: entry.item.caption,
-                                          smartCrop: entry.item.smartCrop,
-                                          clipURL: part,
-                                          thumbURL: nil,
-                                          targetPlayer: entry.item.targetPlayer)
+            let sid = entry.item.sessionID
+            func attempt(_ asset: AVAsset) async throws {
+                try await ClipExporter.export(source: asset,
+                                              segment: seg,
+                                              orientation: frame.rawValue,
+                                              pro: pro,
+                                              caption: entry.item.caption,
+                                              smartCrop: entry.item.smartCrop,
+                                              clipURL: part,
+                                              thumbURL: nil,
+                                              targetPlayer: entry.item.targetPlayer)
+            }
+            let asset = sid.flatMap { fresh[$0] } ?? entry.item.asset
+            do {
+                try await attempt(asset)
+            } catch {
+                guard let sid, let reload else { throw error }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard let replacement = await reload(sid) else { throw error }
+                fresh[sid] = replacement
+                try await attempt(replacement)
+            }
             parts.append(part)
         }
         await progress(planned.count, planned.count)

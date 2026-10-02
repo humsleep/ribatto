@@ -735,7 +735,9 @@ struct StageLabel: View {
         case .merge: return L.s("stage_merge", lang)
         case .reel(let d, let t):
             return L.s("stage_reel", lang) + " " + String(d) + "/" + String(t)
-        case .failed(let msg): return msg
+        // The row is too narrow for the reason, and a system error's text
+        // was cut off mid-word. The session screen says what went wrong.
+        case .failed: return L.s("stage_failed", lang)
         }
     }
 }

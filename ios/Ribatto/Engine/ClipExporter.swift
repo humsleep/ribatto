@@ -3,6 +3,7 @@ import CoreGraphics
 import CoreImage
 import CoreText
 import ImageIO
+import os
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -385,12 +386,25 @@ enum ClipExporter {
             try await encode(asset: asset, composition: comp, audioMix: audioMix,
                              timeRange: range, out: out, fps: fps, pro: pro,
                              overlay: overlay, to: staging)
+        } catch let error as NSError where error.domain == AVFoundationErrorDomain
+                    // mediaServicesWereReset / operationInterrupted, as raw
+                    // codes: the named cases are iOS-only and Tools/ builds
+                    // this file for macOS.
+                    && (error.code == -11819 || error.code == -11847) {
+            // The asset died with the media server. A second full export on it
+            // only fails again, at the moment memory is scarcest, and hides the
+            // real error behind its own. The caller reloads and retries.
+            try? FileManager.default.removeItem(at: staging)
+            throw error
         } catch let error as NSError where error.domain == "Ribatto" && error.code == timeoutCode {
             // A writer that stopped making progress is almost always the disk,
             // and the preset path would sit on the same disk with no timeout.
             try? FileManager.default.removeItem(at: staging)
             throw error
         } catch {
+            #if DEBUG
+            trace?("  encode failed: \(error)")
+            #endif
             try? FileManager.default.removeItem(at: staging)
             // The preset path cannot choose a bitrate and needs a second pass
             // for the overlay, but it is the one that shipped: if the writer
@@ -401,6 +415,9 @@ enum ClipExporter {
                                        timeRange: range, watermark: !pro, caption: caption,
                                        to: staging)
             } catch {
+                #if DEBUG
+                trace?("  legacy failed: \(error)")
+                #endif
                 try? FileManager.default.removeItem(at: staging)
                 throw error
             }
@@ -448,18 +465,20 @@ enum ClipExporter {
         var count = 0
         var peak: Float = 0
         while let sample = output.copyNextSampleBuffer() {
-            guard let block = CMSampleBufferGetDataBuffer(sample) else { continue }
-            let length = CMBlockBufferGetDataLength(block)
-            var bytes = [UInt8](repeating: 0, count: length)
-            guard CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: length,
-                                             destination: &bytes) == noErr else { continue }
-            bytes.withUnsafeBytes { raw in
-                let floats = raw.bindMemory(to: Float.self)
-                for v in floats {
-                    sumSquares += Double(v) * Double(v)
-                    peak = max(peak, abs(v))
+            autoreleasepool {
+                guard let block = CMSampleBufferGetDataBuffer(sample) else { return }
+                let length = CMBlockBufferGetDataLength(block)
+                var bytes = [UInt8](repeating: 0, count: length)
+                guard CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: length,
+                                                 destination: &bytes) == noErr else { return }
+                bytes.withUnsafeBytes { raw in
+                    let floats = raw.bindMemory(to: Float.self)
+                    for v in floats {
+                        sumSquares += Double(v) * Double(v)
+                        peak = max(peak, abs(v))
+                    }
+                    count += floats.count
                 }
-                count += floats.count
             }
         }
         guard count > 0 else { return 1 }
@@ -485,10 +504,6 @@ enum ClipExporter {
         let rate = Double(width * height) * Double(min(max(fps, 24), 60)) * perPixel
         return Int(min(max(rate, 2_000_000), 40_000_000))
     }
-
-    /// One CoreImage context for every frame of every clip: building one per
-    /// frame rebuilds the GPU pipeline each time.
-    private static let ciContext = CIContext()
 
     /// Writes the clip in a single pass: the composition crops and pans, the
     /// overlay is composited onto each frame on its way into the writer, and
@@ -619,7 +634,9 @@ enum ClipExporter {
         // never finishes.
         let videoQueue = DispatchQueue(label: "com.ribatto.export.video", qos: .userInitiated)
         let audioQueue = DispatchQueue(label: "com.ribatto.export.audio", qos: .userInitiated)
-        let context = ciContext
+        // A context per clip, without the intermediate cache: the shared one
+        // lived for the whole process and kept its textures between clips.
+        let context = CIContext(options: [.cacheIntermediates: false])
         // Either track failing, or the whole pass stalling, ends both pumps.
         // A refused append used to finish only its own track: the other input
         // then never became ready again and its pump waited forever.
@@ -653,9 +670,18 @@ enum ClipExporter {
                           userInfo: [NSLocalizedDescriptionKey: "Export stopped making progress"]))
         }
         defer { watchdog.cancel() }
+        #if DEBUG
+        var frames = 0
+        #endif
         do {
             async let video: Void = pump(input: videoIn, on: videoQueue, gate: videoGate) {
                 guard let sample = videoOut.copyNextSampleBuffer() else { return false }
+                #if DEBUG
+                frames += 1
+                if frames % 96 == 0 {
+                    ClipExporter.trace?("  frame \(frames) availMB=\(ClipExporter.availableMB())")
+                }
+                #endif
                 let time = CMSampleBufferGetPresentationTimeStamp(sample)
                 // Nothing to draw: the composition's own buffer goes straight
                 // through, untouched and uncopied.
@@ -722,7 +748,15 @@ enum ClipExporter {
             // or the watchdog aborted the pass.
             input.requestMediaDataWhenReady(on: queue) {
                 while input.isReadyForMoreMediaData && !gate.isDone {
-                    if next() { continue }
+                    // One pool per frame. The encoder outruns the 4K decode, so
+                    // this loop usually runs a whole clip inside ONE callback,
+                    // and without a pool every frame's CIImage, render target
+                    // and composition buffer stayed alive until the clip ended:
+                    // 3.5 MB per frame on an iPhone 14 Pro. A 42 s rally took
+                    // available memory from 3 GB to under 1 GB, iOS killed the
+                    // media server (-11819), and every later clip failed with
+                    // it (2026-10-02, measured on device).
+                    if autoreleasepool(invoking: { next() }) { continue }
                     guard !gate.isDone else { break }
                     input.markAsFinished()
                     gate.resume(throwing: nil)
@@ -732,6 +766,18 @@ enum ClipExporter {
     }
 
     static let timeoutCode = 24
+
+    #if DEBUG
+    /// Device diagnostics only (SessionStore.runDiagnostics).
+    nonisolated(unsafe) static var trace: ((String) -> Void)?
+    static func availableMB() -> Int {
+        #if os(iOS)
+        return Int(os_proc_available_memory() / 1_048_576)
+        #else
+        return -1
+        #endif
+    }
+    #endif
 
     /// Resumes one pump's continuation exactly once, from whichever side gets
     /// there first. An abort that arrives before the continuation exists is
@@ -780,7 +826,8 @@ enum ClipExporter {
         session.videoComposition = composition
         session.audioMix = audioMix
         session.timeRange = timeRange
-        try await export(session: session, to: url)
+        try await export(session: session, to: url,
+                         limit: max(120, CMTimeGetSeconds(timeRange.duration) * 30))
         try await burnOverlays(into: url, watermark: watermark, caption: caption)
     }
 
@@ -1042,11 +1089,25 @@ enum ClipExporter {
         return ctx.makeImage()
     }
 
-    static func export(session: AVAssetExportSession, to url: URL) async throws {
+    /// - Parameter limit: seconds before the export is cancelled. A preset
+    ///   export that stops making progress never calls back on its own, and
+    ///   this path had no watchdog — the render spun with no way out.
+    static func export(session: AVAssetExportSession, to url: URL,
+                       limit: Double = 600) async throws {
         session.outputURL = url
         session.outputFileType = .mp4
+        nonisolated(unsafe) let watched = session
+        let watchdog = Task {
+            try await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
+            watched.cancelExport()
+        }
+        defer { watchdog.cancel() }
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             session.exportAsynchronously { cont.resume() }
+        }
+        if session.status == .cancelled && !watchdog.isCancelled {
+            throw NSError(domain: "Ribatto", code: timeoutCode,
+                          userInfo: [NSLocalizedDescriptionKey: "Export stopped making progress"])
         }
         guard session.status == .completed else {
             throw session.error ?? NSError(domain: "Ribatto", code: 12)

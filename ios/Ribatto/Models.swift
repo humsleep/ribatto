@@ -369,6 +369,12 @@ struct Session: Identifiable, Codable, Equatable {
     /// the whole session, exactly as `CaptionSettings` warns.
     var clipTargets: [String: TargetPlayer]?
     var renderedClipTargets: [String: TargetPlayer]?
+    /// What a first render that has not finished yet is making. Its clips are
+    /// written in place, so when one of them fails — the app left the screen
+    /// and iOS refused the GPU, most often — the ones already made are kept
+    /// and the next Apply makes only the missing ones. nil once a render
+    /// completes; a stamp that no longer matches the settings starts over.
+    var partialRender: RenderStamp?
 
     /// The player to follow in one clip: its own override, else the session's.
     func target(forClip index: Int) -> TargetPlayer? {
@@ -450,7 +456,36 @@ struct Session: Identifiable, Codable, Equatable {
              caption, renderedCaption,
              smartCrop, renderedSmartCrop, detectionFoundNothing,
              targetPlayer, renderedTargetPlayer,
-             clipTargets, renderedClipTargets
+             clipTargets, renderedClipTargets, partialRender
+    }
+}
+
+/// Everything a clip's pixels depend on. Two renders with equal stamps make
+/// the same files, so a half-finished one can be continued instead of redone.
+struct RenderStamp: Codable, Equatable {
+    var orientation: String
+    var pro: Bool
+    var smartCrop: Bool
+    var caption: CaptionSettings?
+    var clipTargets: [String: TargetPlayer]
+    var targetPlayer: TargetPlayer?
+    var rallies: [RallySegment]
+    /// Caption language — `{sport}`, "Best #1" and dates are burned in it.
+    var lang: String? = nil
+
+    /// Same pixels, not same record: a favourite star, a hit count or a
+    /// per-clip target override does not change the clips already made, and
+    /// comparing whole segments sent a session back to a full re-render the
+    /// moment the user starred a rally.
+    func matches(_ other: RenderStamp) -> Bool {
+        orientation == other.orientation && pro == other.pro
+            && smartCrop == other.smartCrop && caption == other.caption
+            && targetPlayer == other.targetPlayer
+            && (lang == nil || other.lang == nil || lang == other.lang)
+            && rallies.count == other.rallies.count
+            && zip(rallies, other.rallies).allSatisfy {
+                abs($0.start - $1.start) < 1e-6 && abs($0.end - $1.end) < 1e-6
+            }
     }
 }
 

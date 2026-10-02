@@ -168,6 +168,37 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - `DebugProSheet`는 파일 전체가 `#if DEBUG`. 릴리스에 숨은 기능이 있으면 심사 2.3.1 거절 사유다.
 - 긴 렌더는 `beginBackgroundTask`로 보호된다. `.failed`는 진행 중이 아니라 메시지이므로 busy 판정은 `isBusy`를 쓴다.
 - 재렌더는 원본을 먼저 확보한 뒤 기존 클립을 지운다. 순서를 되돌리면 원본이 사라진 세션의 클립이 전부 날아간다.
+- **긴 랠리 실패의 진짜 원인은 메모리였다**(2026-10-02 기기 실측). `ClipExporter.pump`의 프레임 루프에 autoreleasepool이 없어
+  프레임마다 3.5MB(720p 버퍼 하나)가 클립 끝까지 쌓였다. 인코더가 4K 디코드보다 빨라 콜백 한 번이 클립 전체를 돌기 때문이다.
+  iPhone 14 Pro에서 42초 랠리가 가용 메모리를 3,013→969MB로 떨어뜨리자 iOS가 미디어 서버를 죽였고(-11819),
+  붙잡고 있던 AVAsset이 죽어 이후 클립이 짧은 것까지 전부 즉시 실패했다. Mac은 한도가 넉넉해 재현되지 않는다.
+  수정: 프레임마다 `autoreleasepool` · CIContext를 클립마다(`cacheIntermediates: false`) · 실패 시 1초 쉬고 `loadAsset`으로 새 자산을 받아 재시도.
+  수정 후 같은 기기에서 가용 메모리가 클립 길이와 무관하게 약 3,005MB로 평평하고 114초 랠리도 16초에 통과한다.
+  기본 경로가 실패하면 `legacyEncode`로 떨어지는데, 화면에 뜨던 오류는 그 두 번째 경로의 것이었다 — 1차 오류를 보려면 DEBUG 로그를 볼 것.
+  기기 진단: Debug 빌드를 `devicectl device process launch ... com.ribatto.app -diagRender`로 띄우면 클립 10–13·마지막을 만들며
+  Documents/debug.log에 96프레임마다 가용 메모리와 오류를 남긴다(`SessionStore.runDiagnostics`).
+  **규칙: 프레임/샘플 루프에는 반드시 `autoreleasepool`.** encode 펌프·FrameSequence(순차·시크)·SmartCrop·loudnessGain 모두 넣었다(2026-10-02).
+  새 루프를 추가할 때 빠뜨리면 Mac에서는 멀쩡하고 기기에서만 긴 랠리가 죽는다.
+  -11819(미디어 서버 리셋)·-11847은 `legacyEncode`로 떨어지지 않고 바로 던진다 — 죽은 자산으로 두 번째 전체 내보내기를 하면 같은 오류로 진짜 원인만 가린다.
+  호출자가 새 자산으로 재시도한다: 세션 렌더 루프와 `ReelBuilder.build(reload:)` 모두. `export(session:)`(프리셋 경로·병합)에도 워치독이 있다.
+  FrameSequence는 리더가 중간에 죽으면 부분 프레임을 성공으로 넘기지 않고 던진다.
+- 백그라운드 진입도 별도로 막는다: iOS는 백그라운드 앱의 GPU 사용을 막는다.
+  그래서 렌더 루프는 클립 사이에서 `waitForForeground()`로 멈추고, 실패한 클립은 한 번 다시 시도한다.
+  첫 렌더는 실패한 클립을 건너뛰고 끝까지 간 뒤 "클립 N개를 만들지 못함"을 띄운다. `Session.partialRender`(RenderStamp)가
+  설정과 같으면 다음 적용은 빠진 클립만 만든다. 재렌더(staged)는 여전히 전부 아니면 전무다.
+  스탬프 비교는 `RenderStamp.matches`로 한다 — 픽셀에 영향을 주는 것(구간 start/end·화면비·등급·크롭·캡션·언어)만 본다.
+  즐겨찾기·타구 수·클립별 대상까지 비교하면 별 하나에 재개가 풀려 전체 재렌더가 됐다. 미완성 렌더 중 트림·나누기는
+  스탬프 설정으로 굽고(`rerenderClip`) 스탬프를 새 구간으로 맞춘다. 실패한 클립을 지워 남은 게 전부 있으면 렌더 완료로 기록한다.
+  백그라운드 GPU가 없어 렌더가 대기에 들어가면 연속 처리 작업을 끝낸다(`BackgroundWork.pause`) — 잠금 화면 진행률이 멈춘 채 남았다.
+  시스템 오류의 localizedDescription을 그대로 띄우지 말 것 — `failureText`가 원인별 문구(+코드)로 바꾼다.
+- 백그라운드 이어하기(`Store/BackgroundWork.swift`, 2026-10-02): iOS 26의 `BGContinuedProcessingTask`로 감지·렌더를 앱 밖에서도
+  계속한다. 사용자가 누른 순간(앱이 앞에 있을 때)에만 제출할 수 있어서 다중 가져오기는 큐 전체를 작업 하나로 감싼다(`processQueued`).
+  식별자는 `<bundle>.process.<uuid>` — Info.plist `BGTaskSchedulerPermittedIdentifiers`의 와일드카드와 맞아야 한다.
+  클립 인코딩은 GPU라서 `com.apple.developer.background-tasks.continued-processing.gpu` 권한과 기기 지원
+  (`BGTaskScheduler.supportedResources`)이 둘 다 있어야 백그라운드에서 돈다. 없으면 GPU 요청이 거절되고 CPU 전용으로 다시 제출한다 —
+  그때 감지는 계속되고 렌더는 클립 사이에서 멈춘다. 시뮬레이터는 제출 자체가 BGTaskSchedulerErrorDomain 1로 실패한다.
+  완료·실패·일시정지 알림은 로컬 알림이고 앱이 앞에 있으면 보내지 않는다. 권한은 첫 처리 시작 때 묻는다.
+  알림 트리거는 nil이 아니라 1초다 — nil로 백그라운드 진입 순간 보내면 오류 없이 사라졌다(시뮬레이터 실측).
 - 가져오기는 마지막에 고른 종목으로 감지한다(`SessionStore.lastSport`, 기본값 없음 → 첫 가져오기 전에 묻는다).
   사진·파일 다중 선택은 전부 등록한 뒤 `processQueued`가 한 건씩 감지한다. 동시에 돌리면 원본을 여러 개 디코딩한다.
 - 앱에서 찍은 녹화는 먼저 사진 앱에 저장하고 그 자산을 참조한다. 권한이 없을 때만 앱 안에 복사본을 둔다.
@@ -248,5 +279,9 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - EEA 동의는 UMP(`UserMessagingPlatform`, GoogleMobileAds가 끌고 오는 패키지)로 받는다. 동의 → ATT → SDK 시작 순서이고,
   `canRequestAds`가 false면 SDK를 시작하지 않는다. 동의 재설정 진입점은 라이브러리 지구본 메뉴에 있다(필요한 지역에서만 보인다).
   AdMob 콘솔에 GDPR 메시지를 만들어 두지 않으면 폼이 뜨지 않는다.
-- `PrivacyInfo.xcprivacy`는 NSPrivacyTracking true + AdMob이 모으는 항목을 적는다. NSPrivacyTrackingDomains 키는 아예 뺀다(빈 배열로 두면 업로드가 ITMS-91064로 거절됐다, 2026-09-30) —
-  여기에 도메인을 적으면 ATT 거부 시 그 도메인이 차단돼 비맞춤 광고와 리워드까지 끊긴다. App Store Connect 설문은 APP_STORE.md §5 표와 같게.
+- `PrivacyInfo.xcprivacy`에는 **"추적"이 어디에도 없어야 한다** — 최상위 NSPrivacyTracking false, 항목별 Tracking도 전부 false.
+  도메인 없이 추적을 한 군데라도 true로 두면 업로드가 ITMS-91064로 거절된다. 2026-09-30에 세 번 거절됐다:
+  빌드 11(true+빈 배열) · 12(true, 키 삭제) · 13(false인데 기기ID·광고 데이터 항목이 Tracking true).
+  그래서 기기ID·광고 데이터 항목은 앱 매니페스트에서 뺐다 — 구글 SDK 매니페스트가 직접 선언한다. 같은 계정의 FC Scope도 이 모양으로 통과했다.
+  도메인을 적는 해법은 금지: ATT 거부 시 그 도메인이 차단돼 비맞춤 광고와 리워드까지 끊긴다.
+  App Store Connect 설문은 그대로 "추적에 사용"이다(APP_STORE.md §5 표) — 설문은 SDK를 포함한 앱 전체 기준이다.
