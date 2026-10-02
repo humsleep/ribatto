@@ -4,56 +4,43 @@
 <dict>
 	<!-- The video and its audio never leave the device: every frame and every
 	     sample is analysed here, and there is no account and no analytics SDK.
-	     What does leave is what the ads send. Free-tier ads come from Google
-	     AdMob (Store/AdsManager.swift), which uses the advertising identifier
-	     once the ATT prompt is accepted — that is tracking in Apple's sense, so
-	     this is true. The app's own code makes one other call, CLGeocoder in
-	     PlaceLookup, which sends a video's GPS coordinate to Apple to name the
-	     court; that is not tracking.
+	     What does leave is what the ads send, and that is Google AdMob's doing
+	     (Store/AdsManager.swift), not this app's own code. The app's code makes
+	     one other call, CLGeocoder in PlaceLookup, which sends a video's GPS
+	     coordinate to Apple to name the court; that is not tracking.
 
-	     NSPrivacyTrackingDomains is left out on purpose. Domains listed there
-	     are blocked outright when the user declines ATT, which would stop the
-	     non-personalised ads (and the rewarded ad that opens Pro) as well.
-	     Google's SDK ships its own manifest for its endpoints. The key is
-	     absent rather than an empty array: build 11 carrying `<array/>` was
-	     refused at upload with ITMS-91064 "Invalid tracking information"
-	     (2026-09-30), although the rule the mail quotes is satisfied.
+	     The rule Apple's upload check enforces (ITMS-91064): with no
+	     NSPrivacyTrackingDomains, NOTHING in this file may say tracking — not
+	     the top-level NSPrivacyTracking and not any per-type
+	     NSPrivacyCollectedDataTypeTracking. Three builds were refused on
+	     2026-09-30: 11 (true + empty domain array), 12 (true, no domain key)
+	     and 13 (false, but Device ID / Advertising Data marked tracking).
+	     FC Scope on the same account ships AdMob with exactly this shape.
+
+	     Listing Google's ad domains instead is not an option: requests to
+	     listed domains are blocked when the user declines ATT, which would also
+	     stop the non-personalised ads and the rewarded ad that opens the pass.
+
+	     Device ID and Advertising Data are therefore not listed here. They are
+	     the ad SDK's collection, and GoogleMobileAds.framework's own manifest
+	     declares them (Device ID as tracking). Apple's privacy report merges
+	     every manifest in the bundle, so nothing is hidden. The App Store
+	     Connect answers still say "used to track" for both (APP_STORE.md §5):
+	     that label covers the whole app including the SDK, and the ATT prompt
+	     stays.
 	     Keep this in step with Views/PrivacyView.swift and docs/privacy.html. -->
 	<key>NSPrivacyTracking</key>
-	<true/>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
 
-	<!-- What the AdMob SDK collects, per Google's App Store data disclosure
-	     guidance. None of it is linked to the user by this app (there is no
+	<!-- The rest of what the AdMob SDK collects, per Google's App Store data
+	     disclosure guidance, none of it tracking (see above for the two that
+	     are). None of it is linked to the user by this app (there is no
 	     account to link it to). The App Privacy answers in App Store Connect
-	     must say the same — "Data Not Collected" is no longer true. -->
+	     are a superset — "Data Not Collected" is no longer true. -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
-		<dict>
-			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypeDeviceID</string>
-			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypeTracking</key>
-			<true/>
-			<key>NSPrivacyCollectedDataTypePurposes</key>
-			<array>
-				<string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
-				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
-			</array>
-		</dict>
-		<dict>
-			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypeAdvertisingData</string>
-			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypeTracking</key>
-			<true/>
-			<key>NSPrivacyCollectedDataTypePurposes</key>
-			<array>
-				<string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
-				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
-			</array>
-		</dict>
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeProductInteraction</string>

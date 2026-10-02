@@ -133,6 +133,87 @@ Detection works from the sound of racket impacts, so footage without racket
 strikes will correctly report that no rallies were found.
 ```
 
+### 4-2. 2.1 Information Needed 회신 (2026-10-01 요청, 그대로 복사)
+
+신규 개발자 계정이라 받은 정보 요청. **App Store Connect 회신**과 **심사 정보 메모** 두 곳 모두에 붙인다
+(메모는 4-1 문안 뒤에 이어 붙인다). 화면 녹화는 실기기에서 찍어 회신에 첨부한다.
+
+```
+Thank you for reviewing Ribatto. Answers to each point follow.
+
+1. SCREEN RECORDING
+Attached: a screen recording on a physical iPhone running the latest iOS. It
+starts by launching the app and shows the typical flow: onboarding, the ad
+consent and tracking prompts, importing a match video from Photos, choosing a
+sport, automatic rally detection, playing a clip, trimming it, making a
+vertical reel and saving it to Photos, then opening the one-hour pass by
+watching a rewarded ad. The app has no accounts (no registration, login or
+deletion), no user-generated content shared with other users, and no paid
+content: the only gated features open for one hour after a rewarded video ad,
+and there are no in-app purchases.
+
+2. PURPOSE AND AUDIENCE
+Ribatto is for amateur tennis and other racket-sport players who film their
+own matches on a phone. A match recording is mostly dead time: walking,
+picking up balls, changing ends. Finding the few rallies worth sharing means
+scrubbing through 30-90 minutes of video by hand. Ribatto listens for the
+sound of the ball being struck, finds every rally automatically, and cuts each
+one into a clip ready for Instagram Reels, YouTube Shorts or TikTok, entirely
+on the device. It also keeps a simple season record (rallies, courts, longest
+point).
+
+3. SETUP AND MAIN FEATURES
+No login is required and there is nothing to configure.
+- Sample file: https://humsleep.github.io/apps/ribatto/review/ (save the video
+  to Photos).
+- Library tab: tap + > "From Photos" and pick the sample. On first import the
+  app asks for the sport: choose Tennis. Detection starts automatically and
+  clips appear in about a minute.
+- Session screen: open a clip to play it; the Trim button adjusts its length; "Make a Reel"
+  builds one vertical video from several rallies; clips can be saved to Photos.
+- Reels tab: finished reels. Season tab: statistics.
+- Pass: tap "Free pass" under the Library title, then "Watch an ad". After the
+  rewarded ad ends, export quality, framing and ad-free use are unlocked for
+  one hour. Review builds use Google's test ad units, labelled "Test mode".
+
+4. EXTERNAL SERVICES
+- Google AdMob (Google Mobile Ads SDK) for banner, interstitial and rewarded
+  ads in the free tier, and Google's User Messaging Platform for the consent
+  form required in the EEA, UK and Switzerland.
+- Apple CLGeocoder, only to turn a video's own GPS tag into a court name.
+Everything else uses Apple's on-device frameworks (AVFoundation, Accelerate,
+SoundAnalysis, Vision, Photos). There is no server of ours, no account or
+authentication service, no payment processor, no analytics service and no
+cloud AI service. Videos never leave the device.
+
+5. REGIONAL DIFFERENCES
+The app works the same in every region where it is offered. The only
+differences are legal ones around ads: users in the EEA, UK and Switzerland see
+Google's consent form before any ad is requested, and the tracking prompt
+appears where iOS shows it. The interface is available in English, Korean,
+Japanese, Spanish, Portuguese, German, French, Italian and Simplified Chinese.
+The app is not offered in mainland China.
+
+6. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
+Not applicable. The app is not in a regulated industry and contains no
+protected third-party content. It only processes videos the user recorded.
+Bundled fonts (Anton, Bebas Neue) are under the SIL Open Font License and the
+Pow library under MIT; their licenses are shown in the app (globe menu at the
+top of the Library > Open-source licences).
+```
+
+#### 화면 녹화 순서 (실기기, 최신 iOS, 2~4분)
+
+1. 앱을 지웠다가 TestFlight에서 다시 설치한다 — 온보딩·동의·추적 창이 처음부터 나오게
+2. 제어 센터 → 화면 기록 시작 → **홈 화면에서 앱 아이콘을 누르는 것부터** 찍는다
+3. 인트로 → 온보딩 → (동의 창) → 추적 허용 창
+4. + → 사진 보관함에서 → 샘플 영상 → 종목 Tennis → 감지 완료까지 (기다리는 구간은 그대로 둬도 된다)
+5. 클립 하나 재생 → 트림 버튼(구간 선택 아이콘)으로 길이 조정 → 릴스 만들기 → 사진에 저장
+6. 무료 패스 → 광고 보기 → 끝까지 시청 → 패스 표시 확인
+7. 릴스 탭·시즌 탭을 잠깐 보여주고 기록 종료
+
+얼굴이 나오지 않는 샘플 영상만 쓴다. 알림이 녹화에 찍히지 않게 방해 금지 모드를 켠다.
+
 ## 5. 개인정보 처리방침
 
 공개 문서는 https://humsleep.github.io/apps/ribatto/privacy/ 다(한/영, 원본은 `~/workspace/apps/ribatto/privacy/index.html`). 앱 안의 PrivacyView와 문구를 맞춘다.
