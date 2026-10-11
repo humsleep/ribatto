@@ -33,7 +33,9 @@ struct TargetPlayerSheet: View {
                 } else {
                     VStack(spacing: 12) {
                         if loading { ProgressView() }
-                        Text(L.s(loading ? "target_loading" : "source_missing", lang))
+                        Text(L.s(loading ? "target_loading"
+                                 : store.sourceMissing(session) ? store.sourceProblemKey(session)
+                                 : "target_frame_failed", lang))
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -228,15 +230,21 @@ struct TargetPlayerSheet: View {
         gen.maximumSize = CGSize(width: 1280, height: 1280)
         gen.requestedTimeToleranceBefore = CMTime(seconds: 0.2, preferredTimescale: 600)
         gen.requestedTimeToleranceAfter = CMTime(seconds: 0.2, preferredTimescale: 600)
-        guard let cg = try? gen.copyCGImage(
-            at: CMTime(seconds: t, preferredTimescale: 600), actualTime: nil) else {
+        // Off the main actor: a synchronous 4K (or iCloud) frame grab plus
+        // Vision froze the sheet on every scrub.
+        let found = await Task.detached(priority: .userInitiated) { () -> (CGImage, [CGRect])? in
+            guard let cg = try? gen.copyCGImage(
+                at: CMTime(seconds: t, preferredTimescale: 600), actualTime: nil) else { return nil }
+            return (cg, Self.detectPeople(cg))
+        }.value
+        // A slower earlier request must not overwrite a newer frame.
+        guard t == frameTime else { return }
+        guard let (cg, people) = found else {
             loading = false
             return
         }
-        // A slower earlier request must not overwrite a newer frame.
-        guard t == frameTime else { return }
         image = UIImage(cgImage: cg)
-        detected = Self.detectPeople(cg)
+        detected = people
         loading = false
     }
 

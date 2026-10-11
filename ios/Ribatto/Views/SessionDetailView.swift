@@ -297,6 +297,7 @@ struct SessionDetailView: View {
                         .font(.subheadline.bold())
                 }
                 .rcSecondary()
+                .disabled(store.sourceMissing(session))
                 .padding(.top, 4)
                 // A session that finds nothing is the only signal that the
                 // detector did not generalise beyond the one recording its
@@ -591,10 +592,17 @@ struct SessionDetailView: View {
             }
 
             if store.sourceMissing(session) {
-                Label(L.s("source_missing", lang), systemImage: "exclamationmark.triangle.fill")
+                let problem = store.sourceProblemKey(session)
+                Label(L.s(problem, lang), systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(Theme.warning)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if problem != "source_missing",
+                   let url = URL(string: UIApplication.openSettingsURLString) {
+                    Button(L.s("photos_open_settings", lang)) { UIApplication.shared.open(url) }
+                        .font(.caption.bold())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
 
             // Settings only record a choice — nothing re-processes until this

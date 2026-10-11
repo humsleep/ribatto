@@ -30,6 +30,9 @@ struct TrimSheet: View {
     /// The original could not be opened (deleted from Photos). Without this
     /// the strip spun forever and Apply went on to fail.
     @State private var sourceMissing = false
+    /// The strip could not be cut (window failed). Without this the spinner
+    /// never stopped; the steppers below still trim.
+    @State private var stripUnavailable = false
 
     /// The strip grows with the text size — it is the main control here, not
     /// decoration — but only so far: past this it pushes the buttons off a
@@ -252,7 +255,9 @@ struct TrimSheet: View {
             } else {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Theme.surfaceHigh)
-                    .overlay { if !sourceMissing { ProgressView().tint(Theme.accent) } }
+                    .overlay {
+                        if !sourceMissing && !stripUnavailable { ProgressView().tint(Theme.accent) }
+                    }
             }
         }
         .frame(maxWidth: .infinity)
@@ -354,6 +359,7 @@ struct TrimSheet: View {
         player = p
         seek(to: start)
         windowAsset = await window(from: asset)
+        stripUnavailable = windowAsset == nil
     }
 
     /// The strip's asset: only the window the handles can reach, cut out of the

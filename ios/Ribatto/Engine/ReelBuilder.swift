@@ -239,6 +239,7 @@ enum ReelBuilder {
                       pro: Bool,
                       to output: URL,
                       reload: ((UUID) async -> AVAsset?)? = nil,
+                      waitUntilActive: (@MainActor () async -> Void)? = nil,
                       progress: @MainActor @escaping (Int, Int) -> Void) async throws -> ReelPlan {
         guard !items.isEmpty else {
             throw NSError(domain: "Ribatto", code: 50,
@@ -290,11 +291,16 @@ enum ReelBuilder {
                                               targetPlayer: entry.item.targetPlayer)
             }
             let asset = sid.flatMap { fresh[$0] } ?? entry.item.asset
+            // Encoding is GPU work iOS refuses in the background. Each piece
+            // waits for the app to come back instead of failing — leaving to
+            // check Instagram mid-build used to throw the whole reel away.
+            await waitUntilActive?()
             do {
                 try await attempt(asset)
             } catch {
                 guard let sid, let reload else { throw error }
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await waitUntilActive?()
                 guard let replacement = await reload(sid) else { throw error }
                 fresh[sid] = replacement
                 try await attempt(replacement)

@@ -404,10 +404,8 @@ final class SessionStore: ObservableObject {
     }
 
     func setPlaceName(_ s: Session, _ name: String?) {
-        var v = s
         let trimmed = name?.trimmingCharacters(in: .whitespaces)
-        v.placeName = (trimmed?.isEmpty ?? true) ? nil : trimmed
-        save(v)
+        mutate(s.id) { $0.placeName = (trimmed?.isEmpty ?? true) ? nil : trimmed }
     }
 
     /// Sessions imported without a network connection never got a place name;
@@ -436,6 +434,25 @@ final class SessionStore: ObservableObject {
         }
         let url = sourceURL(s)
         return fm.fileExists(atPath: url.path) ? AVURLAsset(url: url) : nil
+    }
+
+    /// Why the original can't be read, as an L10n key. A Photos original
+    /// that is merely out of reach — access turned off, or not in a limited
+    /// selection — used to be reported as deleted, and a user told their
+    /// match was gone may well delete the session.
+    func sourceProblemKey(_ s: Session) -> String {
+        guard s.assetIdentifier != nil else { return "source_missing" }
+        switch PHPhotoLibrary.authorizationStatus(for: .readWrite) {
+        case .authorized: return "source_missing"
+        case .limited: return "photos_limited_missing"
+        default: return "photos_access_needed"
+        }
+    }
+
+    func missingMessage(_ id: UUID) -> String {
+        guard let s = sessions.first(where: { $0.id == id }) else { return missingSourceMessage }
+        let key = sourceProblemKey(s)
+        return key == "source_missing" ? missingSourceMessage : L.s(key, lang)
     }
 
     /// True when the original is gone and nothing can be re-rendered.
@@ -695,9 +712,13 @@ final class SessionStore: ObservableObject {
     // Changing a setting only records the choice. Nothing is re-processed
     // until the user presses the apply button — picking three settings used to
     // kick off three full re-detects.
+    //
+    // Each writes one field onto the store's current copy. They used to save
+    // the caller's whole snapshot, and a sheet holding an older `Session`
+    // put back the rallies and render record from before a detect or render.
 
     func setSport(_ s: Session, _ sport: Sport) {
-        var v = s; v.sport = sport; save(v)
+        mutate(s.id) { $0.sport = sport }
         lastSport = sport
     }
 
@@ -710,16 +731,16 @@ final class SessionStore: ObservableObject {
         set { UserDefaults.standard.set(newValue?.rawValue, forKey: Self.lastSportKey) }
     }
     func setSensitivity(_ s: Session, _ sens: Sensitivity) {
-        var v = s; v.sensitivity = sens; save(v)
+        mutate(s.id) { $0.sensitivity = sens }
     }
     func setAspect(_ s: Session, _ aspect: AspectSetting) {
-        var v = s; v.aspect = aspect; save(v)
+        mutate(s.id) { $0.aspect = aspect }
     }
     func setCaption(_ s: Session, _ caption: CaptionSettings) {
-        var v = s; v.caption = caption; save(v)
+        mutate(s.id) { $0.caption = caption }
     }
     func setSmartCrop(_ s: Session, _ on: Bool) {
-        var v = s; v.smartCrop = on; save(v)
+        mutate(s.id) { $0.smartCrop = on }
     }
 
     /// Starring is a library affordance, not an export setting: it must never
@@ -735,10 +756,13 @@ final class SessionStore: ObservableObject {
     /// order, so this renumbers everything after it — which is also why the
     /// clip files are rebuilt rather than patched.
     @discardableResult
-    func addRally(to session: Session, start: Double, end: Double) async -> Bool {
-        guard !isBusy(session.id), end - start >= minClipSeconds,
-              let live = sessions.first(where: { $0.id == session.id })
-        else { return false }
+    /// Nil on success, otherwise the L10n key that says why. Every refusal
+    /// used to show "Import failed", which explained none of them.
+    func addRally(to session: Session, start: Double, end: Double) async -> String? {
+        guard !isBusy(session.id) else { return "busy_wait" }
+        guard end - start >= minClipSeconds else { return "add_rally_short" }
+        guard let live = sessions.first(where: { $0.id == session.id }) else { return "render_failed" }
+        guard !sourceMissing(live) else { return sourceProblemKey(live) }
         // A rally that lands on top of one already there is a double tap, not a
         // second point: the sheet opens at the same default position every time,
         // so accepting it twice produced two clips of the same moment. Split is
@@ -748,7 +772,7 @@ final class SessionStore: ObservableObject {
             let overlap = min(seg.end, end) - max(seg.start, start)
             return overlap > 0.5 * min(seg.end - seg.start, end - start)
         }
-        guard !overlapsExisting else { return false }
+        guard !overlapsExisting else { return "add_rally_overlap" }
         // The sheet was handed a snapshot; anything written while it was open
         // would be lost if we edited that copy.
         var segments = live.segments ?? []
@@ -770,7 +794,7 @@ final class SessionStore: ObservableObject {
         await renumberAndRender(session.id, segments: segments,
                                 renderedCount: rendered, insertedAt: at,
                                 newIndices: [at])
-        return true
+        return nil
     }
 
 
@@ -959,10 +983,10 @@ final class SessionStore: ObservableObject {
     /// Picking a player only matters through the smart-crop path, so turn that
     /// on with it; clearing the player leaves smart crop as the user had it.
     func setTargetPlayer(_ s: Session, _ target: TargetPlayer?) {
-        var v = s
-        v.targetPlayer = target
-        if target != nil { v.smartCrop = true }
-        save(v)
+        mutate(s.id) {
+            $0.targetPlayer = target
+            if target != nil { $0.smartCrop = true }
+        }
     }
 
     /// Points ONE clip at a different player, or back at the session's choice
@@ -992,7 +1016,7 @@ final class SessionStore: ObservableObject {
         progress[session.id] = .render(done: clip.index, total: segments.count)
         defer { clearProgressUnlessFailed(session.id) }
         guard let source = await loadAsset(updated) else {
-            progress[session.id] = .failed(missingSourceMessage)
+            progress[session.id] = .failed(missingMessage(session.id))
             return false
         }
         let base = String(format: "clip_%02d", clip.index + 1)
@@ -1055,7 +1079,7 @@ final class SessionStore: ObservableObject {
         do {
             progress[sessionID] = .audio
             guard let source = await loadAsset(s) else {
-                progress[sessionID] = .failed(missingSourceMessage)
+                progress[sessionID] = .failed(missingMessage(sessionID))
                 return
             }
             let sport = s.sport, sens = s.sensitivity, dur = s.duration
@@ -1196,7 +1220,7 @@ final class SessionStore: ObservableObject {
         // from Photos, leaving the user with nothing at all.
         progress[sessionID] = .audio
         guard var source = await loadAsset(s) else {
-            progress[sessionID] = .failed(missingSourceMessage)
+            progress[sessionID] = .failed(missingMessage(sessionID))
             return
         }
         let orient = s.effectiveOrientation
@@ -1411,7 +1435,7 @@ final class SessionStore: ObservableObject {
         progress[session.id] = .render(done: index, total: segments.count)
         defer { clearProgressUnlessFailed(session.id) }
         guard let source = await loadAsset(session) else {
-            progress[session.id] = .failed(missingSourceMessage)
+            progress[session.id] = .failed(missingMessage(session.id))
             return false
         }
         let base = String(format: "clip_%02d", index + 1)
@@ -1622,14 +1646,17 @@ final class SessionStore: ObservableObject {
         let ordered = pairs
         guard !ordered.isEmpty else { return nil }
         let key = ordered[0].session.id
-        guard !isBusy(key) else { return nil }
-        progress[key] = .reel(done: 0, total: ordered.count)
+        // Every session in the reel, not only the first: the others could be
+        // re-rendered or trimmed under the build, renaming the files it reads.
+        let involved = Set(ordered.map(\.session.id))
+        guard !involved.contains(where: isBusy) else { return nil }
+        for sid in involved { progress[sid] = .reel(done: 0, total: ordered.count) }
         // A reel re-renders every rally from its original, so it is the longest
         // job the app runs — and the one a user is most likely to walk away
         // from. Without this, switching to Instagram to wait killed it.
         let task = beginBackgroundTask()
         defer {
-            clearProgressUnlessFailed(key)
+            for sid in involved { clearProgressUnlessFailed(sid) }
             endBackgroundTask(task)
         }
         // Read once, before the first await: a pass that ends while the
@@ -1642,7 +1669,13 @@ final class SessionStore: ObservableObject {
         for pair in ordered {
             let sid = pair.session.id
             if assets[sid] == nil {
-                guard let a = await loadAsset(pair.session) else { continue }
+                // All or nothing. Skipping a session whose original is gone
+                // made a shorter reel without a word, and its sidecar still
+                // listed the rallies that were never in it.
+                guard let a = await loadAsset(pair.session) else {
+                    progress[key] = .failed(missingMessage(sid))
+                    return nil
+                }
                 assets[sid] = a
             }
             guard let asset = assets[sid] else { continue }
@@ -1661,7 +1694,7 @@ final class SessionStore: ObservableObject {
                                   sessionID: sid))
         }
         guard !items.isEmpty else {
-            progress[key] = .failed(missingSourceMessage)
+            progress[key] = .failed(missingMessage(key))
             return nil
         }
 
@@ -1694,8 +1727,13 @@ final class SessionStore: ObservableObject {
                     guard let self,
                           let s = self.sessions.first(where: { $0.id == sid }) else { return nil }
                     return await self.loadAsset(s)
+                },
+                waitUntilActive: {
+                    while UIApplication.shared.applicationState == .background {
+                        try? await Task.sleep(for: .milliseconds(500))
+                    }
                 }) { [weak self] done, total in
-                    self?.progress[key] = .reel(done: done, total: total)
+                    for sid in involved { self?.progress[sid] = .reel(done: done, total: total) }
                 }
             // Poster and sidecar, so the Reels tab can show it without opening
             // every file.

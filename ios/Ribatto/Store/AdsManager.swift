@@ -349,6 +349,10 @@ final class AdsManager: NSObject, ObservableObject {
         // the only reload sat after a successful present. No-fill is the
         // normal answer for a new app, so that was the common case.
         guard showing else { return }
+        // A render can finish with the app in the background (continued
+        // processing). Presenting then is an impression nobody saw — the
+        // invalid traffic that gets an AdMob account suspended.
+        guard UIApplication.shared.applicationState == .active else { return }
         guard let ad = interstitial else { loadInterstitial(); return }
         guard Date().timeIntervalSince(lastInterstitial) >= Self.interstitialInterval
         else { return }

@@ -33,6 +33,12 @@ struct ReelSheet: View {
     /// nil keeps whatever each session's own caption looks like.
     @State private var preset: ReelPreset? = nil
     @State private var building = false
+    /// The delayed interstitial after a build. Cancelled when the sheet goes,
+    /// or the ad landed on whatever screen the user had moved to.
+    @State private var adTask: Task<Void, Never>?
+    /// The loop-to-start observer for the built reel. Block observers are not
+    /// removed for us; each rebuild used to add another that outlived the sheet.
+    @State private var endObserver: NSObjectProtocol?
     @State private var done: (url: URL, plan: ReelPlan)?
     @State private var player: AVPlayer?
     @State private var message: String?
@@ -110,13 +116,20 @@ struct ReelSheet: View {
         // Presented from the sheet itself, so it does not land behind it.
         .onChange(of: done?.url) { _, url in
             guard url != nil else { return }
-            Task {
+            adTask?.cancel()
+            adTask = Task {
                 try? await Task.sleep(for: .milliseconds(600))
+                guard !Task.isCancelled else { return }
                 // The ad has its own sound; a reel playing underneath it
                 // talked over the ad and kept running unseen.
                 player?.pause()
                 ads.showInterstitialIfDue()
             }
+        }
+        .onDisappear {
+            adTask?.cancel()
+            if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+            endObserver = nil
         }
         .onAppear {
             guard entries.isEmpty else { return }
@@ -559,22 +572,24 @@ struct ReelSheet: View {
         // A busy session used to report that the user's original video was
         // gone from Photos, which is the most alarming thing the app can say
         // and was untrue.
-        if store.isBusy(pairs[0].session.id) {
+        if pairs.contains(where: { store.isBusy($0.session.id) }) {
             message = L.s("busy_wait", lang)
             return
         }
         guard let out = await store.buildReel(from: pairs, target: target,
                                               frame: frame, pace: pace,
                                               preset: preset) else {
-            message = store.sourceMissing(pairs[0].session)
-                ? L.s("source_missing", lang) : L.s("render_failed", lang)
+            message = pairs.first(where: { store.sourceMissing($0.session) })
+                .map { L.s(store.sourceProblemKey($0.session), lang) }
+                ?? L.s("render_failed", lang)
             return
         }
         player = AVPlayer(url: out.url)
         // Without this the transport button claims to play at the end of the
         // reel and nothing moves — the user cannot rewatch what they just made.
         player?.actionAtItemEnd = .pause
-        NotificationCenter.default.addObserver(
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: player?.currentItem, queue: .main) { [weak player] _ in
                 player?.seek(to: .zero)

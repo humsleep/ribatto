@@ -17,7 +17,7 @@ struct AddRallySheet: View {
     @State private var centre: Double = 0
     @State private var length: Double = 12
     @State private var working = false
-    @State private var failed = false
+    @State private var failure: String?
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Kept inside the source, and never shorter than a clip is allowed to be.
@@ -80,13 +80,16 @@ struct AddRallySheet: View {
                         .disabled(working)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    // No player means the original could not be loaded; adding
+                    // would shift the clip files and then fail the render.
                     Button(L.s("add_rally", lang)) { add() }
                         .font(.subheadline.bold())
-                        .disabled(working)
+                        .disabled(working || player == nil)
                 }
             }
-            .alert(L.s("import_failed", lang), isPresented: $failed) {
-                Button("OK", role: .cancel) {}
+            .alert(L.s(failure ?? "render_failed", lang), isPresented: Binding(
+                get: { failure != nil }, set: { if !$0 { failure = nil } })) {
+                Button("OK", role: .cancel) { failure = nil }
             }
         }
         .preferredColorScheme(.dark)
@@ -128,9 +131,9 @@ struct AddRallySheet: View {
     private func add() {
         working = true
         Task {
-            let ok = await store.addRally(to: session, start: start, end: end)
+            let problem = await store.addRally(to: session, start: start, end: end)
             working = false
-            if ok { dismiss() } else { failed = true }
+            if let problem { failure = problem } else { dismiss() }
         }
     }
 }

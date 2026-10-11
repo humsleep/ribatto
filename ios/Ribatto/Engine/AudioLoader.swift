@@ -38,16 +38,23 @@ enum AudioLoader {
         let seconds = CMTimeGetSeconds(try await asset.load(.duration))
         samples.reserveCapacity((seconds.isFinite ? Int(seconds) : 0) * sampleRate + sampleRate)
 
-        while let buf = output.copyNextSampleBuffer() {
-            guard let block = CMSampleBufferGetDataBuffer(buf) else { continue }
-            let length = CMBlockBufferGetDataLength(block)
-            let count = length / MemoryLayout<Float>.size
-            let old = samples.count
-            samples.append(contentsOf: repeatElement(0, count: count))
-            samples.withUnsafeMutableBytes { raw in
-                _ = CMBlockBufferCopyDataBytes(
-                    block, atOffset: 0, dataLength: length,
-                    destination: raw.baseAddress!.advanced(by: old * MemoryLayout<Float>.size))
+        // A pool per buffer, as for every sample loop (CLAUDE.md): over a
+        // 90-minute match the reader's buffers otherwise pile up until the
+        // loop ends, on top of the samples array itself.
+        var reading = true
+        while reading {
+            autoreleasepool {
+                guard let buf = output.copyNextSampleBuffer() else { reading = false; return }
+                guard let block = CMSampleBufferGetDataBuffer(buf) else { return }
+                let length = CMBlockBufferGetDataLength(block)
+                let count = length / MemoryLayout<Float>.size
+                let old = samples.count
+                samples.append(contentsOf: repeatElement(0, count: count))
+                samples.withUnsafeMutableBytes { raw in
+                    _ = CMBlockBufferCopyDataBytes(
+                        block, atOffset: 0, dataLength: length,
+                        destination: raw.baseAddress!.advanced(by: old * MemoryLayout<Float>.size))
+                }
             }
         }
         if reader.status == .failed {
