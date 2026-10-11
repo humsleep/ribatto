@@ -34,15 +34,17 @@ enum RallyDetector {
                        sampleRate: Int,
                        duration: Double,
                        sensitivity: Sensitivity,
-                       sport: Sport) -> [RallySegment] {
+                       sport: Sport,
+                       progress: ((Double) -> Void)? = nil) -> [RallySegment] {
         let p = sensitivity.params
         let nfrm = (samples.count - nfft) / hop
         guard nfrm > 10 else { return [] }
         let hopS = Double(hop) / Double(sampleRate)
 
         // ── per-frame band magnitudes ──
+        // The FFT pass is nearly all of the time, so it is the progress.
         let (bandE, voiceE) = bandEnergies(samples: samples, sampleRate: sampleRate,
-                                           nfrm: nfrm, band: sport.band)
+                                           nfrm: nfrm, band: sport.band, progress: progress)
 
         // ── spectral flux (positive rises only) ──
         var flux = [Float](repeating: 0, count: nfrm)
@@ -181,7 +183,9 @@ enum RallyDetector {
     // MARK: - FFT band energies
 
     private static func bandEnergies(samples: [Float], sampleRate: Int, nfrm: Int,
-                                     band: (lo: Float, hi: Float)) -> ([Float], [Float]) {
+                                     band: (lo: Float, hi: Float),
+                                     progress: ((Double) -> Void)? = nil) -> ([Float], [Float]) {
+        let every = max(1, nfrm / 100)
         let half = nfft / 2
         // numpy-compatible symmetric Hann: 0.5 - 0.5*cos(2πn/(N-1))
         var window = [Float](repeating: 0, count: nfft)
@@ -212,6 +216,7 @@ enum RallyDetector {
         var mags = [Float](repeating: 0, count: half)
 
         for f in 0..<nfrm {
+            if let progress, f % every == 0 { progress(Double(f) / Double(nfrm)) }
             let off = f * hop
             samples.withUnsafeBufferPointer { src in
                 window.withUnsafeBufferPointer { win in

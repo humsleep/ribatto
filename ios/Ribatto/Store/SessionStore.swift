@@ -31,6 +31,9 @@ final class SessionStore: ObservableObject {
     @Published private(set) var rendersInBackground = false
     /// Mirrored from ProPass so the export path knows the tier.
     @Published var isPro = false
+    /// Live progress, envelope and found rallies while a match is analysed.
+    /// Owned here, observed only by the progress card.
+    let analysis = AnalysisFeed()
 
     private let fm = FileManager.default
     /// Shown when iOS stopped a render because the app was in the background
@@ -146,8 +149,14 @@ final class SessionStore: ObservableObject {
               let s = sessions.first(where: { $0.id == id }) else { return }
         let fraction: Double, key: String
         switch stage {
-        case .queued, .audio: fraction = 0.02; key = "stage_audio"
-        case .detect: fraction = 0.08; key = "stage_detect"
+        // Decoding a long match is minutes, so the system bar follows the
+        // real fraction through it instead of sitting at 2%.
+        case .queued, .audio:
+            fraction = 0.1 * (analysis.items[id]?.overall ?? 0)
+            key = "stage_audio"
+        case .detect:
+            fraction = 0.1 * (analysis.items[id]?.overall ?? AnalysisFeed.audioShare)
+            key = "stage_detect"
         case .render(let d, let t):
             fraction = 0.1 + 0.9 * Double(d) / Double(max(t, 1)); key = "stage_render"
         default: return
@@ -1090,6 +1099,11 @@ final class SessionStore: ObservableObject {
         defer { endBackgroundTask(task) }
         beginWork(sessionID)
         defer { endWork(sessionID) }
+        // Through the render too: the strip stays up, smaller, so the user
+        // can see where the rallies are while their clips are made.
+        analysis.begin(sessionID, duration: s.duration)
+        defer { analysis.end(sessionID) }
+        let feed = analysis
         do {
             progress[sessionID] = .audio
             guard let source = await loadAsset(s) else {
@@ -1100,12 +1114,30 @@ final class SessionStore: ObservableObject {
             // Scoped so the 16 kHz samples (≈345 MB on a 90-minute recording)
             // are freed before the render, which needs the memory for frames.
             let segments: [RallySegment] = try await {
-                let samples = try await AudioLoader.loadMono16k(asset: source)
+                let samples = try await AudioLoader.loadMono16k(asset: source) { f, env in
+                    Task { @MainActor [weak self] in
+                        feed.audio(sessionID, fraction: f, envelope: env)
+                        self?.syncBackground()
+                    }
+                }
+                feed.startDetect(sessionID)
                 progress[sessionID] = .detect
                 return await Task.detached(priority: .userInitiated) {
+                    // The FFT pass is most of the time; the classifier after
+                    // it gets the last stretch of the bar.
                     let found = RallyDetector.detect(samples: samples,
                                                      sampleRate: AudioLoader.sampleRate,
-                                                     duration: dur, sensitivity: sens, sport: sport)
+                                                     duration: dur, sensitivity: sens, sport: sport,
+                                                     progress: { f in
+                        Task { @MainActor [weak self] in
+                            feed.detect(sessionID, fraction: f * 0.85)
+                            self?.syncBackground()
+                        }
+                    })
+                    Task { @MainActor [weak self] in
+                        feed.detect(sessionID, fraction: 0.9)
+                        self?.syncBackground()
+                    }
                     // A second opinion from the built-in sound classifier, on
                     // the samples already in memory. If it cannot run, the
                     // detector's own answer stands.
@@ -1123,6 +1155,8 @@ final class SessionStore: ObservableObject {
                 progress[sessionID] = .failed(L.s("redetect_none_kept", lang))
                 return
             }
+            // The rallies go onto the strip before the first clip is cut.
+            feed.found(sessionID, rallies: segments, staged: hasFinishedClips(s))
             await render(sessionID: sessionID, alreadyRunning: true,
                          detection: Detection(segments: segments, sport: sport, sensitivity: sens))
         } catch {

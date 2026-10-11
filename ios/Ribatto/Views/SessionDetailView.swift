@@ -101,7 +101,7 @@ struct SessionDetailView: View {
                     if case .failed(let message) = stage {
                         failureCard(session, message: message)
                     } else {
-                        progressCard(stage)
+                        progressCard(session, stage)
                     }
                 }
 
@@ -931,19 +931,35 @@ struct SessionDetailView: View {
         }
     }
 
-    private func progressCard(_ stage: ProcessingStage) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func progressCard(_ session: Session, _ stage: ProcessingStage) -> some View {
+        // Read, not observed: the feed entry is created before the first
+        // stage is set, so it is in place whenever this body runs for one.
+        let live = store.analysis.items[sessionID] != nil
+        return VStack(alignment: .leading, spacing: 8) {
             StageLabel(stage: stage)
+            AnalysisProgress(feed: store.analysis, sessionID: sessionID, stage: stage,
+                             poster: store.posterURL(session),
+                             liveSegments: session.segments) { i in
+                // A marker opens its rally — still being made is fine, the
+                // player previews it from the original. The strip only
+                // offers taps on the session's committed rallies.
+                guard let clip = store.clips(of: session).first(where: { $0.index == i })
+                else { return }
+                destination = .clip(clip)
+            }
             if case .render(let d, let t) = stage, t > 0 {
                 ProgressView(value: Double(d), total: Double(t))
-            } else {
+                RenderEta(done: d, total: t)
+            } else if !live {
                 ProgressView().progressViewStyle(.linear)
             }
             // Leaving the app is what stops a long render, so this is body
             // text, not a footnote.
             Label(L.s(store.rendersInBackground ? "keep_awake_bg" : "keep_awake", lang),
                   systemImage: "iphone.gen3.radiowaves.left.and.right")
-                .font(.footnote)
+                // Caption, not footnote: on one line where it fits, so the
+                // card stays small while the clips are made.
+                .font(.caption)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
         }
@@ -1272,13 +1288,9 @@ struct SessionDetailView: View {
             if busy {
                 // Not a dimmed button: at 30% the label could not be read, and the
                 // only thing worth saying while busy is how far along the clips are.
-                let label: String = {
-                    if case .render(let d, let t)? = store.progress[sessionID], t > 0 {
-                        return String(format: L.s("reel_wait_fmt", lang), d, t)
-                    }
-                    return L.s("reel_wait", lang)
-                }()
-                Label(label, systemImage: "hourglass")
+                // No count: the progress card right above already says
+                // "Making clips 2/6", and two counters read as two jobs.
+                Label(L.s("reel_wait", lang), systemImage: "hourglass")
                     .font(.subheadline.bold().monospacedDigit())
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -1430,7 +1442,7 @@ private struct HeroRally: View {
     }
 
     private var stats: String {
-        String(Int(clip.duration)) + L.s("sec", lang) + " · "
+        fmtLen(clip.duration, lang) + " · "
             + String(clip.segment.hits) + " " + L.s("shots_n", lang)
     }
 

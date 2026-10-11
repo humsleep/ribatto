@@ -41,7 +41,7 @@ struct ClipCard: View {
                         // labels say what it is.
                         .overlay { thumb }
                         .clipped()
-                    Text(String(Int(clip.duration)) + L.s("sec", lang))
+                    Text(fmtLen(clip.duration, lang))
                         .font(.caption2.bold())
                         .dynamicTypeSize(...DynamicTypeSize.large)
                         .padding(.horizontal, 6).padding(.vertical, 3)
