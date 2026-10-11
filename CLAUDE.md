@@ -19,14 +19,15 @@
 
 ```
 ios/Ribatto/
-  RibattoApp.swift        진입점 · 온보딩 분기 · 4탭(라이브러리/모든 클립/릴스/시즌)
+  RibattoApp.swift        진입점 · 온보딩 분기 · 3탭(라이브러리/릴스/시즌). "모든 클립" 탭은 2026-10-11 삭제(세션 격자와 겹쳤다)
   Models.swift             Sport·Sensitivity·AspectSetting·Session·RallySegment·CaptionSettings
   L10n.swift               인앱 다국어 9종 (en 기본 / ko ja es pt de fr it zh-Hans) — 문자열은 9곳 모두 추가
                            s()는 없는 키를 영어로 폴백한다. 키 누락 검사는 세션 기록의 파서 스크립트 참고
   CaptionText.swift        캡션 토큰 {rank} {shots} {tempo} {duration} {rally} {place} {date} {sport} → 렌더 직전 클립별 문구로 치환(SessionStore)
                            없앤 토큰 {score} {opponent}는 옛 캡션에 남아 있을 수 있어 빈 문자열로 지운다(`retired`)
   Engine/                  ★ 핵심 로직, 실측 검증됨
-    AudioLoader.swift      영상 → 16kHz 모노 샘플
+    AudioLoader.swift      영상 → 16kHz 모노 샘플. 선택적 progress 콜백(진행률 + 300칸 음량 엔벨로프, 1%·0.25초 단위).
+                           길이가 NaN·0·1초 미만이면 엔벨로프를 만들지 않는다 — 칸 크기가 1이 되어 샘플 배열만큼 커진다
     RallyDetector.swift    타구음 감지 (vDSP FFT + 2단 임계값)
                            + 랠리 점수화: 타구수 0.40 / 환호(voiceE 급등) 0.35 / 길이 0.25
                            RallySegment.hitTimes(타구 시각)·cheer(환호 비율, 3.5↑이면 🔥 배지·"환호 큰 순" 정렬)도 보존
@@ -79,7 +80,7 @@ ios/Ribatto/
     AdsManager.swift       AdMob(SPM 12.x). 무료 등급의 배너 + 전면광고(3분 간격). 전면은 완료 직후가 아니라 "빚"으로 미룬다:
                            렌더·릴스가 끝나면 `markInterstitialDue()`, 사용자가 결과를 보고 시트를 닫을 때 `showPendingInterstitial()`.
                            10분 만료·패스 시작 시 해제·ProPassView를 닫을 땐 안 띄움·다음 런루프에 세로일 때만(2026-10-11)
-                           배너는 하나(`banner`)를 네 탭이 나눠 쓴다. 슬롯은 `bannerLoaded`(광고가 **실제로 실림**) 뒤에만 열린다 —
+                           배너는 하나(`banner`)를 세 탭이 나눠 쓴다. 슬롯은 `bannerLoaded`(광고가 **실제로 실림**) 뒤에만 열린다 —
                            SDK 시작 시점에 높이를 예약하면 no-fill 동안 탭 바 밑에 빈 띠가 남는다(2026-09-23 TestFlight에서 확인)
                            `.adBanner()`는 각 탭의 **NavigationStack 안쪽** 루트 VStack에 단다(+ 푸시되는 SessionDetailView에도).
                            NavigationStack 바깥이나 TabView에 달면 안쪽 스크롤뷰까지 인셋이 닿지 않아 광고가 목록 마지막
@@ -118,8 +119,12 @@ ios/Ribatto/
                            최고 랠리 먼저·hook. 다시 만들기는 성공한 뒤에만 이 시트가 만든 이전 릴스를 지운다) · ClipViews
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더. 썸네일 스트립은 TrimmerBar+PryntTrimmerView,
                            타구 위치를 눈금으로 찍고 VoiceOver용 스테퍼를 함께 둔다) · TargetPlayerSheet(추적 대상 선택)
-                           LibraryView · StatsView · CaptionEditorView · ProPassView(Pro 안내 + 리워드 광고 버튼) 등
-                           SortMenu.swift: ClipSort(8종 정렬: 시간·베스트·긴·짧은·타구많은·타구적은·환호·즐겨찾기) + 정렬 메뉴 — 세션 화면·모든클립 탭 공용
+                           LibraryView(헤더는 + 메뉴(사진·파일·촬영)와 톱니(AppSettingsView: 언어·개인정보·라이선스·광고 동의)뿐.
+                           선택은 세션 카드 길게 누르기. 검색·종목 칩은 세션 8개 이상일 때만)
+                           AnalysisStrip(감지 중 포스터·파형·진행·남은 시간, 감지 후 랠리 구간 표시. 상태는 Store/AnalysisFeed — 비영속·세션별)
+                           StatsView · CaptionEditorView · ProPassView(Pro 안내 + 리워드 광고 버튼) 등
+                           SortMenu.swift: ClipSort(3종: 베스트·시간·즐겨찾기, 2026-10-11에 8종에서 줄임) + 정렬 메뉴
+                           60초 넘는 구간은 `RallySegment.looksMerged`(여러 랠리가 붙은 것) — "긴 구간" 배지, 히어로·베스트·30초 릴스 후보에서 제외(전부 길면 예외)
                            AddRallySheet(놓친 랠리 수동 추가) · PrivacyView(앱 내 개인정보 설명 — 코드 동작과 항상 일치시킬 것)
                            ReelsView: 완성된 릴스 보관함. 파일은 sessions/reels/ 에 id.mp4 + id.jpg + id.json(ReelInfo)
                            OrientationGate.swift: 세로 고정 + 재생 화면만 가로 허용
@@ -266,8 +271,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   수치와 글리프까지 액센트로 칠하면 정작 눌러야 할 버튼을 구분할 방법이 없어진다. 같은 이유로 `ProBadge`는
   채우지 않고 테두리+연한 배경이다 — 솔리드 볼트 캡슐은 주 버튼의 모양이라 라벨이 버튼처럼 읽힌다.
 - 탭 헤더는 접근성 크기에서 제목과 동작을 세로로 쌓는다(`TabHeader`). 한 줄을 나눠 가지면 긴 제목에 남는 폭이 없어
-  독일어 "Meine Matches"가 "Mein…"이 되고 버튼이 "Auswä…"가 된다. 같은 이유로 "모든 클립"의 개수 라벨도 정렬 칩과
-  줄을 나누지 않는다 — 나누면 "Clips"가 "Clip / s"로 끊긴다.
+  독일어 "Meine Matches"가 "Mein…"이 되고 버튼이 "Auswä…"가 된다. 같은 이유로 세션 화면의 클립 개수 라벨도 정렬 칩과
+  줄을 나누지 않는다 — 나누면 "Clips"가 "Clip / s"로 끊긴다(옛 "모든 클립" 탭에서 확인).
 - 빈 화면은 `EmptyStateBox`로 감싼다. 공간을 채우게만 하면 콘텐츠가 화면보다 길어질 때 SwiftUI가 넘치는 대신
   글자를 잘라낸다. 새로 설치한 사용자가 처음 보는 화면이 "Ancora nessuna parti…"였다. 상자는 짧으면 가운데,
   길면 스크롤이고 떠 있는 탭 바만큼(62pt) 여백을 준다.
@@ -293,7 +298,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   리워드 광고가 Pro로 가는 유일한 입구다. 패스 중에도 리워드는 계속 로드한다(광고 한 편 더 = 1시간 연장).
 - 패스가 끝난 뒤 Pro로 만든 세션에 적용을 누르면 "무료 화질로 다시 만듭니다" 확인을 먼저 띄운다(SessionDetailView).
 - EEA 동의는 UMP(`UserMessagingPlatform`, GoogleMobileAds가 끌고 오는 패키지)로 받는다. 동의 → ATT → SDK 시작 순서이고,
-  `canRequestAds`가 false면 SDK를 시작하지 않는다. 동의 재설정 진입점은 라이브러리 지구본 메뉴에 있다(필요한 지역에서만 보인다).
+  `canRequestAds`가 false면 SDK를 시작하지 않는다. 동의 재설정 진입점은 라이브러리 톱니 → AppSettingsView에 있다(필요한 지역에서만 보인다).
+  설정이 시트라서 폼은 최상위 presented VC에서 띄워야 한다 — 루트에서 띄우면 조용히 실패한다.
   AdMob 콘솔에 GDPR 메시지를 만들어 두지 않으면 폼이 뜨지 않는다.
 - `PrivacyInfo.xcprivacy`에는 **"추적"이 어디에도 없어야 한다** — 최상위 NSPrivacyTracking false, 항목별 Tracking도 전부 false.
   도메인 없이 추적을 한 군데라도 true로 두면 업로드가 ITMS-91064로 거절된다. 2026-09-30에 세 번 거절됐다:

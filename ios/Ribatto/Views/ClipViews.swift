@@ -95,7 +95,21 @@ struct ClipCard: View {
                                                 in: RoundedRectangle(cornerRadius: 6))
                                     .padding(6)
                             }
-                            if clip.segment.isLoud {
+                            // Neutral, not a warning colour: it is a
+                            // likely joined block, not an error.
+                            if clip.segment.looksMerged {
+                                Text(L.s("long_block", lang))
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(.white.opacity(0.85))
+                                    .lineLimit(1)
+                                    .padding(.horizontal, 6).padding(.vertical, 3)
+                                    .background(.black.opacity(0.65),
+                                                in: RoundedRectangle(cornerRadius: 6))
+                                    .padding(6)
+                            }
+                            // One or the other: both on a narrow card
+                            // overflowed the row.
+                            if clip.segment.isLoud && !clip.segment.looksMerged {
                                 Text("🔥 " + L.s("cheer_badge", lang))
                                     .font(.caption2.bold())
                                     .padding(.horizontal, 7).padding(.vertical, 3)
@@ -171,6 +185,8 @@ struct ClipPlayerSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Why the preview could not load, shown in the video's place.
     @State private var previewProblem: String?
+    /// The "may be several rallies" explanation, with the way to split.
+    @State private var explainLong = false
 
     /// The clip has no file yet, so the sheet plays the rally from the
     /// original instead. Read from the snapshot on purpose: swapping the
@@ -388,6 +404,26 @@ struct ClipPlayerSheet: View {
                 // most rallies but not all — they change ends, or the rally
                 // that matters is the opponent's. Re-pointing lives on the clip
                 // because that is where you notice the wrong person is centred.
+                // A block this long is usually several points joined. Said
+                // where the user is watching it, with the fix next to it: the
+                // split lives in the trim sheet. Not on a preview — trimming
+                // works on the clip file.
+                if live.looksMerged && !preview {
+                    Button { explainLong = true } label: {
+                        (Text(Image(systemName: "rectangle.split.2x1")) + Text("  ")
+                         + Text(L.s("long_block_note", lang)).foregroundColor(.secondary)
+                         + Text("  ·  ")
+                         + Text(L.s("long_block_split", lang)).bold()
+                            .foregroundColor(Theme.accent))
+                            .font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                }
                 // Both work on the clip file, which a preview does not have yet.
                 if canRetarget && !preview {
                     HStack(spacing: 8) {
@@ -514,6 +550,10 @@ struct ClipPlayerSheet: View {
                 get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK", role: .cancel) { message = nil }
             }
+            .alert(L.s("long_block_explain", lang), isPresented: $explainLong) {
+                Button(L.s("split_rally", lang)) { destination = .trim }
+                Button(L.s("cancel", lang), role: .cancel) {}
+            }
             .sheet(item: $destination) { dest in
                 switch dest {
                 case .trim:
@@ -609,484 +649,5 @@ struct HighlightPlayerSheet: View {
                 }
         }
         .preferredColorScheme(.dark)
-    }
-}
-
-// MARK: - All clips tab
-
-struct AllClipsView: View {
-    @Environment(\.dynamicTypeSize) private var typeSize
-    @EnvironmentObject var store: SessionStore
-    @EnvironmentObject var ads: AdsManager
-    /// Whether this tab is the one in front, so an owed interstitial never
-    /// lands on another tab after a sheet here closes.
-    @State private var onScreen = false
-    @EnvironmentObject var pass: ProPass
-    @AppStorage("rc_lang") private var lang = "en"
-    @State private var sort: ClipSort = .time
-    @State private var playing: ClipInfo?
-    @State private var search = ""
-    @State private var sportFilter: Sport?
-    @State private var minSeconds = 0
-    @State private var placeFilter: String?
-    @State private var whenFilter: WhenFilter?
-    @State private var shapeFilter: String?      // OutputFrame raw value
-    @State private var minHits = 0
-    @State private var filtersOpen = false
-    @State private var reel: ReelRequest?
-    @State private var selecting = false
-    @State private var selection: Set<String> = []
-    @State private var confirmDelete = false
-    @State private var saveMessage: String?
-    @State private var showPaywall = false
-    @State private var favesOnly = false
-
-    /// Relative windows rather than a date picker — "that match last month" is
-    /// how people actually look for a clip, and it needs no calendar UI.
-    enum WhenFilter: String, CaseIterable, Identifiable {
-        case week, month, q, year
-        var id: String { rawValue }
-
-        var key: String {
-            switch self {
-            case .week: return "when_week"
-            case .month: return "when_month"
-            case .q: return "when_90"
-            case .year: return "when_year"
-            }
-        }
-
-        func contains(_ date: Date, _ cal: Calendar = .current) -> Bool {
-            let now = Date()
-            switch self {
-            case .week:  return cal.isDate(date, equalTo: now, toGranularity: .weekOfYear)
-            case .month: return cal.isDate(date, equalTo: now, toGranularity: .month)
-            case .q:
-                guard let from = cal.date(byAdding: .day, value: -90, to: now) else { return true }
-                return date >= from
-            case .year:  return cal.isDate(date, equalTo: now, toGranularity: .year)
-            }
-        }
-    }
-
-    /// Sport chip, a minimum length, and free text over the session name.
-    private func matching(_ items: [(session: Session, clip: ClipInfo)])
-        -> [(session: Session, clip: ClipInfo)] {
-        items.filter { pair in
-            if let sportFilter, pair.session.sport != sportFilter { return false }
-            if let placeFilter, pair.session.placeName != placeFilter { return false }
-            if let whenFilter, !whenFilter.contains(pair.session.playedAt) { return false }
-            if let shapeFilter, pair.clip.orientation != shapeFilter { return false }
-            if favesOnly && !pair.clip.segment.isFavourite { return false }
-            if pair.clip.segment.hits < minHits { return false }
-            if Int(pair.clip.duration) < minSeconds { return false }
-            guard !search.isEmpty else { return true }
-            let haystack = [L.s(pair.session.sport.rawValue, lang),
-                            L.dateTime(pair.session.playedAt, lang),
-                            pair.session.placeName ?? "",
-                            pair.session.name].joined(separator: " ").lowercased()
-            return haystack.contains(search.lowercased())
-        }
-    }
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-            TabHeader(title: L.s("all_clips", lang)) {
-                // Cheap check: `allClips()` here meant a second full scan of
-                // every session's clip directory on every body pass.
-                if store.hasAnyClips {
-                    Button(selecting ? L.s("done", lang) : L.s("select", lang)) {
-                        selecting.toggle()
-                        selection.removeAll()
-                    }
-                    .font(.subheadline.bold())
-                }
-            }
-            Group {
-                let all = store.allClips()
-                let items = sorted(matching(all))
-                // Empty state only when there is nothing at all: a filter that
-                // matches nothing must keep the filter bar so it can be cleared.
-                if all.isEmpty {
-                    EmptyStateBox {
-                        VStack(spacing: 10) {
-                            Text("🎬").font(.system(size: 44))
-                            Text(L.s("all_clips_empty", lang))
-                                .font(.subheadline).foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(32)
-                    }
-                } else {
-                    ScrollView {
-                        SearchField(prompt: L.s("search_clips", lang), text: $search)
-                            .padding(.horizontal)
-                            .padding(.bottom, 10)
-                        // Side by side the sort chip takes the width the
-                        // label needs, and a German plural broke as "Clip / s".
-                        // The session screen already stacks this row at these
-                        // sizes; this one does too.
-                        Group {
-                            let count = HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text(L.s("clips_title", lang)).font(.headline)
-                                Text(String(items.count))
-                                    .font(.subheadline.bold()).foregroundStyle(.secondary)
-                            }
-                            if typeSize.isAccessibilitySize {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    count
-                                    SortMenu(sort: $sort)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            } else {
-                                HStack {
-                                    count
-                                    Spacer()
-                                    SortMenu(sort: $sort)
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                        // Collapsed, the panel is a single row, so it earns its
-                        // place as soon as there are enough clips to sift —
-                        // period and length matter even inside one session.
-                        if items.count >= 4 || activeFilterCount > 0 {
-                            filterBar
-                        }
-                        if items.isEmpty {
-                            Text(L.s("no_match", lang))
-                                .font(.subheadline).foregroundStyle(.secondary)
-                                .padding(.vertical, 40)
-                        }
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)],
-                                  spacing: 10) {
-                            ForEach(items, id: \.clip.id) { pair in
-                                ClipCard(clip: pair.clip,
-                                         showSession: pair.session.placeName
-                                             ?? L.dateOnly(pair.session.playedAt, lang),
-                                         uniformAspect: 16.0 / 9.0,
-                                         selected: selecting ? selection.contains(pair.clip.id) : nil) {
-                                    if selecting {
-                                        // No file yet: nothing to save or merge.
-                                        guard pair.clip.isReady else { return }
-                                        if selection.contains(pair.clip.id) {
-                                            selection.remove(pair.clip.id)
-                                        } else {
-                                            selection.insert(pair.clip.id)
-                                        }
-                                    } else if pair.clip.isReady {
-                                        playing = pair.clip
-                                    }
-                                }
-                            }
-                        }
-                        .padding()
-                        // clear the floating tab bar
-                        Color.clear.frame(height: 62)
-                    }
-                    // Pinned, not appended: at the end of the scroll a user who
-                    // ticked two clips at the top had to scroll past every
-                    // remaining clip to find out what selecting them does.
-                    .safeAreaInset(edge: .bottom) {
-                        if selecting {
-                            selectionBar
-                                .padding(.horizontal)
-                                .padding(.bottom, 8)
-                        }
-                    }
-                }
-            }
-            }
-            .background(Theme.background.ignoresSafeArea())
-            .toolbar(.hidden, for: .navigationBar)
-            .adBanner()
-            .confirmationDialog(String(format: L.s(selection.count == 1 ? "delete_one_clip"
-                                                                     : "delete_n_clips", lang),
-                                    selection.count),
-                                isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button(L.s("delete", lang), role: .destructive) { deleteSelected() }
-            }
-            .sheet(isPresented: $showPaywall) {
-                ProPassView(feature: L.s("feat_saveall", lang))
-            }
-            .alert(saveMessage ?? "", isPresented: Binding(
-                get: { saveMessage != nil }, set: { if !$0 { saveMessage = nil } })) {
-                Button("OK", role: .cancel) { saveMessage = nil }
-            }
-            // A reel finished in either sheet leaves its interstitial owed;
-            // it is shown once the user has watched and closed it.
-            .sheet(item: $playing, onDismiss: showOwedAd) { clip in
-                ClipPlayerSheet(clip: clip)
-            }
-            .sheet(item: $reel, onDismiss: showOwedAd) { ReelSheet(request: $0) }
-            .onAppear { onScreen = true }
-            .onDisappear { onScreen = false }
-        }
-    }
-
-    private func showOwedAd() {
-        guard onScreen, playing == nil, reel == nil else { return }
-        ads.showPendingInterstitial()
-    }
-
-    /// Collapsible filter panel.
-    ///
-    /// With six conditions, laying them all out flat cost more screen than the
-    /// clips did. Collapsed it is one row that still shows what is active, so
-    /// the current filter is never hidden from the user — only the controls are.
-    private var filterBar: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Button { withAnimation(.easeOut(duration: 0.18)) { filtersOpen.toggle() } } label: {
-                HStack(spacing: 8) {
-                    Label(L.s("filter", lang), systemImage: "line.3.horizontal.decrease")
-                        .font(.subheadline.bold())
-                    if activeFilterCount > 0 {
-                        Text(String(activeFilterCount))
-                            .font(.caption2.bold())
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(Theme.accent, in: Capsule())
-                            .foregroundStyle(Theme.onAccent)
-                    }
-                    Spacer()
-                    if activeFilterCount > 0 {
-                        Text(L.s("clear", lang))
-                            .font(.caption.bold())
-                            .foregroundStyle(Theme.accent)
-                            .onTapGesture { clearFilters() }
-                    }
-                    Image(systemName: filtersOpen ? "chevron.up" : "chevron.down")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if filtersOpen {
-                filterGroup(L.s("f_when", lang)) {
-                    ForEach(WhenFilter.allCases) { w in
-                        chipButton(L.s(w.key, lang), active: whenFilter == w) {
-                            whenFilter = whenFilter == w ? nil : w
-                        }
-                    }
-                }
-                filterGroup(L.s("sport", lang)) {
-                    ForEach(Sport.allCases) { sp in
-                        chipButton("\(sp.emoji) \(L.s(sp.rawValue, lang))",
-                                   active: sportFilter == sp) {
-                            sportFilter = sportFilter == sp ? nil : sp
-                        }
-                    }
-                }
-                let places = store.knownPlaces()
-                if !places.isEmpty {
-                    filterGroup(L.s("place", lang)) {
-                        ForEach(places, id: \.self) { place in
-                            chipButton(place, active: placeFilter == place, icon: "mappin.and.ellipse") {
-                                placeFilter = placeFilter == place ? nil : place
-                            }
-                        }
-                    }
-                }
-                filterGroup(L.s("f_shape", lang)) {
-                    ForEach([OutputFrame.landscape, .vertical, .portrait45],
-                            id: \.rawValue) { frame in
-                        chipButton(frame.label, active: shapeFilter == frame.rawValue) {
-                            shapeFilter = shapeFilter == frame.rawValue ? nil : frame.rawValue
-                        }
-                    }
-                }
-                filterGroup(L.s("f_len", lang)) {
-                    ForEach([5, 10, 15], id: \.self) { secs in
-                        chipButton(String(format: L.s("len_fmt", lang), secs),
-                                   active: minSeconds == secs) {
-                            minSeconds = minSeconds == secs ? 0 : secs
-                        }
-                    }
-                }
-                filterGroup(L.s("f_hits", lang)) {
-                    ForEach([4, 6, 10], id: \.self) { h in
-                        chipButton(String(format: L.s("hits_fmt", lang), h),
-                                   active: minHits == h) {
-                            minHits = minHits == h ? 0 : h
-                        }
-                    }
-                    chipButton(L.s("f_fav", lang), active: favesOnly, icon: "star.fill") {
-                        favesOnly.toggle()
-                    }
-                }
-            } else if activeFilterCount > 0 {
-                activeSummary
-            }
-        }
-        .padding(14)
-        .rcCard()
-        .padding(.horizontal)
-        .padding(.top, 4)
-    }
-
-    /// One labelled, horizontally scrolling row of chips.
-    private func filterGroup<C: View>(_ title: String,
-                                      @ViewBuilder _ content: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption2.bold())
-                .foregroundStyle(.secondary)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) { content() }.padding(.horizontal, 1)
-            }
-        }
-    }
-
-    private func chipButton(_ title: String, active: Bool,
-                            icon: String? = nil,
-                            action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Group {
-                if let icon { Label(title, systemImage: icon) } else { Text(title) }
-            }
-            .lineLimit(1)
-            .chip(active: active)
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// What is filtering right now, readable without opening the panel.
-    private var activeSummary: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(activeLabels, id: \.self) { text in
-                    Text(text)
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 9).padding(.vertical, 4)
-                        .background(Theme.accent.opacity(0.16), in: Capsule())
-                        .foregroundStyle(Theme.accent)
-                }
-            }
-        }
-    }
-
-    private var activeLabels: [String] {
-        var out: [String] = []
-        if let whenFilter { out.append(L.s(whenFilter.key, lang)) }
-        if let sportFilter { out.append(L.s(sportFilter.rawValue, lang)) }
-        if let placeFilter { out.append(placeFilter) }
-        if let shapeFilter { out.append(OutputFrame(shapeFilter).label) }
-        if minSeconds > 0 { out.append(String(format: L.s("len_fmt", lang), minSeconds)) }
-        if minHits > 0 { out.append(String(format: L.s("hits_fmt", lang), minHits)) }
-        return out
-    }
-
-    private var activeFilterCount: Int {
-        (sportFilter == nil ? 0 : 1) + (minSeconds == 0 ? 0 : 1)
-            + (placeFilter == nil ? 0 : 1) + (whenFilter == nil ? 0 : 1)
-            + (shapeFilter == nil ? 0 : 1) + (minHits == 0 ? 0 : 1)
-            + (favesOnly ? 1 : 0)
-    }
-
-    private func clearFilters() {
-        sportFilter = nil; minSeconds = 0; placeFilter = nil
-        whenFilter = nil; shapeFilter = nil; minHits = 0; favesOnly = false
-    }
-
-    private var selectionBar: some View {
-        VStack(spacing: 10) {
-            Text(String(format: L.s("selected_fmt", lang), selection.count))
-                .font(.caption).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Clips picked across sessions still make one reel, joined in the
-            // order they were played.
-            Button {
-                let picked = store.allClips().filter {
-                    selection.contains($0.clip.id) && $0.clip.isReady
-                }
-                guard !picked.isEmpty else { return }
-                reel = ReelRequest(pairs: picked)
-            } label: {
-                Label(L.s("reel_make", lang),
-                      systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
-                    .frame(maxWidth: .infinity)
-            }
-            .rcPrimary()
-            .disabled(selection.isEmpty)
-
-            HStack(spacing: 10) {
-                Button {
-                    guard pass.isPro || selection.count <= 1 else {
-                        showPaywall = true; return
-                    }
-                    Task { await saveSelected() }
-                } label: {
-                    HStack(spacing: 6) {
-                        Label(L.s("save", lang),
-                              systemImage: pass.isPro || selection.count <= 1
-                                  ? "square.and.arrow.down" : "lock.fill")
-                        if !pass.isPro && selection.count > 1 { ProBadge() }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .rcSecondary()
-                .disabled(selection.isEmpty)
-
-                Button(role: .destructive) { confirmDelete = true } label: {
-                    Label(L.s("delete", lang), systemImage: "trash")
-                        .frame(maxWidth: .infinity)
-                }
-                .rcSecondary(destructive: true)
-                .disabled(selection.isEmpty)
-            }
-        }
-        .padding(14)
-        .rcCard()
-    }
-
-    /// Selected clips can span sessions, so the work is grouped per session
-    /// before it reaches the store.
-    private func deleteSelected() {
-        let grouped = Dictionary(grouping: store.allClips().filter {
-            selection.contains($0.clip.id)
-        }, by: { $0.session.id })
-        var refused = false
-        for (sessionID, pairs) in grouped {
-            guard let session = store.sessions.first(where: { $0.id == sessionID }) else { continue }
-            if !store.deleteClips(Set(pairs.map(\.clip.id)), from: session) { refused = true }
-        }
-        selection.removeAll()
-        selecting = false
-        // Unlike the session screen, this bar is not disabled while a session
-        // renders — the selection can span sessions — so a refusal has to be
-        // said rather than shown as clips that quietly stayed.
-        if refused { saveMessage = L.s("busy_wait", lang) }
-    }
-
-    private func saveSelected() async {
-        let grouped = Dictionary(grouping: store.allClips().filter {
-            selection.contains($0.clip.id)
-        }, by: { $0.session.id })
-        var saved = 0
-        var denied = false
-        for (sessionID, pairs) in grouped {
-            guard let session = store.sessions.first(where: { $0.id == sessionID }) else { continue }
-            if let n = await store.saveClipsToPhotos(session, ids: Set(pairs.map(\.clip.id))) {
-                saved += n
-            } else { denied = true }
-        }
-        saveMessage = denied ? L.s("photos_denied", lang)
-                             : String(format: L.s("saved_n_fmt", lang), saved)
-    }
-
-    private func sorted(_ items: [(session: Session, clip: ClipInfo)])
-        -> [(session: Session, clip: ClipInfo)] {
-        switch sort {
-        case .time:
-            return items.sorted {
-                ($0.session.playedAt, $0.clip.segment.start)
-                    > ($1.session.playedAt, $1.clip.segment.start)
-            }
-        default:
-            return items.sorted { sort.precedes($0.clip, $1.clip) }
-        }
     }
 }

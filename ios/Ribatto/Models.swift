@@ -150,6 +150,13 @@ struct RallySegment: Codable, Equatable {
 
     var duration: Double { end - start }
 
+    /// Past this, a "rally" is usually several points the detector joined
+    /// because the gaps between them were short — a 1:55 block read to users
+    /// as a bug. Flagged, offered for splitting, and kept out of the
+    /// automatic best picks; never removed or reordered.
+    static let mergedLooking: Double = 60
+    var looksMerged: Bool { duration > Self.mergedLooking }
+
     /// How strongly people reacted, on the classifier's 0…1 scale. Rallies
     /// detected before `SoundCheck` carry only the voice-band ratio, which is
     /// mapped so that both measures badge at the same point.

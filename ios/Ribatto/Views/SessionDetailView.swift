@@ -132,7 +132,8 @@ struct SessionDetailView: View {
                     // there is nothing finished to show. An idle session never
                     // reaches for an original that may be an iCloud download.
                     if !selecting,
-                       let best = busy ? ranked.first : ranked.first(where: \.isReady) {
+                       let best = busy ? preferringSingleRallies(ranked).first
+                                       : preferringSingleRallies(ranked.filter(\.isReady)).first {
                         HeroRally(clip: best, session: session,
                                   paused: destination != nil,
                                   fromOriginal: busy) {
@@ -1195,7 +1196,10 @@ struct SessionDetailView: View {
         // files and the match still has every rally.
         let lengths = (session.segments ?? []).map { $0.end - $0.start }
         let total = lengths.reduce(0, +)
-        let longest = lengths.max() ?? 0
+        // "Longest" from single rallies: a joined 1:55 block is not the
+        // longest point, and quoting it made the summary look broken.
+        let single = (session.segments ?? []).filter { !$0.looksMerged }.map(\.duration)
+        let longest = (single.isEmpty ? lengths : single).max() ?? 0
         var parts = [String(format: L.s(lengths.count == 1 ? "rallies_one" : "rallies_n", lang),
                             lengths.count),
                      fmtDur(total),
@@ -1301,7 +1305,7 @@ struct SessionDetailView: View {
                     .accessibilityElement(children: .combine)
             } else {
                 Button {
-                    let picked = reelPicks(ready)
+                    let picked = reelPicks(preferringSingleRallies(ready))
                     guard !picked.isEmpty else { return }
                     // The rest of the match comes along switched off, so Edit
                     // can add a rally the automatic pick left out.
@@ -1444,6 +1448,9 @@ private struct HeroRally: View {
     private var stats: String {
         fmtLen(clip.duration, lang) + " · "
             + String(clip.segment.hits) + " " + L.s("shots_n", lang)
+            // Only when every candidate the hero could show is long — every
+            // rally, or every finished one mid-render — and then it says so.
+            + (clip.segment.looksMerged ? " · " + L.s("long_block", lang) : "")
     }
 
     /// At accessibility sizes the type is what needs the room: a full-size

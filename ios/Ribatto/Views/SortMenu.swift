@@ -1,20 +1,20 @@
 import SwiftUI
 
-/// One ordering shared by every clip list in the app. `time` is the only mode
-/// that needs context a clip alone doesn't carry (its session's date), so each
-/// list handles that case itself and delegates the rest to `precedes`.
+/// How the session screen orders its clips. `time` is the clips' own order
+/// there, so that screen skips sorting for it; the others go through
+/// `precedes`. `best` also picks the hero and the highlight reel.
+///
+/// Three orders, down from eight: longest/shortest, most/fewest shots and
+/// loudest crowd were each a guess at "the good ones", which `best` already
+/// scores from all of them — and shot counts are the number CLAUDE.md calls
+/// unreliable. Nothing persists the choice, so no stored value needs mapping.
 enum ClipSort: CaseIterable {
-    case time, best, long, short, hitsMany, hitsFew, cheer, favourite
+    case best, time, favourite
 
     var key: String {
         switch self {
         case .time: return "sort_time"
         case .best: return "sort_best"
-        case .long: return "sort_long"
-        case .short: return "sort_short"
-        case .hitsMany: return "sort_hits_many"
-        case .hitsFew: return "sort_hits_few"
-        case .cheer: return "sort_cheer"
         case .favourite: return "sort_fav"
         }
     }
@@ -25,11 +25,6 @@ enum ClipSort: CaseIterable {
         switch self {
         case .time: return a.index < b.index
         case .best: return (a.segment.score ?? -1) > (b.segment.score ?? -1)
-        case .long: return a.duration > b.duration
-        case .short: return a.duration < b.duration
-        case .hitsMany: return a.segment.hits > b.segment.hits
-        case .hitsFew: return a.segment.hits < b.segment.hits
-        case .cheer: return (a.segment.reaction ?? -1) > (b.segment.reaction ?? -1)
         // Starred first, then newest-detected order inside each group.
         case .favourite:
             if a.segment.isFavourite != b.segment.isFavourite { return a.segment.isFavourite }
@@ -38,8 +33,8 @@ enum ClipSort: CaseIterable {
     }
 }
 
-/// Six orderings no longer fit a segmented control, so this is a menu: a pill
-/// showing the current order that opens a checklist.
+/// A pill showing the current order that opens a checklist. Kept a menu at
+/// three: a segmented control of "Best · Timeline · Starred" breaks in German.
 struct SortMenu: View {
     @Binding var sort: ClipSort
     @AppStorage("rc_lang") private var lang = "en"

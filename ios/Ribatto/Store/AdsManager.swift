@@ -227,7 +227,20 @@ final class AdsManager: NSObject, ObservableObject {
     /// Reopens the consent choices. Afterwards the SDK is started if the user
     /// now allows ads and it was not running.
     func presentPrivacyOptions() async {
-        try? await ConsentForm.presentPrivacyOptionsForm(from: nil)
+        // From the top-most controller. Opened from the Settings sheet, nil
+        // made the SDK present from the root, which was already presenting
+        // that sheet — the form silently never appeared.
+        let root = UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.rootViewController
+        var top = root
+        while let next = top?.presentedViewController { top = next }
+        do {
+            try await ConsentForm.presentPrivacyOptionsForm(from: top)
+        } catch {
+            #if DEBUG
+            print("[ads] privacy options form failed: \(error.localizedDescription)")
+            #endif
+        }
         let allowed = ConsentInformation.shared.canRequestAds
         if allowed && !consentAllows {
             consentAllows = true

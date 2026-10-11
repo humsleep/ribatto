@@ -21,12 +21,10 @@ struct MovieFile: Transferable {
 struct LibraryView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var pass: ProPass
-    @EnvironmentObject var ads: AdsManager
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var showLicenses = false
-    @State private var showPrivacy = false
+    @State private var showSettings = false
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
@@ -58,7 +56,10 @@ struct LibraryView: View {
     /// Text match on the sport and the date shown on the card, plus the
     /// sport chip — enough to find "that badminton match last week".
     private var visibleSessions: [Session] {
-        store.sessions.filter { s in
+        // Below the threshold the search and chips are hidden, so a filter
+        // left over from when they were showing must not hide sessions.
+        guard searchable else { return store.sessions }
+        return store.sessions.filter { s in
             if let sportFilter, s.sport != sportFilter { return false }
             if let placeFilter, s.placeName != placeFilter { return false }
             guard !search.isEmpty else { return true }
@@ -70,31 +71,50 @@ struct LibraryView: View {
         }
     }
 
+    /// Search and the sport chips earn their space only once there is
+    /// something to search: with a handful of matches they were two rows of
+    /// controls above three cards.
+    private var searchable: Bool { store.sessions.count >= 8 }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+            // Two header controls, down from four. Select moved to a long
+            // press on a card (it is only for deleting several), the camera
+            // into the + menu beside the other ways in, and the globe's
+            // contents into Settings.
             TabHeader(title: L.s("my_sessions", lang)) {
-                if !store.sessions.isEmpty {
-                    Button(selecting ? L.s("done", lang) : L.s("select", lang)) {
-                        selecting.toggle()
+                if selecting {
+                    // The way back out of a mode entered by long press.
+                    Button(L.s("done", lang)) {
+                        selecting = false
                         selection.removeAll()
                     }
                     .font(.subheadline.bold())
+                } else {
+                    // Also on a long press, but visible here too: a mode only
+                    // a long press reaches is one most people never find.
+                    if !store.sessions.isEmpty {
+                        Button(L.s("select", lang)) {
+                            selection.removeAll()
+                            selecting = true
+                        }
+                        .font(.subheadline.bold())
+                    }
+                    // A toolbar collapses a Label to its icon; in the content
+                    // it would spell out "Import video" and push the title out.
+                    importButton
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .font(.title3)
+                    .accessibilityLabel(L.s("settings", lang))
                 }
-                // A toolbar collapses a Label to its icon; in the content it
-                // would spell out "Import video" and "Record" and push the
-                // title out of the row.
-                importButton
-                    .labelStyle(.iconOnly)
-                    .font(.title3)
-                recordButton
-                    .labelStyle(.iconOnly)
-                    .font(.title3)
             }
-            // Language and the free-import count are secondary to the actions,
-            // so they sit under the title rather than competing with it.
+            // The pass is the only way to Pro, so it keeps its own line.
             HStack(spacing: 10) {
-                languageMenu
                 entitlementPill
                 Spacer(minLength: 0)
             }
@@ -106,11 +126,12 @@ struct LibraryView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 14) {
-                            SearchField(prompt: L.s("search_sessions", lang), text: $search)
+                            if searchable {
+                                SearchField(prompt: L.s("search_sessions", lang), text: $search)
+                            }
                             if importing { ProgressView().padding() }
                             recoveredCard
-                            // one session doesn't need filtering — chips would be noise
-                            if store.sessions.count > 1 { sportFilterBar }
+                            if searchable { sportFilterBar }
                             if visibleSessions.isEmpty {
                                 Text(L.s("no_match", lang))
                                     .font(.subheadline).foregroundStyle(.secondary)
@@ -134,6 +155,22 @@ struct LibraryView: View {
                                         SessionCard(session: session)
                                     }
                                     .buttonStyle(.plain)
+                                    // Selecting is for deleting several matches
+                                    // at once — rare enough to sit behind a long
+                                    // press, which starts with this card picked.
+                                    .contextMenu {
+                                        Button {
+                                            selection = [session.id]
+                                            selecting = true
+                                        } label: {
+                                            Label(L.s("select", lang),
+                                                  systemImage: "checkmark.circle")
+                                        }
+                                    }
+                                    .accessibilityAction(named: Text(L.s("select", lang))) {
+                                        selection = [session.id]
+                                        selecting = true
+                                    }
                                 }
                             }
                             if selecting { deleteBar }
@@ -154,8 +191,15 @@ struct LibraryView: View {
 #if DEBUG
             .sheet(isPresented: $showDebug) { DebugProSheet() }
 #endif
-            .sheet(isPresented: $showLicenses) { LicensesView() }
-            .sheet(isPresented: $showPrivacy) { PrivacyView() }
+            .sheet(isPresented: $showSettings) { AppSettingsView() }
+            // Hidden controls must not keep filtering: deleting down to seven
+            // matches left a search no one could see or clear.
+            .onChange(of: searchable) { _, shown in
+                guard !shown else { return }
+                search = ""
+                sportFilter = nil
+                placeFilter = nil
+            }
             .fullScreenCover(isPresented: $recording) {
                 VideoRecorder { url in
                     importing = true
@@ -384,17 +428,15 @@ struct LibraryView: View {
             .foregroundStyle(.black)
     }
 
-    /// Shoot a match in-app; the recording goes straight into detection.
-    @ViewBuilder private var recordButton: some View {
-        Button {
-            begin(.record)
-        } label: {
-            Label(L.s("record", lang), systemImage: "video.fill")
-        }
-    }
-
+    /// Every way a match gets in, in one menu: Photos, Files, or shooting
+    /// it in-app (the recording goes straight into detection).
     private var importButton: some View {
-        Menu { importMenuItems } label: {
+        Menu {
+            importMenuItems
+            Button { begin(.record) } label: {
+                Label(L.s("record", lang), systemImage: "video.fill")
+            }
+        } label: {
             Label(L.s("import_video", lang), systemImage: "plus")
         }
     }
@@ -557,44 +599,6 @@ struct LibraryView: View {
         .onTapGesture {
             // A running pass opens the sheet too — that is where it is extended.
             if !pass.isPro || pass.active { showPro = true }
-        }
-    }
-
-    private var languageMenu: some View {
-        Menu {
-            ForEach(L.languages, id: \.code) { l in
-                Button {
-                    lang = l.code
-                } label: {
-                    if lang == l.code { Label(l.label, systemImage: "checkmark") }
-                    else { Text(l.label) }
-                }
-            }
-            Divider()
-            // "No account, and the video never leaves the phone" is the app's
-            // main promise, so the detail behind it should be readable without
-            // leaving the app.
-            Button {
-                showPrivacy = true
-            } label: {
-                Label(L.s("privacy", lang), systemImage: "hand.raised")
-            }
-            // The bundled fonts ship under the OFL, which requires their
-            // licence to be included with them. This is where it lives.
-            Button {
-                showLicenses = true
-            } label: {
-                Label(L.s("licenses", lang), systemImage: "doc.text")
-            }
-            if ads.privacyOptionsRequired {
-                Button {
-                    Task { await ads.presentPrivacyOptions() }
-                } label: {
-                    Label(L.s("ad_privacy_options", lang), systemImage: "checkmark.shield")
-                }
-            }
-        } label: {
-            Image(systemName: "globe")
         }
     }
 

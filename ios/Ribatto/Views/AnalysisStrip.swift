@@ -8,6 +8,15 @@ func fmtLen(_ seconds: Double, _ lang: String) -> String {
     seconds < 59.5 ? String(Int(seconds.rounded())) + L.s("sec", lang) : fmtDur(seconds)
 }
 
+/// `clips` without the ones that look like several rallies joined, unless
+/// that would leave nothing. Order is kept. For the automatic picks — the
+/// hero, the 30-second reel, the "Best" badge — where a merged block won on
+/// length and shots alone and was the worst thing to lead with.
+func preferringSingleRallies(_ clips: [ClipInfo]) -> [ClipInfo] {
+    let single = clips.filter { !$0.segment.looksMerged }
+    return single.isEmpty ? clips : single
+}
+
 /// The live part of the session's progress card while a match is analysed:
 /// the poster, a loudness strip that fills as the audio is decoded, rallies
 /// landing on it once found, one progress bar and a time estimate.
@@ -175,6 +184,14 @@ struct AnalysisStrip: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if !compact && rallies.prefix(shown).contains(where: \.looksMerged) {
+                (Text(Image(systemName: "square.split.diagonal.fill"))
+                    .foregroundColor(.secondary)
+                 + Text(" " + L.s("strip_long_legend", lang)))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         // One element for VoiceOver: the bars mean nothing read aloud. The
         // label and value say what they show; each rally is an action.
@@ -223,7 +240,25 @@ struct AnalysisStrip: View {
             let x0 = CGFloat(seg.start / item.duration) * size.width
             let x1 = CGFloat(seg.end / item.duration) * size.width
             let rect = CGRect(x: x0, y: 0, width: max(2, x1 - x0), height: size.height)
-            ctx.fill(Path(roundedRect: rect, cornerRadius: 2), with: .color(marker))
+            let shape = Path(roundedRect: rect, cornerRadius: 2)
+            guard seg.looksMerged else {
+                ctx.fill(shape, with: .color(marker))
+                continue
+            }
+            // Likely several rallies joined: dimmer and hatched, so it does
+            // not read as one long great point.
+            ctx.fill(shape, with: .color(marker.opacity(0.45)))
+            ctx.drawLayer { layer in
+                layer.clip(to: shape)
+                var hatch = Path()
+                var x = rect.minX - size.height
+                while x < rect.maxX {
+                    hatch.move(to: CGPoint(x: x, y: size.height))
+                    hatch.addLine(to: CGPoint(x: x + size.height, y: 0))
+                    x += 5
+                }
+                layer.stroke(hatch, with: .color(marker), lineWidth: 1)
+            }
         }
         if item.phase == .audio {
             let x = CGFloat(item.audioFraction) * size.width

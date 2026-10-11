@@ -137,7 +137,9 @@ struct ReelSheet: View {
     /// the raw score: "★ 0.73" meant nothing to anyone but the detector.
     private var bestID: String? {
         guard entries.count > 1 else { return nil }
-        return entries.filter { $0.clip.segment.score != nil }
+        let scored = entries.filter { $0.clip.segment.score != nil }
+        let single = scored.filter { !$0.clip.segment.looksMerged }
+        return (single.isEmpty ? scored : single)
             .max { ($0.clip.segment.score ?? -1) < ($1.clip.segment.score ?? -1) }?.id
     }
 

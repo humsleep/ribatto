@@ -36,13 +36,12 @@ struct RibattoApp: App {
                             .tabItem {
                                 Label(L.s("library", lang), systemImage: "rectangle.stack")
                             }
-                        AllClipsView()
-                            .tabItem {
-                                Label(L.s("all_clips", lang), systemImage: "film.stack")
-                            }
-                        // The reels the user built. Sits between the raw
-                        // material and the numbers because it is the thing the
-                        // app is for.
+                        // Three tabs. An "All Clips" tab repeated what each
+                        // match already shows, filtered six ways, and was the
+                        // tab testers opened once and never again (removed
+                        // 2026-10-11). The reels the user built sit between
+                        // the matches and the numbers: they are what the app
+                        // is for.
                         ReelsView()
                             .tabItem {
                                 Label(L.s("reels", lang),
