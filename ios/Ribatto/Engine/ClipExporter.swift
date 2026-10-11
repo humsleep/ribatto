@@ -494,7 +494,30 @@ enum ClipExporter {
         let foreground = frame.transformed(by: CGAffineTransform(
             translationX: -fit.minX + (out.width - fit.width) / 2,
             y: -fit.minY + (out.height - fit.height) / 2))
-        return foreground.composited(over: background).cropped(to: bounds)
+        // Feathered into the blur instead of laid on top: a hard line above and
+        // below the picture read as two images stacked, not one frame.
+        let band = CGRect(x: 0, y: (out.height - fit.height) / 2,
+                          width: out.width, height: fit.height)
+        let feather = min(band.height * 0.08, 24 * (out.width / 720))
+        func ramp(from: CGFloat, to: CGFloat) -> CIImage {
+            CIFilter(name: "CILinearGradient", parameters: [
+                "inputPoint0": CIVector(x: 0, y: from),
+                "inputPoint1": CIVector(x: 0, y: to),
+                "inputColor0": CIColor.black,
+                "inputColor1": CIColor.white,
+            ])!.outputImage!
+        }
+        let mask = ramp(from: band.maxY, to: band.maxY - feather)
+            .cropped(to: CGRect(x: 0, y: band.maxY - feather, width: out.width, height: feather))
+            .composited(over: ramp(from: band.minY, to: band.minY + feather)
+                .cropped(to: CGRect(x: 0, y: band.minY, width: out.width, height: feather)))
+            .composited(over: CIImage(color: .white)
+                .cropped(to: band.insetBy(dx: 0, dy: feather)))
+            .composited(over: CIImage(color: .black).cropped(to: bounds))
+        return foreground.applyingFilter("CIBlendWithMask", parameters: [
+            kCIInputBackgroundImageKey: background,
+            kCIInputMaskImageKey: mask,
+        ]).cropped(to: bounds)
     }
 
     // MARK: - Loudness
@@ -567,7 +590,10 @@ enum ClipExporter {
     /// smear, and well inside what Reels re-encodes to anyway.
     private static func bitrate(width: CGFloat, height: CGFloat,
                                 fps: Float, hevc: Bool) -> Int {
-        let perPixel = hevc ? 0.085 : 0.12
+        // H.264 at 0.12 bit/px gave free 720p clips ~3 Mbps; Instagram then
+        // re-compresses, and a wide court shot with small players turned to
+        // mush. ~6 Mbps at 720p30 survives the second pass (2026-10-12).
+        let perPixel = hevc ? 0.085 : 0.22
         let rate = Double(width * height) * Double(min(max(fps, 24), 60)) * perPixel
         return Int(min(max(rate, 2_000_000), 40_000_000))
     }

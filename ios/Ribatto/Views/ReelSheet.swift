@@ -91,6 +91,9 @@ struct ReelSheet: View {
     /// changed makes the same file again, so the button only appears — and
     /// only takes the primary style — once something differs.
     @State private var builtWith: String?
+    /// The frame of the reel on screen, which the edit panel may have moved on
+    /// from before a rebuild.
+    @State private var builtFrame: OutputFrame = .vertical
 
     private var currentRecipe: String {
         chosen.map(\.id).joined(separator: ",") + "|" + pace.rawValue + "|"
@@ -299,11 +302,17 @@ struct ReelSheet: View {
     private func resultView(_ done: (url: URL, plan: ReelPlan)) -> some View {
         VStack(spacing: 14) {
             if let player {
+                // Shorter at accessibility sizes so the post button is on the
+                // first screen rather than under a phone-high video. Narrowed
+                // to the reel's own shape: at full width a 9:16 reel sat in a
+                // wide black box and looked small, like a bug.
+                let height: CGFloat = typeSize.isAccessibilitySize ? 300 : 420
+                let controls: CGFloat = 64
                 ZoomableVideo(player: player)
-                    // Shorter at accessibility sizes so the post button is on
-                    // the first screen rather than under a phone-high video.
-                    .frame(height: typeSize.isAccessibilitySize ? 300 : 420)
+                    .frame(width: max(240, (height - controls) * builtFrame.aspectRatio),
+                           height: height)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .frame(maxWidth: .infinity)
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -698,6 +707,7 @@ struct ReelSheet: View {
         looper.watch(next)
         player = next
         builtWith = recipe
+        builtFrame = frame
         savedToPhotos = false
         editing = false
         // The reel this sheet made before "Make again" was a draft the user

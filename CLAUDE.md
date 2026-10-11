@@ -48,6 +48,7 @@ ios/Ribatto/
                            비트레이트는 해상도·fps에서 계산(`bitrate`), Pro는 기기에서만 HEVC(시뮬레이터는 H.264)
                            실패하면 옛 2패스 경로(`legacyEncode`)로 떨어진다 — 조용히 떨어지므로 용량이 안 줄면 이걸 의심할 것
                            측정(2026-09-16, 18초 랠리): 무료 720p 9.50 → 2.84 Mbps · 22.0 → 6.4MB · 3.2초
+                           2026-10-12 H.264 0.12 → 0.22 bit/px(인스타 재압축에 뭉갬). 시뮬레이터 무료 릴스 4.5 Mbps. HEVC(패스·기기)는 그대로
     Stabilizer.swift       Vision 영상 정합으로 카메라 흔들림 보정. **연결 안 함** — 가진 녹화가 전부 고정 거치라
                            랠리 안 프레임 간 이동이 0이었다. 핸드헬드 영상이 생기면 그때 붙일 것(파일 주석 참고)
                            워터마크(무료)는 Bebas 대문자 + 얇은 검정 외곽선. 흰 글자만으로는 밝은 하늘에서 사라진다
@@ -79,7 +80,8 @@ ios/Ribatto/
                            Debug 전용 debugPro 스위치(DebugProSheet). 구매는 없다
     AdsManager.swift       AdMob(SPM 12.x). 무료 등급의 배너 + 전면광고(3분 간격). 전면은 완료 직후가 아니라 "빚"으로 미룬다:
                            렌더·릴스가 끝나면 `markInterstitialDue()`, 사용자가 결과를 보고 시트를 닫을 때 `showPendingInterstitial()`.
-                           10분 만료·패스 시작 시 해제·ProPassView를 닫을 땐 안 띄움·다음 런루프에 세로일 때만(2026-10-11)
+                           10분 만료·패스 시작 시 해제·다음 런루프에 세로일 때만(2026-10-11). 결과(클립·병합·릴스) 시트를 닫을 때만 띄운다 —
+                           설정·캡션·패스 시트를 닫자마자 뜨면 AdMob이 말하는 "예상치 못한 전면광고"다(2026-10-12)
                            배너는 하나(`banner`)를 세 탭이 나눠 쓴다. 슬롯은 `bannerLoaded`(광고가 **실제로 실림**) 뒤에만 열린다 —
                            SDK 시작 시점에 높이를 예약하면 no-fill 동안 탭 바 밑에 빈 띠가 남는다(2026-09-23 TestFlight에서 확인)
                            `.adBanner()`는 각 탭의 **NavigationStack 안쪽** 루트 VStack에 단다(+ 푸시되는 SessionDetailView에도).
@@ -114,7 +116,8 @@ ios/Ribatto/
   Views/                   IntroView(실행 때마다 1.6초 타이틀 카드, 영어 고정. 시스템 시작 화면이 같은 로고를 같은 자리에 그린다.
                            광고 시작(동의·ATT)은 카드가 사라진 뒤 — 카드 위에 프롬프트가 겹치지 않게)
                            SessionDetailView(위에서부터 히어로(베스트 랠리 무음 루프) → 한 줄 요약(탭하면 설정 시트) → "30초 하이라이트 릴스" → 클립 격자.
-                           설정은 ⋯ → 설정 시트. 렌더 중 히어로는 원본 구간, 쉬는 세션은 완성 클립만 — iCloud 원본을 끌어오지 않게)
+                           설정은 ⋯ → 설정 시트. 히어로는 완성 클립만 재생하고 없으면 포스터 — 렌더 중 원본(4K)을 같이 디코딩하면
+                           인코더와 메모리를 다툰다(-11819 계열). iCloud 원본도 끌어오지 않는다)
                            ReelSheet(열자마자 만들고 결과 화면에 착지: 인스타·저장·공유·편집. 버튼 경로는 30초 예산·랠리당 15초 상한·
                            최고 랠리 먼저·hook. 다시 만들기는 성공한 뒤에만 이 시트가 만든 이전 릴스를 지운다) · ClipViews
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더. 썸네일 스트립은 TrimmerBar+PryntTrimmerView,
@@ -208,6 +211,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   스탬프 설정으로 굽고(`rerenderClip`) 스탬프를 새 구간으로 맞춘다. 실패한 클립을 지워 남은 게 전부 있으면 렌더 완료로 기록한다.
   백그라운드 GPU가 없어 렌더가 대기에 들어가면 연속 처리 작업을 끝낸다(`BackgroundWork.pause`) — 잠금 화면 진행률이 멈춘 채 남았다.
   시스템 오류의 localizedDescription을 그대로 띄우지 말 것 — `failureText`가 원인별 문구(+코드)로 바꾼다.
+- **엔타이틀먼트 파일이 없다**(2026-10-12 확인, CODE_SIGN_ENTITLEMENTS 미설정). 아래 GPU 권한은 실제로 켜진 적이 없어
+  기기에서는 항상 "GPU 거절 → CPU 전용 재제출 → 렌더는 클립 사이에서 대기" 경로다. 켜려면 .entitlements를 만들고 서명 설정에 연결할 것.
 - 백그라운드 이어하기(`Store/BackgroundWork.swift`, 2026-10-02): iOS 26의 `BGContinuedProcessingTask`로 감지·렌더를 앱 밖에서도
   계속한다. 사용자가 누른 순간(앱이 앞에 있을 때)에만 제출할 수 있어서 다중 가져오기는 큐 전체를 작업 하나로 감싼다(`processQueued`).
   식별자는 `<bundle>.process.<uuid>` — Info.plist `BGTaskSchedulerPermittedIdentifiers`의 와일드카드와 맞아야 한다.

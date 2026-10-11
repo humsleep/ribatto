@@ -93,11 +93,13 @@ sample: https://humsleep.github.io/apps/ribatto/review/
 
 Steps:
 1. Save the sample video to the device's Photos library.
-2. Open Ribatto, tap + at the top of the Library, then "From Photos".
+2. Open Ribatto, tap + at the top of "My Matches", then "From Photos".
    On the first import the app asks which sport you play: choose Tennis.
-3. Pick the sample. Detection runs automatically; clips appear within about a minute.
-4. Open a clip to play it, or tap "Make a Reel" for the vertical export.
-5. The free pass: tap "Free pass" under the title, then "Watch an ad".
+3. Pick the sample. Detection runs automatically with live progress; the best
+   rally starts playing as soon as it is found, and clips follow within about a minute.
+4. Open a clip to play it, or tap "30-second highlight reel": the vertical reel
+   is built at once and can be saved or shared from the result screen.
+5. The pass: tap "Get PASS" under the title, then "Watch an ad".
 
 Please note about step 5: review builds request Google's public test ad
 units (a sandbox receipt is treated as a pre-release install), so the rewarded
@@ -166,13 +168,14 @@ point).
 No login is required and there is nothing to configure.
 - Sample file: https://humsleep.github.io/apps/ribatto/review/ (save the video
   to Photos).
-- Library tab: tap + > "From Photos" and pick the sample. On first import the
+- Matches tab: tap + > "From Photos" and pick the sample. On first import the
   app asks for the sport: choose Tennis. Detection starts automatically and
   clips appear in about a minute.
-- Session screen: open a clip to play it; the Trim button adjusts its length; "Make a Reel"
-  builds one vertical video from several rallies; clips can be saved to Photos.
+- Match screen: the best rally plays at the top; open a clip to play it; the Trim
+  button adjusts its length; "30-second highlight reel" builds a vertical reel at
+  once (Edit changes rallies, length and aspect); clips can be saved to Photos.
 - Reels tab: finished reels. Season tab: statistics.
-- Pass: tap "Free pass" under the Library title, then "Watch an ad". After the
+- Pass: tap "Get PASS" under the "My Matches" title, then "Watch an ad". After the
   rewarded ad ends, export quality, framing and ad-free use are unlocked for
   one hour. Review builds use Google's test ad units, labelled "Test mode".
 
@@ -208,8 +211,8 @@ top of the Library > Open-source licences).
 2. 제어 센터 → 화면 기록 시작 → **홈 화면에서 앱 아이콘을 누르는 것부터** 찍는다
 3. 인트로 → 온보딩 → (동의 창) → 추적 허용 창
 4. + → 사진 보관함에서 → 샘플 영상 → 종목 Tennis → 감지 완료까지 (기다리는 구간은 그대로 둬도 된다)
-5. 클립 하나 재생 → 트림 버튼(구간 선택 아이콘)으로 길이 조정 → 릴스 만들기 → 사진에 저장
-6. 무료 패스 → 광고 보기 → 끝까지 시청 → 패스 표시 확인
+5. 클립 하나 재생 → 트림 버튼(구간 선택 아이콘)으로 길이 조정 → 닫기 → "30초 하이라이트 릴스" → 결과 화면에서 사진에 저장
+6. 패스 받기 → 광고 보기 → 끝까지 시청 → 패스 표시 확인
 7. 릴스 탭·시즌 탭을 잠깐 보여주고 기록 종료
 
 얼굴이 나오지 않는 샘플 영상만 쓴다. 알림이 녹화에 찍히지 않게 방해 금지 모드를 켠다.

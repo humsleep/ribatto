@@ -128,15 +128,19 @@ struct SessionDetailView: View {
                     // Hidden while selecting: a looping video above the grid
                     // fights the checkmarks for attention, and tapping it would
                     // open the player instead of selecting.
-                    // From the original only while a render runs — the one time
-                    // there is nothing finished to show. An idle session never
-                    // reaches for an original that may be an iCloud download.
+                    // While a render runs the best rally may not be a file yet;
+                    // its poster stands in until it is.
                     if !selecting,
                        let best = busy ? preferringSingleRallies(ranked).first
                                        : preferringSingleRallies(ranked.filter(\.isReady)).first {
                         HeroRally(clip: best, session: session,
                                   paused: destination != nil,
-                                  fromOriginal: busy) {
+                                  // Never the original: during a render that
+                                  // was a second 4K decode alongside the encoder
+                                  // — the memory pressure behind -11819 on
+                                  // device. A finished clip plays; otherwise
+                                  // the poster stays until one exists.
+                                  fromOriginal: false) {
                             destination = .clip(best)
                         }
                     }
@@ -306,7 +310,14 @@ struct SessionDetailView: View {
                 // The owed ad, if any: a sheet the user opened has closed and
                 // this screen is in front. Not when one sheet was swapped for
                 // another, and not on a tab the user has moved to.
-                if destination == nil, onScreen, lastPresented?.hasPrefix("pro-") != true {
+                // Only after the user watched a result (a clip, a merge, a
+                // reel). Closing settings, the caption editor or the pass sheet
+                // and getting a full-screen ad is the "unexpected interstitial"
+                // AdMob's policy warns about.
+                let watched = ["clip-", "merged-", "reel-"].contains {
+                    lastPresented?.hasPrefix($0) == true
+                }
+                if destination == nil, onScreen, watched {
                     ads.showPendingInterstitial()
                 }
                 return
