@@ -686,8 +686,22 @@ final class SessionStore: ObservableObject {
         guard !isBusy(s.id), !sourceMissing(s) else { return false }
         try? fm.removeItem(at: clipsDir(s))
         try? fm.removeItem(at: dir(s).appendingPathComponent("merged.mp4"))
-        // Unrecorded render: Apply offers to make the clips again.
-        mutate(s.id) { $0.renderedOrientation = nil }
+        // Unrecorded render: Apply offers to make the clips again. The record
+        // moves into `partialRender` first, marked cleared, so the screen can
+        // say what happened instead of "settings changed" — and Apply, with
+        // nothing changed, continues into the empty folder as a resume.
+        mutate(s.id) {
+            if let o = $0.renderedOrientation {
+                $0.partialRender = RenderStamp(
+                    orientation: o, pro: $0.renderedPro ?? false,
+                    smartCrop: $0.renderedSmartCrop ?? false,
+                    caption: $0.renderedCaption,
+                    clipTargets: $0.renderedClipTargets ?? [:],
+                    targetPlayer: $0.renderedTargetPlayer,
+                    rallies: $0.segments ?? [], lang: nil, cleared: true)
+            }
+            $0.renderedOrientation = nil
+        }
         return true
     }
 

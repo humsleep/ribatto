@@ -17,8 +17,16 @@ struct SessionDetailView: View {
     @State private var confirmSwitchVertical = false
     @State private var selecting = false
     @State private var selection: Set<String> = []
-    /// Whether the user opened the folded settings card by hand.
-    @State private var settingsOpen = false
+    /// A modal opened from inside the settings sheet. It stacks on that sheet
+    /// rather than replacing it, so closing the caption editor lands back in
+    /// settings instead of dropping the user on the session screen.
+    @State private var settingsDestination: Destination?
+    /// Apply was pressed in the settings sheet. The run starts once the sheet
+    /// is gone: the "pass ended" confirmation cannot present from a screen
+    /// that is still covered, and the progress card is what the user should
+    /// be looking at.
+    @State private var applyAfterSettings = false
+    @State private var scrollToTop = 0
     /// Apply would re-render Pro clips after the pass ran out.
     @State private var confirmFreeRender = false
     @State private var confirmClearClips = false
@@ -40,6 +48,7 @@ struct SessionDetailView: View {
         case targetPlayer
         case addRally
         case reel(ReelRequest)
+        case settings
 
         var id: String {
             switch self {
@@ -50,6 +59,7 @@ struct SessionDetailView: View {
             case .targetPlayer: return "target-player"
             case .addRally: return "add-rally"
             case .reel(let r): return "reel-" + r.id.uuidString
+            case .settings: return "settings"
             }
         }
     }
@@ -68,10 +78,15 @@ struct SessionDetailView: View {
 
     @ViewBuilder
     private func content(_ session: Session) -> some View {
-        let clips = sorted(store.clips(of: session))
+        let all = store.clips(of: session)
+        let clips = sorted(all)
+        // Best first, for the hero and the reel shortcut — whatever order the
+        // grid happens to be in.
+        let ranked = all.sorted { ClipSort.best.precedes($0, $1) }
         let busy = store.isBusy(sessionID)
 
         ScrollView {
+            ScrollViewReader { proxy in
             VStack(alignment: .leading, spacing: 14) {
                 // Above the settings: right after an import the card is held
                 // open and ran ~700pt tall, so the progress — the only thing
@@ -84,14 +99,48 @@ struct SessionDetailView: View {
                     }
                 }
 
-                settingsCard(session, busy: busy)
+                // Only when it has something to say — never detected, found
+                // nothing, unapplied changes, a missing original — and then
+                // inline, because Apply has to be reachable without a hunt.
+                // Otherwise the settings live in a sheet: sport, crop and export
+                // are chosen once per match, and even folded the card was a
+                // wall between the user and the rallies they came to watch.
+                if settingsForced(session, busy: busy) {
+                    settingsCard(session, busy: busy)
+                }
+                // Clips missing with nothing changed. Not while a failure card
+                // is up: that one already says how many and offers the retry.
+                let gap = busy || store.progress[sessionID] != nil ? nil : session.renderGap
+                if let gap {
+                    gapCard(session, gap: gap, made: all.filter(\.isReady).count)
+                }
 
                 if !clips.isEmpty {
                     if pass.isPro && session.renderedPro != true {
                         upgradeBanner()
                     }
-                    toolbar(session, clips: clips, busy: busy)
+                    // Hidden while selecting: a looping video above the grid
+                    // fights the checkmarks for attention, and tapping it would
+                    // open the player instead of selecting.
+                    // From the original only while a render runs — the one time
+                    // there is nothing finished to show. An idle session never
+                    // reaches for an original that may be an iCloud download.
+                    if !selecting,
+                       let best = busy ? ranked.first : ranked.first(where: \.isReady) {
+                        HeroRally(clip: best, session: session,
+                                  paused: destination != nil,
+                                  fromOriginal: busy) {
+                            destination = .clip(best)
+                        }
+                    }
+                    summaryLine(session)
+                    reelCTA(session, ranked: ranked, busy: busy)
+                    clipHeader(clips)
                     clipGrid(clips)
+                } else if gap != nil {
+                    // Cleared files take the posters with them, but the rallies
+                    // are all still there — say so rather than "no clips yet".
+                    summaryLine(session)
                 } else if !busy {
                     emptyClips(session)
                 }
@@ -104,6 +153,11 @@ struct SessionDetailView: View {
                 Color.clear.frame(height: 62)
             }
             .padding()
+            .id("top")
+            .onChange(of: scrollToTop) { _, _ in
+                withAnimation { proxy.scrollTo("top", anchor: .top) }
+            }
+            }
         }
         // Pinned, not appended: below the grid the bar sat a whole screen away
         // from the clips it acts on.
@@ -129,6 +183,9 @@ struct SessionDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button { destination = .settings } label: {
+                        Label(L.s("settings", lang), systemImage: "slider.horizontal.3")
+                    }
                     if !clips.isEmpty {
                         Button { destination = .addRally } label: {
                             Label(L.s("add_rally", lang), systemImage: "plus")
@@ -164,22 +221,7 @@ struct SessionDetailView: View {
                 .accessibilityLabel(L.s("more", lang))
             }
         }
-        .alert(L.s("place", lang), isPresented: $editingPlace) {
-            TextField(L.s("place_placeholder", lang), text: $placeDraft)
-            Button(L.s("apply", lang)) { store.setPlaceName(session, placeDraft) }
-            Button(L.s("cancel", lang), role: .cancel) {}
-        }
-        // Tracking only does something on a vertical crop. Rather than hide
-        // the button on a wide session, say what will change and do it.
-        .alert(L.s("target_switch_title", lang), isPresented: $confirmSwitchVertical) {
-            Button(L.s("target_switch_ok", lang)) {
-                store.setAspect(session, .vertical)
-                destination = .targetPlayer
-            }
-            Button(L.s("cancel", lang), role: .cancel) {}
-        } message: {
-            Text(L.s("target_switch_msg", lang))
-        }
+        .modifier(SettingsAlerts(owner: self, session: session, inSheet: false))
         .alert(saveMessage ?? "", isPresented: Binding(
             get: { saveMessage != nil }, set: { if !$0 { saveMessage = nil } })) {
             Button("OK", role: .cancel) { saveMessage = nil }
@@ -246,25 +288,123 @@ struct SessionDetailView: View {
             guard destination == nil, onScreen else { return }
             if case .render? = old, new == nil { ads.showInterstitialIfDue() }
         }
-        .sheet(item: $destination) { dest in
-            switch dest {
-            case .clip(let clip):
-                ClipPlayerSheet(clip: clip)
-            case .merged(let url):
-                HighlightPlayerSheet(url: url, name: L.s("merged", lang),
-                                     orientation: session.renderedOrientation)
-            case .pro(let feature):
-                ProPassView(feature: feature)
-            case .caption:
-                CaptionEditorView(session: session)
-            case .targetPlayer:
-                TargetPlayerSheet(session: session)
-            case .addRally:
-                AddRallySheet(session: session)
-            case .reel(let request):
-                ReelSheet(request: request)
+        .sheet(item: $destination, onDismiss: {
+            settingsDestination = nil
+            guard applyAfterSettings else { return }
+            applyAfterSettings = false
+            scrollToTop += 1
+            if let session = self.session { runApply(session) }
+        }) { dest in
+            destinationView(dest, session)
+        }
+    }
+
+    @ViewBuilder
+    private func destinationView(_ dest: Destination, _ session: Session) -> some View {
+        switch dest {
+        case .clip(let clip):
+            ClipPlayerSheet(clip: clip)
+        case .merged(let url):
+            HighlightPlayerSheet(url: url, name: L.s("merged", lang),
+                                 orientation: session.renderedOrientation)
+        case .pro(let feature):
+            ProPassView(feature: feature)
+        case .caption:
+            CaptionEditorView(session: session)
+        case .targetPlayer:
+            TargetPlayerSheet(session: session)
+        case .addRally:
+            AddRallySheet(session: session)
+        case .reel(let request):
+            ReelSheet(request: request)
+        case .settings:
+            settingsSheet(session)
+        }
+    }
+
+    private var settingsShown: Bool {
+        if case .settings? = destination { return true }
+        return false
+    }
+
+    /// Opens a modal from the settings content, which lives in two places:
+    /// inline when forced, and in the settings sheet. From the sheet it has to
+    /// stack on top — the screen's own `destination` is the sheet itself.
+    private func open(_ d: Destination) {
+        if settingsShown { settingsDestination = d } else { destination = d }
+    }
+
+    /// The place and "switch to 9:16" alerts, attached both to the screen and
+    /// to the settings sheet, each live only where its button is. An alert
+    /// asked of a screen that is covered by a sheet simply never appears.
+    private struct SettingsAlerts: ViewModifier {
+        let owner: SessionDetailView
+        let session: Session
+        let inSheet: Bool
+
+        func body(content: Content) -> some View {
+            let lang = owner.lang
+            content
+                .alert(L.s("place", lang), isPresented: gated(owner.$editingPlace)) {
+                    TextField(L.s("place_placeholder", lang), text: owner.$placeDraft)
+                    Button(L.s("apply", lang)) { owner.store.setPlaceName(session, owner.placeDraft) }
+                    Button(L.s("cancel", lang), role: .cancel) {}
+                }
+                // Tracking only does something on a vertical crop. Rather than hide
+                // the button on a wide session, say what will change and do it.
+                .alert(L.s("target_switch_title", lang),
+                       isPresented: gated(owner.$confirmSwitchVertical)) {
+                    Button(L.s("target_switch_ok", lang)) {
+                        owner.store.setAspect(session, .vertical)
+                        owner.open(.targetPlayer)
+                    }
+                    Button(L.s("cancel", lang), role: .cancel) {}
+                } message: {
+                    Text(L.s("target_switch_msg", lang))
+                }
+        }
+
+        private func gated(_ flag: Binding<Bool>) -> Binding<Bool> {
+            let here = owner.settingsShown == inSheet
+            return Binding(get: { flag.wrappedValue && here },
+                           set: { flag.wrappedValue = $0 })
+        }
+    }
+
+    /// Everything the folded card used to hold, one tap away from the ⋯ menu
+    /// or the summary line.
+    private func settingsSheet(_ session: Session) -> some View {
+        NavigationStack {
+            // In a scroll view like every sheet: the form runs well past one
+            // screen at accessibility sizes, and Apply is at the bottom.
+            ScrollView {
+                VStack(spacing: 14) {
+                    placeRows(session)
+                    settingsBody(session, busy: store.isBusy(sessionID)) {
+                        // Close first so the progress card is what the user
+                        // sees; the run itself starts in the sheet's onDismiss.
+                        applyAfterSettings = true
+                        destination = nil
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle(L.s("settings", lang))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(L.s("done", lang)) { destination = nil }
+                        .font(.subheadline.bold())
+                }
+            }
+            .modifier(SettingsAlerts(owner: self, session: session, inSheet: true))
+            .sheet(item: $settingsDestination) { dest in
+                // Type-erased: the sheet's content is this function's own
+                // caller, and an opaque type cannot contain itself.
+                AnyView(destinationView(dest, session))
             }
         }
+        .preferredColorScheme(.dark)
     }
 
     /// Two different situations used to share one message. After a detection
@@ -371,107 +511,58 @@ struct SessionDetailView: View {
             .contentShape(Rectangle())
     }
 
-    private func settingsCard(_ session: Session, busy: Bool) -> some View {
-        // Sport, crop and export are chosen once per match; after that the card
-        // is a wall between the user and the clips. It folds to one summary line
-        // once there are clips, and is held open whenever it has something to
-        // say: never detected, found nothing, unapplied changes, or a missing
-        // original.
-        // Not while working: the form cannot be applied then, and held open
-        // it pushed everything under it off the screen.
-        let forced = (session.segments?.isEmpty != false || session.hasPendingChanges
+    /// The settings card is held open inline whenever it has something to say:
+    /// never detected, found nothing, unapplied changes, or a missing original.
+    /// Not while working: the form cannot be applied then, and held open it
+    /// pushed everything under it off the screen.
+    private func settingsForced(_ session: Session, busy: Bool) -> Bool {
+        (session.segments?.isEmpty != false
+            || (session.hasPendingChanges && session.renderGap == nil)
             || store.sourceMissing(session)) && !busy
-        let expanded = forced || settingsOpen
-        return VStack(spacing: 14) {
-            // the place comes from the video's metadata, but reverse geocoding
-            // needs a network — so it stays editable by hand
-            Button {
-                placeDraft = session.placeName ?? ""
-                editingPlace = true
-            } label: {
-                editableRow(icon: "mappin.and.ellipse",
-                            value: session.placeName ?? L.s("add_place", lang),
-                            dim: session.placeName == nil)
-            }
-            .buttonStyle(.plain)
-            // The card title already shows when the match was filmed; this only
-            // appears when the video was imported on a different day, which is
-            // the only time the second date tells the user anything.
-            if session.importDiffersFromCapture {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.caption2)
-                    Text(L.s("imported", lang) + " · "
-                         + L.dateOnly(session.createdAt, lang))
-                    Spacer()
-                }
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-            }
+    }
 
-            if !forced { settingsHeader(session, expanded: expanded) }
-            if expanded { settingsBody(session, busy: busy) }
+    private func settingsCard(_ session: Session, busy: Bool) -> some View {
+        VStack(spacing: 14) {
+            placeRows(session)
+            settingsBody(session, busy: busy) { runApply(session) }
         }
         .padding(14)
         .background(Theme.surface,
                     in: RoundedRectangle(cornerRadius: 14))
     }
 
-    /// The folded card's stand-in: what the clips are made with, and the way
-    /// back in. Only shown when folding is allowed.
-    private func settingsHeader(_ session: Session, expanded: Bool) -> some View {
+    @ViewBuilder
+    private func placeRows(_ session: Session) -> some View {
+        // the place comes from the video's metadata, but reverse geocoding
+        // needs a network — so it stays editable by hand
         Button {
-            withAnimation(.snappy) { settingsOpen.toggle() }
+            placeDraft = session.placeName ?? ""
+            editingPlace = true
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "slider.horizontal.3")
-                    .foregroundStyle(.secondary)
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L.s("settings", lang))
-                        .font(.subheadline.weight(.medium))
-                    if !expanded {
-                        Text(settingsSummary(session))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .rotationEffect(.degrees(expanded ? 180 : 0))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
+            editableRow(icon: "mappin.and.ellipse",
+                        value: session.placeName ?? L.s("add_place", lang),
+                        dim: session.placeName == nil)
         }
         .buttonStyle(.plain)
-    }
-
-    /// "🎾 Tennis · Normal · 9:16 · 720p" — enough to tell whether the clips
-    /// below were cut the way the user wants without opening anything.
-    private func settingsSummary(_ session: Session) -> String {
-        let frame = OutputFrame(session.effectiveOrientation)
-        let sensitivity: String
-        switch session.sensitivity {
-        case .low: sensitivity = "strict"
-        case .normal: sensitivity = "normal"
-        case .high: sensitivity = "loose"
+        // The card title already shows when the match was filmed; this only
+        // appears when the video was imported on a different day, which is
+        // the only time the second date tells the user anything.
+        if session.importDiffersFromCapture {
+            HStack(spacing: 6) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.caption2)
+                Text(L.s("imported", lang) + " · "
+                     + L.dateOnly(session.createdAt, lang))
+                Spacer()
+            }
+            .font(.caption)
+            .foregroundStyle(.tertiary)
         }
-        // What the clips below were made at, not what the next render would
-        // use: a summary that turned "4K" the moment a pass ended described
-        // clips that are still 4K as 720p, and the other way round.
-        let pro = session.renderedOrientation != nil ? (session.renderedPro ?? false) : pass.isPro
-        let quality = pro ? (frame.isPortrait ? "quality_1080" : "quality_source")
-                          : "quality_720"
-        return [session.sport.emoji + " " + L.s(session.sport.rawValue, lang),
-                L.s(sensitivity, lang), frame.label, L.s(quality, lang)]
-            .joined(separator: " · ")
     }
 
     @ViewBuilder
-    private func settingsBody(_ session: Session, busy: Bool) -> some View {
+    private func settingsBody(_ session: Session, busy: Bool,
+                              onApply: @escaping () -> Void) -> some View {
             section("sec_detect") {
                 settingRows([
                     (L.s("sport", lang), AnyView(sportPicker(session))),
@@ -500,7 +591,7 @@ struct SessionDetailView: View {
                     get: { pass.isPro && session.smartCropEnabled },
                     set: { on in
                         guard pass.isPro else {
-                            destination = .pro(feature: L.s("smart_crop", lang))
+                            open(.pro(feature: L.s("smart_crop", lang)))
                             return
                         }
                         store.setSmartCrop(session, on)
@@ -533,7 +624,7 @@ struct SessionDetailView: View {
                     Spacer()
                     Button {
                         guard !pass.isPro else { return }
-                        destination = .pro(feature: L.s("feat_quality", lang))
+                        open(.pro(feature: L.s("feat_quality", lang)))
                     } label: {
                         // 4K is the wide path only: a portrait export is
                         // capped at a 1080 short side, and 9:16 is the app's
@@ -548,7 +639,7 @@ struct SessionDetailView: View {
                     .buttonStyle(.plain)
                 }
 
-                Button { destination = .caption } label: {
+                Button { open(.caption) } label: {
                     let current = session.caption?.isVisible == true
                         ? session.caption!.text : L.s("off", lang)
                     // Label, current text and chevron in one row leave the
@@ -584,7 +675,7 @@ struct SessionDetailView: View {
                 .rcSecondary()
             }
 
-            if session.hasPendingChanges {
+            if session.hasPendingChanges && session.renderGap == nil {
                 Label(L.s("apply_hint", lang), systemImage: "exclamationmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.tint)
@@ -618,7 +709,7 @@ struct SessionDetailView: View {
             let needsDetect = session.segments == nil
                 || session.segments?.isEmpty == true || session.needsRedetect
             Button {
-                runApply(session)
+                onApply()
             } label: {
                 Text(needsDetect ? (session.segments == nil ? L.s("detect", lang)
                                                             : L.s("redetect", lang))
@@ -762,11 +853,11 @@ struct SessionDetailView: View {
         HStack(spacing: 8) {
             Button {
                 guard pass.isPro else {
-                    destination = .pro(feature: L.s("target_player", lang))
+                    open(.pro(feature: L.s("target_player", lang)))
                     return
                 }
                 if OutputFrame(session.effectiveOrientation).isPortrait {
-                    destination = .targetPlayer
+                    open(.targetPlayer)
                 } else {
                     confirmSwitchVertical = true
                 }
@@ -824,6 +915,37 @@ struct SessionDetailView: View {
                 .font(.footnote)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface,
+                    in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// Clips missing although nothing changed: a first render the app was
+    /// killed in the middle of, or files the user freed up. The settings form
+    /// has nothing to say here, so it stays shut; this says what happened and
+    /// runs the same Apply.
+    private func gapCard(_ session: Session, gap: Session.RenderGap, made: Int) -> some View {
+        let missing = max((session.segments?.count ?? 0) - made, 0)
+        let text = gap == .cleared ? L.s("gap_cleared", lang)
+                                   : String(format: L.s("gap_unfinished_fmt", lang), missing)
+        return VStack(alignment: .leading, spacing: 12) {
+            Label(text, systemImage: gap == .cleared ? "externaldrive.badge.minus"
+                                                     : "clock.badge.exclamationmark")
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button { runApply(session) } label: {
+                Label(L.s(gap == .cleared ? "gap_remake" : "gap_continue", lang),
+                      systemImage: "arrow.clockwise")
+                    .font(.subheadline.bold())
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, minHeight: 24)
+            }
+            .rcPrimary()
+            .disabled(store.sourceMissing(session))
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1017,9 +1139,86 @@ struct SessionDetailView: View {
         .disabled(n == 0)
     }
 
-    // MARK: - Toolbar
+    // MARK: - Overview
 
-    private func toolbar(_ session: Session, clips: [ClipInfo], busy: Bool) -> some View {
+    /// "5 rallies · 1:34 · Longest 0:42 · Riverside" — what this match came to,
+    /// and the way into its settings, where the place is also edited.
+    private func summaryLine(_ session: Session) -> some View {
+        // From the rallies, not the clip files: after "free up" there are no
+        // files and the match still has every rally.
+        let lengths = (session.segments ?? []).map { $0.end - $0.start }
+        let total = lengths.reduce(0, +)
+        let longest = lengths.max() ?? 0
+        var parts = [String(format: L.s(lengths.count == 1 ? "rallies_one" : "rallies_n", lang),
+                            lengths.count),
+                     fmtDur(total),
+                     L.s("longest", lang) + " " + fmtDur(longest)]
+        if let place = session.placeName, !place.isEmpty { parts.append(place) }
+        return Button { destination = .settings } label: {
+            // The chevron flows in the text, as in `editableRow`: as its own
+            // column it left the line a word wide at accessibility sizes.
+            (Text(parts.joined(separator: " · "))
+             + Text("  ")
+             + Text(Image(systemName: "chevron.right")).font(.caption2))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(L.s("settings", lang))
+    }
+
+    /// The one-tap reel. With five or more finished rallies it takes the best
+    /// five — a reel of a whole match runs past every platform's length cap —
+    /// otherwise everything that is ready.
+    private func reelCTA(_ session: Session, ranked: [ClipInfo], busy: Bool) -> some View {
+        let ready = ranked.filter(\.isReady)
+        let top = ready.count >= 5
+        return Group {
+            if busy {
+                // Not a dimmed button: at 30% the label could not be read, and the
+                // only thing worth saying while busy is how far along the clips are.
+                let label: String = {
+                    if case .render(let d, let t)? = store.progress[sessionID], t > 0 {
+                        return String(format: L.s("reel_wait_fmt", lang), d, t)
+                    }
+                    return L.s("reel_wait", lang)
+                }()
+                Label(label, systemImage: "hourglass")
+                    .font(.subheadline.bold().monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .padding(.horizontal, 16)
+                    .background(Theme.surface, in: Capsule())
+                    .accessibilityElement(children: .combine)
+            } else {
+                Button {
+                    // Timeline order: the reel sheet seeds its running order from the
+                    // request as given, and a match reads best in the order it happened.
+                    let picked = (top ? Array(ready.prefix(5)) : ready).sorted { $0.index < $1.index }
+                    guard !picked.isEmpty else { return }
+                    destination = .reel(ReelRequest(pairs: picked.map { (session, $0) }))
+                } label: {
+                    // Full width, and wrapping rather than clipping to "Make a R…" on a
+                    // 4.7" screen at accessibility sizes.
+                    Label(top ? String(format: L.s("reel_best_fmt", lang), 5) : L.s("reel_make", lang),
+                          systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
+                        .font(.subheadline.bold())
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
+                }
+                .rcPrimary()
+                .disabled(ready.isEmpty)
+            }
+        }
+    }
+
+    private func clipHeader(_ clips: [ClipInfo]) -> some View {
         // Count and total length beside the title. Four stat tiles used to sit
         // here and pushed the first clip below the middle of the screen; the
         // shot total among them is the number CLAUDE.md calls unreliable.
@@ -1035,7 +1234,7 @@ struct SessionDetailView: View {
         // One row when it fits. At accessibility sizes, or in a language whose
         // labels run long, sharing the width breaks words mid-way — the sort
         // pill read "Timeli…" — so the row splits instead of truncating.
-        let picker = Group {
+        return Group {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 10) {
                     title
@@ -1056,27 +1255,6 @@ struct SessionDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-
-        let reelButton = Button {
-            let all = store.clips(of: session).filter(\.isReady).map { (session, $0) }
-            guard !all.isEmpty else { return }
-            destination = .reel(ReelRequest(pairs: all))
-        } label: {
-            Label(L.s("reel_make", lang), systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
-                .font(.subheadline.bold())
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity)
-        }
-        .rcPrimary()
-        .disabled(busy)
-
-        // Full width, and wrapping rather than clipping to "Make a R…" on a
-        // 4.7" screen at accessibility sizes.
-        return VStack(spacing: 10) {
-            picker
-            reelButton
-        }
     }
 
     // MARK: - Clips
@@ -1090,9 +1268,14 @@ struct SessionDetailView: View {
                 ClipCard(clip: clip,
                          selected: selecting ? selection.contains(clip.id) : nil) {
                     if selecting {
+                        // Unfinished clips preview, but there is no file to
+                        // save, merge or put in a reel.
+                        guard clip.isReady else { return }
                         if selection.contains(clip.id) { selection.remove(clip.id) }
                         else { selection.insert(clip.id) }
-                    } else if clip.isReady {
+                    } else {
+                        // Unfinished clips too: the player previews them
+                        // from the original.
                         destination = .clip(clip)
                     }
                 }
@@ -1102,6 +1285,215 @@ struct SessionDetailView: View {
 
     private func sorted(_ clips: [ClipInfo]) -> [ClipInfo] {
         sort == .time ? clips : clips.sorted { sort.precedes($0, $1) }
+    }
+}
+
+// MARK: - Hero
+
+/// The match's best rally, playing, at the top of the screen — the user came
+/// to watch, and a grid of posters under a form made them work for it.
+///
+/// Muted and looping. The player exists only while someone can see it: on
+/// screen, scrolled into view, nothing covering it, Reduce Motion off. Any of
+/// those turning false tears it down — a paused player still holds its
+/// decoder and, for an original, its download. While a render runs and the
+/// clip has no file yet, it plays the rally straight from the original.
+private struct HeroRally: View {
+    @EnvironmentObject var store: SessionStore
+    @AppStorage("rc_lang") private var lang = "en"
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let clip: ClipInfo
+    let session: Session
+    /// A sheet is up over the screen, so nobody is watching — and the player
+    /// sheet the hero opens would otherwise decode the same rally twice.
+    let paused: Bool
+    /// Whether an unfinished clip may play from the original.
+    let fromOriginal: Bool
+    let onTap: () -> Void
+
+    @State private var player: AVPlayer?
+    @State private var loop: NSObjectProtocol?
+    @State private var visible = true
+
+    private var frame: OutputFrame { OutputFrame(clip.orientation) }
+
+    /// Whatever changes the pixels or whether anyone can see them. The file's
+    /// date is in it because a staged re-render — a caption, the crop, the
+    /// tier — replaces the file at the same URL with the same rally bounds,
+    /// and the hero kept looping the old one.
+    private var key: String {
+        let stamp = (try? FileManager.default.attributesOfItem(atPath: clip.url.path))?[.modificationDate]
+            as? Date
+        let live = !paused && visible && !reduceMotion
+        return [clip.id, clip.orientation, String(clip.isReady), String(fromOriginal),
+                String(clip.segment.start), String(clip.segment.end),
+                String(stamp?.timeIntervalSince1970 ?? 0), String(live)].joined(separator: "|")
+    }
+
+    private var stats: String {
+        String(Int(clip.duration)) + L.s("sec", lang) + " · "
+            + String(clip.segment.hits) + " " + L.s("shots_n", lang)
+    }
+
+    /// At accessibility sizes the type is what needs the room: a full-size
+    /// hero pushed the reel button and the first row of clips off the first
+    /// screen.
+    private var maxVideoHeight: CGFloat {
+        if typeSize.isAccessibilitySize { return frame.isPortrait ? 160 : 200 }
+        return frame.isPortrait ? 240 : .infinity
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            Group {
+                if frame.isPortrait {
+                    // A 9:16 rally at full width is taller than the phone.
+                    // Capped, it leaves the width beside it, which is where
+                    // the caption goes instead of over a 135pt-wide picture —
+                    // until the caption is too big to fit beside it.
+                    let layout = typeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                        : AnyLayout(HStackLayout(spacing: 14))
+                    layout {
+                        video.frame(height: maxVideoHeight)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label(L.s("best_rally", lang), systemImage: "star.fill")
+                                .font(.subheadline.bold())
+                            Text(stats)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(10)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
+                } else {
+                    video
+                        .frame(maxHeight: maxVideoHeight)
+                        .overlay(alignment: .bottomLeading) {
+                            Text("★ " + L.s("best_rally", lang) + " · " + stats)
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                // It sits on the picture; unbounded it would
+                                // cover the rally it describes.
+                                .dynamicTypeSize(...DynamicTypeSize.large)
+                                .lineLimit(1).minimumScaleFactor(0.7)
+                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .background(.black.opacity(0.65),
+                                            in: RoundedRectangle(cornerRadius: 6))
+                                .padding(8)
+                        }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L.s("best_rally", lang) + ", " + stats)
+        .accessibilityHint(L.s("hero_hint", lang))
+        .modifier(OnScreenTracker(visible: $visible))
+        .task(id: key) { await start() }
+        .onDisappear { teardown() }
+        .onChange(of: scenePhase) { _, _ in sync() }
+    }
+
+    private var video: some View {
+        Color.clear
+            .aspectRatio(frame.aspectRatio, contentMode: .fit)
+            .overlay { PosterImage(url: clip.thumbURL) }
+            .overlay {
+                if let player {
+                    // Fill, not fit: before the clip exists this is the wide
+                    // original in a 9:16 card, and filling shows the middle —
+                    // close to the crop the clip will have.
+                    PlayerLayerView(player: player, gravity: .resizeAspectFill)
+                        // A UIKit view takes the touch for itself, and the
+                        // card's tap never reached the button.
+                        .allowsHitTesting(false)
+                }
+            }
+            .overlay {
+                // Reduce Motion: nothing moves until asked. The poster and a
+                // play glyph say what a tap does.
+                if reduceMotion {
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 40))
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.black, .white.opacity(0.9))
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func start() async {
+        teardown()
+        guard !paused, visible, !reduceMotion else { return }
+        let item: AVPlayerItem?
+        if clip.isReady {
+            item = await RallyPreview.item(from: AVURLAsset(url: clip.url), start: 0,
+                                           end: .infinity, audio: false)
+        } else if fromOriginal, let asset = await store.loadAsset(session) {
+            guard !Task.isCancelled else { return }
+            item = await RallyPreview.item(from: asset, start: clip.segment.start,
+                                           end: clip.segment.end, audio: false)
+        } else {
+            item = nil      // nothing to play: the poster stays
+        }
+        guard let item, !Task.isCancelled else { return }
+        let p = AVPlayer(playerItem: item)
+        p.isMuted = true
+        p.preventsDisplaySleepDuringVideoPlayback = false
+        // A silent loop on a list screen has no business on the TV.
+        p.allowsExternalPlayback = false
+        // Keeps the rate at the end so the loop is just a seek; with the
+        // default the player paused itself and needed telling to play again.
+        p.actionAtItemEnd = .none
+        loop = NotificationCenter.default.addObserver(
+            forName: AVPlayerItem.didPlayToEndTimeNotification, object: item,
+            queue: .main) { [weak p] _ in
+            p?.seek(to: .zero)
+        }
+        player = p
+        sync()
+    }
+
+    /// Only the app going inactive is a pause rather than a teardown: coming
+    /// back from the app switcher should not reload the video.
+    private func sync() {
+        guard let player else { return }
+        if scenePhase == .active { player.play() } else { player.pause() }
+    }
+
+    private func teardown() {
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        if let loop { NotificationCenter.default.removeObserver(loop) }
+        loop = nil
+        player = nil
+    }
+}
+
+/// Whether a view is in the visible part of its scroll view. The scroll API
+/// for this arrived in iOS 18; the app supports 17, which measures instead.
+private struct OnScreenTracker: ViewModifier {
+    @Binding var visible: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollVisibilityChange(threshold: 0.2) { visible = $0 }
+        } else {
+            content.background {
+                GeometryReader { g in
+                    let f = g.frame(in: .global)
+                    let screen = g.size.height > 0 ? UIScreen.main.bounds.height : 0
+                    Color.clear.onChange(of: f.maxY > 40 && f.minY < screen - 40,
+                                         initial: true) { _, v in visible = v }
+                }
+            }
+        }
     }
 }
 

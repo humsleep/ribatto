@@ -7,8 +7,15 @@ import UIKit
 /// `VideoPlayer` brings its own controls, and scaling that view for zoom scales
 /// the controls with it. Owning the layer keeps the picture zoomable while the
 /// controls below stay put at their normal size.
-private struct PlayerLayerView: UIViewRepresentable {
+///
+/// Also the session screen's hero, which fills its card (`.resizeAspectFill`)
+/// and lays the poster underneath. The host is transparent for that reason:
+/// black, it hid the poster behind an empty box until the first frame decoded,
+/// which for an iCloud original is seconds. `ZoomableVideo` paints its own
+/// black behind it.
+struct PlayerLayerView: UIViewRepresentable {
     let player: AVPlayer
+    var gravity: AVLayerVideoGravity = .resizeAspect
 
     final class Host: UIView {
         override class var layerClass: AnyClass { AVPlayerLayer.self }
@@ -17,9 +24,9 @@ private struct PlayerLayerView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> Host {
         let v = Host()
-        v.backgroundColor = .black
+        v.backgroundColor = .clear
         v.playerLayer.player = player
-        v.playerLayer.videoGravity = .resizeAspect
+        v.playerLayer.videoGravity = gravity
         return v
     }
 

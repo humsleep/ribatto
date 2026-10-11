@@ -19,7 +19,11 @@ struct ClipCard: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: { if clip.isReady { onTap() } }) {
+        // Taps go through while the clip is still being made: the player
+        // previews the rally from the original. Swallowing them left the user
+        // looking at a grid of posters for the whole render with nothing to
+        // watch. Callers that cannot preview keep their own `isReady` check.
+        Button(action: onTap) {
             VStack(spacing: 0) {
                 ZStack(alignment: .bottomTrailing) {
                     // The card takes its shape from a view that accepts any
@@ -48,7 +52,10 @@ struct ClipCard: View {
                         // Spinning only while something is making it. After a
                         // failed render the unmade clips spun forever.
                         if store.isBusy(clip.sessionID) {
+                            // Centred: the ZStack's bottom-trailing alignment
+                            // put it on top of the duration badge.
                             ProgressView().tint(.white)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.title3)
@@ -162,6 +169,14 @@ struct ClipPlayerSheet: View {
     @Environment(\.verticalSizeClass) private var vSize
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Why the preview could not load, shown in the video's place.
+    @State private var previewProblem: String?
+
+    /// The clip has no file yet, so the sheet plays the rally from the
+    /// original instead. Read from the snapshot on purpose: swapping the
+    /// player under the user the moment the encoder reaches this rally would
+    /// restart what they are watching. Reopening picks the file up.
+    private var preview: Bool { !clip.isReady }
 
     /// One sheet drives every modal, as on `SessionDetailView`. Stacking
     /// several `.sheet` modifiers on one view collides — a second one added
@@ -211,8 +226,67 @@ struct ClipPlayerSheet: View {
     /// is the only way to pick the new file up without closing the sheet.
     private func reloadPlayer() {
         guard !deleting else { return }
+        // A preview reloads through its `.task`, which is keyed on the range.
+        guard !preview else { return }
         player?.pause()
         player = AVPlayer(url: clip.url)
+    }
+
+    /// A finished clip's player is made synchronously on appear: with the
+    /// video as the sheet's main content, a nil player at first layout left
+    /// the whole sheet blank. The preview has to load, so it comes from a
+    /// `.task` instead.
+    private func startPlayer() {
+        guard player == nil, !deleting, !preview else { return }
+        player = AVPlayer(url: clip.url)
+    }
+
+    /// Run from a `.task`, so closing the sheet cancels it — an iCloud original
+    /// otherwise went on downloading for a sheet nobody was looking at, and
+    /// then built a player for it.
+    private func loadPreview() async {
+        guard let session else { return }
+        previewProblem = nil
+        guard let asset = await store.loadAsset(session) else {
+            if !Task.isCancelled { previewProblem = store.missingMessage(clip.sessionID) }
+            return
+        }
+        guard !Task.isCancelled else { return }
+        let item = await RallyPreview.item(from: asset, start: live.start,
+                                           end: live.end, audio: true)
+        guard !Task.isCancelled, !deleting else { return }
+        guard let item else {
+            // Never an endless spinner: say it, and the poster stays.
+            previewProblem = L.s("preview_failed", lang)
+            return
+        }
+        player?.pause()
+        // A new instance, not `replaceCurrentItem`: ZoomableVideo re-attaches
+        // its time observer when the player's identity changes, and only then.
+        player = AVPlayer(playerItem: item)
+    }
+
+    /// The poster where the video will be, while the preview loads or when the
+    /// original is out of reach.
+    private var previewPlaceholder: some View {
+        Color.clear
+            .aspectRatio(OutputFrame(clip.orientation).aspectRatio, contentMode: .fit)
+            .overlay { PosterImage(url: clip.thumbURL).opacity(0.6) }
+            .clipped()
+            .overlay {
+                if let previewProblem {
+                    Text(previewProblem)
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(12)
+                        .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 10))
+                        .padding()
+                } else {
+                    ProgressView().tint(.white)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: 300)
     }
     /// Re-pointing only means anything where the crop can move: a portrait
     /// clip that was rendered with smart crop on, on a Pro entitlement.
@@ -245,12 +319,19 @@ struct ClipPlayerSheet: View {
         // then dismissed player and sheet together, silently dropping the trim
         // the user was in the middle of.
         .allowsLandscape(!OutputFrame(clip.orientation).isPortrait && destination == nil)
+        // On the Group, not the two layouts: rotating swaps them, and a task
+        // on either would be cancelled and restarted by the turn.
+        .task(id: preview ? "\(live.start)-\(live.end)" : "") {
+            guard preview else { return }
+            await loadPreview()
+        }
     }
 
     private var landscapePlayer: some View {
         ZStack(alignment: .topTrailing) {
             Color.black.ignoresSafeArea()
             if let player { ZoomableVideo(player: player) }
+            else if preview { previewPlaceholder.frame(maxHeight: .infinity) }
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.headline)
@@ -262,7 +343,7 @@ struct ClipPlayerSheet: View {
             .padding(16)
         }
         .statusBarHidden()
-        .onAppear { if player == nil { player = AVPlayer(url: clip.url) } }
+        .onAppear { startPlayer() }
         .preferredColorScheme(.dark)
     }
 
@@ -286,12 +367,29 @@ struct ClipPlayerSheet: View {
                     } else {
                         ZoomableVideo(player: player)
                     }
+                } else if preview {
+                    previewPlaceholder
+                }
+                if preview {
+                    // "Still being made" only while something is making it.
+                    // After a failed render the clip waits for Apply, and
+                    // promising it was on its way was simply untrue.
+                    let making = store.isBusy(clip.sessionID)
+                    Label(L.s(making ? "clip_preview_note" : "clip_unmade_note", lang),
+                          systemImage: making ? "hourglass" : "film")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
                 }
                 // A player picked once for the session is the right subject for
                 // most rallies but not all — they change ends, or the rally
                 // that matters is the opponent's. Re-pointing lives on the clip
                 // because that is where you notice the wrong person is centred.
-                if canRetarget {
+                // Both work on the clip file, which a preview does not have yet.
+                if canRetarget && !preview {
                     HStack(spacing: 8) {
                         Button { destination = .retarget } label: {
                             Label(L.s("target_clip", lang),
@@ -314,21 +412,23 @@ struct ClipPlayerSheet: View {
 
                 // one rally is the most common thing to post, so the route to a
                 // reel sits on the clip itself rather than only behind selection
-                Button {
-                    guard let session else { return }
-                    destination = .reel(ReelRequest(pairs: [(session, current)]))
-                } label: {
-                    Label(L.s("reel_make", lang),
-                          systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
-                        .frame(maxWidth: .infinity)
+                if !preview {
+                    Button {
+                        guard let session else { return }
+                        destination = .reel(ReelRequest(pairs: [(session, current)]))
+                    } label: {
+                        Label(L.s("reel_make", lang),
+                              systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .rcPrimary()
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
                 }
-                .rcPrimary()
-                .padding(.horizontal, 16)
-                .padding(.bottom, 10)
             }
             }
             .background(Color.black.ignoresSafeArea())
-            .onAppear { if player == nil { player = AVPlayer(url: clip.url) } }
+            .onAppear { startPlayer() }
             // A trim rewrites the file at the same URL, so neither `onAppear`
             // nor the URL changing brings the new length in. Rebuild the
             // player when the segment's bounds move; the header reads `live`
@@ -379,17 +479,21 @@ struct ClipPlayerSheet: View {
                     }
                     .accessibilityLabel(L.s("favourite", lang))
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { destination = .trim } label: {
-                        Image(systemName: "timeline.selection")
+                // Trim re-renders the clip file and Share hands it out; a
+                // preview has no file for either. Starring is only a flag.
+                if !preview {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { destination = .trim } label: {
+                            Image(systemName: "timeline.selection")
+                        }
+                        .accessibilityLabel(L.s("trim_title", lang))
                     }
-                    .accessibilityLabel(L.s("trim_title", lang))
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    ShareLink(item: clip.url) {
-                        Image(systemName: "square.and.arrow.up")
+                    ToolbarItem(placement: .topBarTrailing) {
+                        ShareLink(item: clip.url) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        .accessibilityLabel(L.s("share", lang))
                     }
-                    .accessibilityLabel(L.s("share", lang))
                 }
             }
             .confirmationDialog(L.s("delete_clip", lang), isPresented: $confirmDelete) {
@@ -422,6 +526,51 @@ struct ClipPlayerSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - Rally preview
+
+/// A rally cut straight from the original, for clips the render has not
+/// reached yet (the player sheet) and for the session screen's hero.
+enum RallyPreview {
+    /// A composition of just the rally rather than the whole original with a
+    /// `forwardPlaybackEndTime`: the player's scrubber and clock then run over
+    /// the rally's own 0…length instead of a spot deep inside an hour-long
+    /// match, and the end of the item is the end of the rally, so looping is a
+    /// seek to zero. The range is clamped to the asset's real length — a range
+    /// past the end is what made AVAssetExportSession hang forever.
+    /// `audio: false` leaves the sound track out entirely, for a muted
+    /// autoplay that has no business touching the audio session.
+    static func item(from asset: AVAsset, start: Double, end: Double,
+                     audio: Bool) async -> AVPlayerItem? {
+        guard let total = try? await asset.load(.duration).seconds,
+              total.isFinite, total > 0 else { return nil }
+        let from = max(0, min(start, total))
+        let to = min(end, total)
+        guard to - from > 0.1,
+              let video = try? await asset.loadTracks(withMediaType: .video).first
+        else { return nil }
+        let range = CMTimeRange(start: CMTime(seconds: from, preferredTimescale: 600),
+                                end: CMTime(seconds: to, preferredTimescale: 600))
+        let comp = AVMutableComposition()
+        guard let vTrack = comp.addMutableTrack(withMediaType: .video,
+                                                preferredTrackID: kCMPersistentTrackID_Invalid)
+        else { return nil }
+        do {
+            try vTrack.insertTimeRange(range, of: video, at: .zero)
+            // Phone footage is stored sideways with a rotation; without it a
+            // portrait recording previews lying on its side.
+            vTrack.preferredTransform = try await video.load(.preferredTransform)
+            if audio, let sound = try? await asset.loadTracks(withMediaType: .audio).first,
+               let aTrack = comp.addMutableTrack(withMediaType: .audio,
+                                                 preferredTrackID: kCMPersistentTrackID_Invalid) {
+                try aTrack.insertTimeRange(range, of: sound, at: .zero)
+            }
+        } catch {
+            return nil
+        }
+        return AVPlayerItem(asset: comp)
     }
 }
 
@@ -615,6 +764,8 @@ struct AllClipsView: View {
                                          uniformAspect: 16.0 / 9.0,
                                          selected: selecting ? selection.contains(pair.clip.id) : nil) {
                                     if selecting {
+                                        // No file yet: nothing to save or merge.
+                                        guard pair.clip.isReady else { return }
                                         if selection.contains(pair.clip.id) {
                                             selection.remove(pair.clip.id)
                                         } else {

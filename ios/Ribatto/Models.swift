@@ -448,6 +448,37 @@ struct Session: Identifiable, Codable, Equatable {
 
     var hasPendingChanges: Bool { needsRedetect || needsRerender }
 
+    /// Why clips are missing when the user changed nothing.
+    enum RenderGap { case unfinished, cleared }
+
+    /// `needsRerender` reads an unrecorded render (`renderedOrientation == nil`)
+    /// as a change, which keeps Apply working — but an app killed mid-render
+    /// and "free up clip files" both landed there too, and the screen then told
+    /// the user "settings changed" and held the whole form open over a match
+    /// they had not touched. Non-nil only when the stamp of what was being made
+    /// still matches the settings, so a real edit keeps the old behaviour.
+    var renderGap: RenderGap? {
+        guard renderedOrientation == nil, segments?.isEmpty == false, !needsRedetect,
+              let stamp = partialRender, stillDescribes(stamp) else { return nil }
+        return stamp.cleared == true ? .cleared : .unfinished
+    }
+
+    /// The settings-side half of `RenderStamp.matches`. The tier is the one
+    /// thing a session cannot know — it belongs to the pass — so the Pro-only
+    /// settings are compared only when the stamp was made with them, as
+    /// `needsRerender` does.
+    private func stillDescribes(_ stamp: RenderStamp) -> Bool {
+        let segs = segments ?? []
+        return stamp.orientation == effectiveOrientation
+            && (stamp.caption ?? CaptionSettings()) == (caption ?? CaptionSettings())
+            && (!stamp.pro || (stamp.smartCrop == effectiveSmartCrop
+                               && (!stamp.smartCrop || stamp.targetPlayer == targetPlayer)))
+            && stamp.rallies.count == segs.count
+            && zip(stamp.rallies, segs).allSatisfy {
+                abs($0.start - $1.start) < 1e-6 && abs($0.end - $1.end) < 1e-6
+            }
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, name, createdAt, capturedAt, duration, width, height,
              sport, sensitivity, aspect, segments, renderedOrientation,
@@ -472,6 +503,11 @@ struct RenderStamp: Codable, Equatable {
     var rallies: [RallySegment]
     /// Caption language — `{sport}`, "Best #1" and dates are burned in it.
     var lang: String? = nil
+    /// Written by "free up clip files", which keeps the record of the last
+    /// render here so the screen can say the files were cleared rather than
+    /// that settings changed. Not part of `matches`: an Apply afterwards is a
+    /// render of the same pixels into an empty folder.
+    var cleared: Bool? = nil
 
     /// Same pixels, not same record: a favourite star, a hit count or a
     /// per-clip target override does not change the clips already made, and
