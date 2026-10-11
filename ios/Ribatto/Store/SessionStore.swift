@@ -1872,14 +1872,23 @@ final class SessionStore: ObservableObject {
     /// Saves a finished reel to Photos so it can be picked up by Instagram or
     /// YouTube, which is the only reliable hand-off iOS offers.
     func saveToPhotos(_ url: URL) async -> Bool {
+        await saveVideoToPhotos(url) == .saved
+    }
+
+    enum PhotoSave { case saved, denied, failed }
+
+    /// `saveToPhotos` with the reason kept. A write that failed — a full
+    /// phone, a file Photos would not take — was reported as "access denied",
+    /// and the user went looking in Settings for a switch that was already on.
+    func saveVideoToPhotos(_ url: URL) async -> PhotoSave {
         let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
-        guard status == .authorized || status == .limited else { return false }
+        guard status == .authorized || status == .limited else { return .denied }
         do {
             try await PHPhotoLibrary.shared().performChanges {
                 PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
             }
-            return true
-        } catch { return false }
+            return .saved
+        } catch { return .failed }
     }
 
     /// Returns false when the session is busy and the clip was left alone —

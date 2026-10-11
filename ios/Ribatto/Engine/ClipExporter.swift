@@ -262,6 +262,21 @@ enum ClipExporter {
 
         // only a vertical crop of a wider frame has room to pan
         let canPan = maxPan > 1
+
+        // Without smart crop, a portrait export of a wide match no longer cuts
+        // the middle third out of it: 9:16 kept 31.6% of the width, and on
+        // court-side footage that put the opponent outside the frame for the
+        // whole rally. The full frame goes across the middle at the output's
+        // width, over a blurred, darkened fill of itself — the whole court,
+        // shaped for a phone. The composition only scales the frame to that
+        // width (`fitSize`); the blur is drawn per frame in `encode`.
+        // Pro framing — smart crop and player tracking — is unchanged.
+        // Rounded DOWN to even: rounded up, the strip was a pixel taller than
+        // the picture and a black hairline ran under the video.
+        let fitHeight = (out.width * dh / dw / 2).rounded(.down) * 2
+        let blurFill = OutputFrame(orientation).isPortrait && !smartCrop && canPan
+            && fitHeight < out.height - 2
+        let fitSize = CGSize(width: out.width, height: fitHeight)
         var keyframes: [SmartCrop.Keyframe] = []
         var trackedTarget = false
         if smartCrop && canPan {
@@ -280,7 +295,7 @@ enum ClipExporter {
         }
 
         let comp = AVMutableVideoComposition()
-        comp.renderSize = out
+        comp.renderSize = blurFill ? fitSize : out
         let fps = fpsRaw > 0 ? fpsRaw : 30
         comp.frameDuration = CMTime(value: 1, timescale: CMTimeScale(max(1, Int(fps.rounded()))))
 
@@ -345,6 +360,10 @@ enum ClipExporter {
                 // point — so that path keeps it.
                 li.setTransform(transform(window: window), at: .zero)
             }
+        } else if blurFill {
+            // The whole frame, scaled to the output's width.
+            li.setTransform(transform(window: CGRect(x: 0, y: 0, width: dw, height: dh)),
+                            at: .zero)
         } else {
             li.setTransform(transform(window: centeredWindow), at: .zero)
         }
@@ -382,10 +401,15 @@ enum ClipExporter {
         let range = CMTimeRange(start: segStart,
                                 duration: CMTime(seconds: dur, preferredTimescale: 600))
         let overlay = overlayImage(for: out, watermark: !pro, caption: caption)
+        var compose: Compose?
+        if blurFill {
+            let size = out
+            compose = { image in ClipExporter.blurFilled(image, out: size) }
+        }
         do {
             try await encode(asset: asset, composition: comp, audioMix: audioMix,
                              timeRange: range, out: out, fps: fps, pro: pro,
-                             overlay: overlay, to: staging)
+                             overlay: overlay, compose: compose, to: staging)
         } catch let error as NSError where error.domain == AVFoundationErrorDomain
                     // mediaServicesWereReset / operationInterrupted, as raw
                     // codes: the named cases are iOS-only and Tools/ builds
@@ -413,7 +437,7 @@ enum ClipExporter {
             do {
                 try await legacyEncode(asset: asset, composition: comp, audioMix: audioMix,
                                        timeRange: range, watermark: !pro, caption: caption,
-                                       to: staging)
+                                       compose: compose, out: out, to: staging)
             } catch {
                 #if DEBUG
                 trace?("  legacy failed: \(error)")
@@ -428,6 +452,49 @@ enum ClipExporter {
         if let thumbURL {
             try? writeThumbnail(of: clipURL, at: min(1.0, dur / 2), to: thumbURL)
         }
+    }
+
+    // MARK: - Blur fill
+
+    /// Builds one output frame from the composition's frame. Runs per frame
+    /// inside the encode pump, so it must stay a pure CIImage recipe.
+    typealias Compose = @Sendable (CIImage) -> CIImage
+
+    /// The free portrait frame: `frame` (the source at the output's width)
+    /// centred over a blurred, 25%-darker copy of itself scaled to fill.
+    ///
+    /// The blur runs at a quarter of the output size and is scaled back up.
+    /// At full size a radius-30 Gaussian is the most expensive thing in the
+    /// frame, and a blur this heavy has no detail for the extra pixels to show.
+    static func blurFilled(_ frame: CIImage, out: CGSize) -> CIImage {
+        let fit = frame.extent
+        guard fit.width > 0, fit.height > 0 else { return frame }
+        let bounds = CGRect(origin: .zero, size: out)
+        let fill = out.height / fit.height
+        let down: CGFloat = 0.25
+        // Same look at 720 and 1080 across: the radius follows the frame.
+        let radius = 30 * (out.width / 720) * down
+        let dim = CGFloat(0.75)
+        let background = frame
+            .transformed(by: CGAffineTransform(translationX: -fit.minX, y: -fit.minY))
+            .transformed(by: CGAffineTransform(scaleX: fill * down, y: fill * down))
+            // Clamped first, or the blur pulls transparent black in from
+            // outside the frame and every edge of the fill turns dark.
+            .clampedToExtent()
+            .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: radius])
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: dim, y: 0, z: 0, w: 0),
+                "inputGVector": CIVector(x: 0, y: dim, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: dim, w: 0),
+            ])
+            .transformed(by: CGAffineTransform(scaleX: 1 / down, y: 1 / down))
+            .transformed(by: CGAffineTransform(translationX: -(fit.width * fill - out.width) / 2,
+                                               y: 0))
+            .cropped(to: bounds)
+        let foreground = frame.transformed(by: CGAffineTransform(
+            translationX: -fit.minX + (out.width - fit.width) / 2,
+            y: -fit.minY + (out.height - fit.height) / 2))
+        return foreground.composited(over: background).cropped(to: bounds)
     }
 
     // MARK: - Loudness
@@ -529,6 +596,7 @@ enum ClipExporter {
                                fps: Float,
                                pro: Bool,
                                overlay: CIImage?,
+                               compose: Compose? = nil,
                                to url: URL) async throws {
 #if targetEnvironment(simulator)
         let hevc = false
@@ -685,7 +753,7 @@ enum ClipExporter {
                 let time = CMSampleBufferGetPresentationTimeStamp(sample)
                 // Nothing to draw: the composition's own buffer goes straight
                 // through, untouched and uncopied.
-                guard let overlay else {
+                guard overlay != nil || compose != nil else {
                     if videoIn.append(sample) { return true }
                     abort(writer.error ?? NSError(domain: "Ribatto", code: 23))
                     return false
@@ -702,8 +770,12 @@ enum ClipExporter {
                                     [NSLocalizedDescriptionKey: "No buffer for the overlay"]))
                     return false
                 }
-                context.render(overlay.composited(over: CIImage(cvPixelBuffer: source)),
-                               to: target)
+                // The composition's frame is `fitSize` under a blur fill; the
+                // target is always the output size.
+                var image = CIImage(cvPixelBuffer: source)
+                if let compose { image = compose(image) }
+                if let overlay { image = overlay.composited(over: image) }
+                context.render(image, to: target)
                 if adaptor.append(target, withPresentationTime: time) { return true }
                 abort(writer.error ?? NSError(domain: "Ribatto", code: 23))
                 return false
@@ -818,6 +890,8 @@ enum ClipExporter {
                                      timeRange: CMTimeRange,
                                      watermark: Bool,
                                      caption: CaptionSettings?,
+                                     compose: Compose? = nil,
+                                     out: CGSize,
                                      to url: URL) async throws {
         guard let session = AVAssetExportSession(
             asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
@@ -828,7 +902,11 @@ enum ClipExporter {
         session.timeRange = timeRange
         try await export(session: session, to: url,
                          limit: max(120, CMTimeGetSeconds(timeRange.duration) * 30))
-        try await burnOverlays(into: url, watermark: watermark, caption: caption)
+        // The blur fill rides on the overlay pass: the preset export above
+        // wrote the frame at `fitSize`, and this pass draws it into the full
+        // output frame — so the fallback looks the same as the main path.
+        try await burnOverlays(into: url, watermark: watermark, caption: caption,
+                               compose: compose, out: out)
     }
 
     // MARK: - Burned-in overlays
@@ -861,17 +939,24 @@ enum ClipExporter {
 
     private static func burnOverlays(into url: URL,
                                      watermark: Bool,
-                                     caption: CaptionSettings?) async throws {
-        guard watermark || (caption?.isVisible ?? false) else { return }
+                                     caption: CaptionSettings?,
+                                     compose: Compose? = nil,
+                                     out: CGSize? = nil) async throws {
+        guard watermark || (caption?.isVisible ?? false) || compose != nil else { return }
 
         let asset = AVURLAsset(url: url)
         guard let track = try await asset.loadTracks(withMediaType: .video).first else { return }
-        let size = try await track.load(.naturalSize)
-        guard let overlay = overlayImage(for: size, watermark: watermark, caption: caption)
-        else { return }
+        let natural = try await track.load(.naturalSize)
+        // Composed, the output is the full frame, not the fitted strip.
+        let size = compose != nil ? (out ?? natural) : natural
+        let overlay = overlayImage(for: size, watermark: watermark, caption: caption)
+        guard overlay != nil || compose != nil else { return }
 
         let comp = AVMutableVideoComposition(asset: asset) { request in
-            request.finish(with: overlay.composited(over: request.sourceImage), context: nil)
+            var image = request.sourceImage
+            if let compose { image = compose(image) }
+            if let overlay { image = overlay.composited(over: image) }
+            request.finish(with: image, context: nil)
         }
         comp.renderSize = size
 

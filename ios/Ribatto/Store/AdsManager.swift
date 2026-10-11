@@ -140,6 +140,14 @@ final class AdsManager: NSObject, ObservableObject {
     private var rewarded: RewardedAd?
     private var loadingRewarded = false
     private var lastInterstitial = Date.distantPast
+    /// A render or reel finished and has earned an interstitial, but it waits.
+    /// Shown the moment the result arrived, it covered the very thing the
+    /// user had been waiting minutes to see — so it holds until they close
+    /// the sheet they watched it in (`showPendingInterstitial`). Stamped, so
+    /// a debt from a render long ago is not collected on some unrelated
+    /// sheet much later.
+    private var pendingSince: Date?
+    private static let pendingLifetime: TimeInterval = 600
 
     /// Whether the build carries a usable AdMob app id. The SDK throws at
     /// `start` when GADApplicationIdentifier is missing or malformed; checking
@@ -273,6 +281,9 @@ final class AdsManager: NSObject, ObservableObject {
             // the invalid-traffic rules are about. There is no pause API.
             banner?.removeFromSuperview()
             banner = nil
+            // A pass started: whatever was owed is forgiven, not deferred
+            // until the pass runs out.
+            pendingSince = nil
             bannerLoaded = false
             bannerFilled = false
             bannerAttempts = 0
@@ -343,6 +354,39 @@ final class AdsManager: NSObject, ObservableObject {
     /// Shows the loaded interstitial if enough time has passed since the last
     /// one, then preloads the next. Safe to call after every render; the
     /// interval does the rationing.
+    /// Records that a result has earned an interstitial without showing one.
+    /// Free tier only: a pass that is running has no ads to owe.
+    func markInterstitialDue() {
+        guard showing else { return }
+        pendingSince = Date()
+        // Loaded now so it is ready by the time the user closes the result.
+        loadInterstitial()
+    }
+
+    /// Shows the owed interstitial, if any. Callers invoke it when a sheet the
+    /// user opened has just closed and their own screen is in front — never
+    /// over a sheet, never on another tab. Spacing, the foreground check and
+    /// the free-tier check stay with `showInterstitialIfDue`. Cleared either
+    /// way: an ad skipped by the interval is not carried to a later moment.
+    func showPendingInterstitial() {
+        guard let since = pendingSince else { return }
+        pendingSince = nil
+        guard Date().timeIntervalSince(since) < Self.pendingLifetime else { return }
+        // The next turn of the run loop: called from a sheet's onDismiss, the
+        // presenting controller is still finishing the dismissal, and a
+        // present then can be refused or land half-animated.
+        DispatchQueue.main.async { [weak self] in
+            // Not sideways: the app is portrait except the landscape player,
+            // and an interstitial over a rotated screen came up rotated with
+            // it and then snapped back.
+            let scene = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first { $0.activationState == .foregroundActive }
+            guard scene?.interfaceOrientation.isPortrait ?? true else { return }
+            self?.showInterstitialIfDue()
+        }
+    }
+
     func showInterstitialIfDue() {
         // Reload first: a single failed load used to end interstitials for
         // the whole session, because the guard below returns on a nil ad and

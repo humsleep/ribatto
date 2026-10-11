@@ -617,6 +617,10 @@ struct HighlightPlayerSheet: View {
 struct AllClipsView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @EnvironmentObject var store: SessionStore
+    @EnvironmentObject var ads: AdsManager
+    /// Whether this tab is the one in front, so an owed interstitial never
+    /// lands on another tab after a sheet here closes.
+    @State private var onScreen = false
     @EnvironmentObject var pass: ProPass
     @AppStorage("rc_lang") private var lang = "en"
     @State private var sort: ClipSort = .time
@@ -810,11 +814,20 @@ struct AllClipsView: View {
                 get: { saveMessage != nil }, set: { if !$0 { saveMessage = nil } })) {
                 Button("OK", role: .cancel) { saveMessage = nil }
             }
-            .sheet(item: $playing) { clip in
+            // A reel finished in either sheet leaves its interstitial owed;
+            // it is shown once the user has watched and closed it.
+            .sheet(item: $playing, onDismiss: showOwedAd) { clip in
                 ClipPlayerSheet(clip: clip)
             }
-            .sheet(item: $reel) { ReelSheet(request: $0) }
+            .sheet(item: $reel, onDismiss: showOwedAd) { ReelSheet(request: $0) }
+            .onAppear { onScreen = true }
+            .onDisappear { onScreen = false }
         }
+    }
+
+    private func showOwedAd() {
+        guard onScreen, playing == nil, reel == nil else { return }
+        ads.showPendingInterstitial()
     }
 
     /// Collapsible filter panel.

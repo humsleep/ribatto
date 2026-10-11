@@ -70,13 +70,25 @@ enum ReelPace: String, Codable, CaseIterable, Identifiable {
             return [tail]
         case .hook:
             guard length > Self.hookLead + 2 else { return [segment] }
-            // the winning shot lands shortly before the rally's padded end
+            // The teaser ends on the winning shot: the last strike when the
+            // detector kept them, else where the padding puts it. A reel's
+            // rallies are cut to their strikes (`playTrimmed`), so their end
+            // is no longer one padding past the last shot — measuring from it
+            // put the teaser two seconds early, on a ball still in the air.
+            let winner = segment.hitTimes?.filter { $0 > segment.start && $0 <= segment.end }.max()
+                ?? segment.end - RallyDetector.padEndS
             var lead = segment
-            lead.start = max(segment.start, segment.end - RallyDetector.padEndS - Self.hookLead)
+            lead.start = max(segment.start, winner - Self.hookLead)
             lead.end = min(segment.end, lead.start + Self.hookLead)
             return [lead, segment]
         }
     }
+
+    /// Seconds of the rally kept before the first strike and after the last
+    /// in a reel. Enough to see the serve toss and the ball land; the rest of
+    /// the detector's padding is players walking.
+    static let leadIn = 0.5
+    static let tailOut = 1.5
 
     /// Seconds one rally contributes at this pace, for the estimate the sheet
     /// shows before committing the user to a render.
@@ -317,5 +329,21 @@ enum ReelBuilder {
             try await HighlightMerger.merge(clips: parts, to: output)
         }
         return plan
+    }
+}
+
+extension RallySegment {
+    /// The rally cut to its strikes for a reel: from just before the first to
+    /// just after the last. The detector pads every rally by 2 s in front and
+    /// 3.5 s behind, which suits a clip someone scrubs through and is dead air
+    /// in a 30-second reel. Clips are unchanged. Left whole with fewer than
+    /// two strikes — one hit is no evidence of where the point starts.
+    var playTrimmed: RallySegment {
+        let hits = (hitTimes ?? []).filter { $0 >= start && $0 <= end }.sorted()
+        guard hits.count >= 2, let first = hits.first, let last = hits.last else { return self }
+        var cut = self
+        cut.start = max(start, first - ReelPace.leadIn)
+        cut.end = min(end, last + ReelPace.tailOut)
+        return cut.end - cut.start > 1 ? cut : self
     }
 }

@@ -8,7 +8,13 @@ struct SessionDetailView: View {
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.scenePhase) private var scenePhase
     let sessionID: UUID
+    /// The id of the last sheet this screen presented, kept past its
+    /// dismissal: onDismiss runs after `destination` is already nil, and
+    /// closing the pass sheet — where the user just watched an ad, or chose
+    /// not to — must not be answered with another one.
+    @State private var lastPresented: String?
 
     @State private var sort: ClipSort = .time
     @State private var destination: Destination?
@@ -252,15 +258,6 @@ struct SessionDetailView: View {
                 dismiss()
             }
         }
-        // The one place an ad interrupts: a render just finished and the user
-        // was watching the progress bar anyway. Only a completed render — a
-        // `.failed` stage is a message, not a result, and gets no ad on top.
-        //
-        // And only with this screen in front. Trimming a clip, re-pointing the
-        // tracker and splitting a rally all re-render a single clip through the
-        // same stage, and the interstitial presents from the top-most
-        // controller — so an edit made inside the player put a full-screen ad
-        // over the sheet the user was working in.
         .confirmationDialog(L.s("clear_clips_title", lang), isPresented: $confirmClearClips,
                             titleVisibility: .visible) {
             Button(L.s("clear_clips", lang), role: .destructive) {
@@ -284,13 +281,35 @@ struct SessionDetailView: View {
         } message: {
             Text(L.s("pro_expired_msg", lang))
         }
+        // A finished render earns an interstitial, but it is only owed here.
+        // Shown on the spot it covered the first look at the clips the user
+        // had waited minutes for; it now waits until they have watched one and
+        // closed the player (the sheet's onDismiss below). Only a completed
+        // render — a `.failed` stage is a message, not a result. A trim or
+        // re-target inside the player re-renders through the same stage; that
+        // marks it too, and it shows once the player is closed, never over it.
         .onChange(of: store.progress[sessionID]) { old, new in
-            guard destination == nil, onScreen else { return }
-            if case .render? = old, new == nil { ads.showInterstitialIfDue() }
+            // Only a render the user was here for. One finishing on another
+            // tab, under a sheet, or in the background is not a result they
+            // just saw, and owing an ad for it put one on a later, unrelated
+            // dismissal.
+            guard destination == nil, onScreen, scenePhase == .active else { return }
+            if case .render? = old, new == nil { ads.markInterstitialDue() }
+        }
+        .onChange(of: destination?.id) { _, new in
+            if let new { lastPresented = new }
         }
         .sheet(item: $destination, onDismiss: {
             settingsDestination = nil
-            guard applyAfterSettings else { return }
+            guard applyAfterSettings else {
+                // The owed ad, if any: a sheet the user opened has closed and
+                // this screen is in front. Not when one sheet was swapped for
+                // another, and not on a tab the user has moved to.
+                if destination == nil, onScreen, lastPresented?.hasPrefix("pro-") != true {
+                    ads.showPendingInterstitial()
+                }
+                return
+            }
             applyAfterSettings = false
             scrollToTop += 1
             if let session = self.session { runApply(session) }
@@ -833,6 +852,17 @@ struct SessionDetailView: View {
             let zoomed = pass.isPro && session.effectiveSmartCrop
                 && session.targetPlayer != nil
             let kept = Int((frame.widthKeptFrom169 * 100).rounded())
+            // Without smart crop nothing is cut away any more — the whole
+            // frame goes across the middle over a blur (ClipExporter) — so
+            // "keeps 32% of the width" would describe a crop that no longer
+            // happens.
+            if !(pass.isPro && session.effectiveSmartCrop) {
+                Label(L.s("crop_blurfill", lang), systemImage: "rectangle.inset.filled")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
             Label(zoomed
                     ? L.s("crop_zoomed", lang)
                     : String(format: L.s("crop_keeps_fmt", lang), frame.label, kept),
@@ -841,6 +871,7 @@ struct SessionDetailView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
@@ -1170,12 +1201,73 @@ struct SessionDetailView: View {
         .accessibilityHint(L.s("settings", lang))
     }
 
-    /// The one-tap reel. With five or more finished rallies it takes the best
-    /// five — a reel of a whole match runs past every platform's length cap —
-    /// otherwise everything that is ready.
+    /// The one-tap reel: about thirty seconds of the match's best, built the
+    /// moment the sheet opens. Chosen by length, not count — five long rallies
+    /// ran past a minute, which is not a highlight. Best rallies are taken in
+    /// order until the next would overrun (always at least one); the best one
+    /// leads, since the first seconds decide whether anyone keeps watching,
+    /// and the rest follow in the order they were played.
+    private static let reelBudget: Double = 30
+
+    /// The longest piece of one rally the highlight takes when it is the only
+    /// one, and when there are others to fit beside it. At 25 s for every
+    /// rally, a long best point left 5 s and every other rally (9–11 s once
+    /// cut to its strikes) was turned away: a "highlight" of one rally.
+    private static let reelTailMax: Double = 25
+    private static let reelTailShared: Double = 15
+    /// Below this, a cut-down rally is a fragment, not a point.
+    private static let reelTailMin: Double = 8
+
+    private func reelPicks(_ ready: [ClipInfo]) -> [ClipInfo] {
+        var picked: [ClipInfo] = []
+        var total = 0.0
+        // Measured on the strikes, not the padded clip: the dead time before
+        // the serve and after the point is cut from a reel anyway, and
+        // counting it left room for one rally where two fit.
+        let cap = ready.count > 1 ? Self.reelTailShared : Self.reelTailMax
+        for whole in ready.map(\.forReel) {
+            // Its last `cap` seconds, starting just before a strike.
+            let clip = whole.segment.duration > cap ? Self.tail(of: whole, seconds: cap) : whole
+            let left = Self.reelBudget - total
+            // Measured at the pace the reel is built at — the hook adds its
+            // teaser to every rally.
+            if ReelPace.hook.estimatedLength(of: clip.segment) <= left {
+                picked.append(clip)
+                total += ReelPace.hook.estimatedLength(of: clip.segment)
+                continue
+            }
+            // Too long for what is left. A 42-second best rally alone made a
+            // 43-second "30-second" reel, so it is cut to its end — where the
+            // winning shot is — rather than taken whole or skipped.
+            let room = min(cap, left - ReelPace.hookLead - 0.5)
+            // Too little room for this one; a shorter rally further down the
+            // ranking may still fit whole.
+            guard room >= Self.reelTailMin else { continue }
+            let cut = Self.tail(of: clip, seconds: room)
+            picked.append(cut)
+            total += ReelPace.hook.estimatedLength(of: cut.segment)
+        }
+        guard let best = picked.first else { return [] }
+        return [best] + picked.dropFirst().sorted { $0.index < $1.index }
+    }
+
+    /// The last `seconds` of a rally, started just before a strike when the
+    /// detector kept them — a cut mid-swing opens on a player already
+    /// running, with no idea where the ball is. Only the request is cut; the
+    /// session's rally stays whole.
+    private static func tail(of clip: ClipInfo, seconds: Double) -> ClipInfo {
+        var seg = clip.segment
+        guard seg.duration > seconds else { return clip }
+        var start = seg.end - seconds
+        if let hit = seg.hitTimes?.sorted().first(where: { $0 >= start && $0 < seg.end - 2 }) {
+            start = max(start, hit - 0.4)
+        }
+        seg.start = start
+        return clip.with(segment: seg)
+    }
+
     private func reelCTA(_ session: Session, ranked: [ClipInfo], busy: Bool) -> some View {
         let ready = ranked.filter(\.isReady)
-        let top = ready.count >= 5
         return Group {
             if busy {
                 // Not a dimmed button: at 30% the label could not be read, and the
@@ -1197,15 +1289,20 @@ struct SessionDetailView: View {
                     .accessibilityElement(children: .combine)
             } else {
                 Button {
-                    // Timeline order: the reel sheet seeds its running order from the
-                    // request as given, and a match reads best in the order it happened.
-                    let picked = (top ? Array(ready.prefix(5)) : ready).sorted { $0.index < $1.index }
+                    let picked = reelPicks(ready)
                     guard !picked.isEmpty else { return }
-                    destination = .reel(ReelRequest(pairs: picked.map { (session, $0) }))
+                    // The rest of the match comes along switched off, so Edit
+                    // can add a rally the automatic pick left out.
+                    let taken = Set(picked.map(\.id))
+                    let rest = ready.filter { !taken.contains($0.id) }
+                        .sorted { $0.index < $1.index }
+                    destination = .reel(ReelRequest(pairs: picked.map { (session, $0) },
+                                                    pace: .hook, keepOrder: true,
+                                                    extras: rest.map { (session, $0) }))
                 } label: {
                     // Full width, and wrapping rather than clipping to "Make a R…" on a
                     // 4.7" screen at accessibility sizes.
-                    Label(top ? String(format: L.s("reel_best_fmt", lang), 5) : L.s("reel_make", lang),
+                    Label(L.s("reel_30s", lang),
                           systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
                         .font(.subheadline.bold())
                         .multilineTextAlignment(.center)
