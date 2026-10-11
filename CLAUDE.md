@@ -52,8 +52,13 @@ ios/Ribatto/
                            워터마크(무료)는 Bebas 대문자 + 얇은 검정 외곽선. 흰 글자만으로는 밝은 하늘에서 사라진다
                            크롭은 `transform(window:)` 하나로 통일 — 소스의 사각 영역을 출력 프레임에 매핑
                            `reframed(...)`: 추적 박스가 있으면 피사체에 맞춰 축소·이동(최대 2배 줌), 없으면 기존 전체높이 창
-    ReelBuilder.swift      여러 랠리를 하나의 세로 릴스로 (길이캡: reels 90s/shorts 60s/tiktok 180s)
-                           ReelPace: full/impact(마지막 6초)/hook(위닝샷 0.8초 + 전체)
+                           세로(9:16·4:5) 출력에 스마트 크롭을 안 쓰면 `blurFilled`: 원본 전체를 폭에 맞춰 가운데 두고
+                           위아래는 같은 프레임을 1/4 크기로 블러·25% 어둡게 깔아 채운다(2026-10-11). 중앙 크롭은 선수가
+                           가장자리에서 잘리고 화면 절반이 하늘이라 그대로 올릴 수 없었다. Mac 18초 1080p 2.84→2.89초, 기기 미측정
+    ReelBuilder.swift      여러 랠리를 하나의 세로 릴스로 (길이캡: reels 90s/shorts 60s/tiktok 180s — UI는 reels 고정)
+                           ReelPace: full/impact(마지막 6초)/hook(위닝샷 0.8초 + 전체, 티저는 마지막 타구에서 끝)
+                           릴스의 랠리는 `RallySegment.playTrimmed`로 첫 타구 0.5초 전~마지막 타구 1.5초 뒤만 쓴다(타구 2개 미만은 그대로).
+                           클립 원본은 자르지 않는다. 사이드카 `sources`에는 실제로 쓴 구간을 적어 자막만 다시 만들기가 같은 릴스를 낸다
     FrameSequence.swift    AVAssetReader 순차 디코드 (2.1ms/프레임, 시크는 45ms). PlayerTracker 전용
                            축소는 renderSize만으로 안 된다 — 레이어 transform에 배율을 곱해야 한다. 빠뜨리면 4K 프레임의
                            좌상단 1280×720(하늘·나무)만 넘어와 추적 전체가 엉뚱한 화면에서 돈다(2026-09-15 수정, 가까운 선수 유지율 89.8→97.7%)
@@ -71,7 +76,9 @@ ios/Ribatto/
                            storage(of:)/clearClipFiles: 세션별 용량과 "클립 파일만 비우기"(기록은 남는다)
     ProPass.swift          isPro 판정. 리워드 광고를 끝까지 보면 grant()로 1시간 패스(passUntil 영속, 만료 타이머로 즉시 강등)
                            Debug 전용 debugPro 스위치(DebugProSheet). 구매는 없다
-    AdsManager.swift       AdMob(SPM 12.x). 무료 등급의 배너 + 전면광고(렌더·릴스 완료 직후, 3분 간격)
+    AdsManager.swift       AdMob(SPM 12.x). 무료 등급의 배너 + 전면광고(3분 간격). 전면은 완료 직후가 아니라 "빚"으로 미룬다:
+                           렌더·릴스가 끝나면 `markInterstitialDue()`, 사용자가 결과를 보고 시트를 닫을 때 `showPendingInterstitial()`.
+                           10분 만료·패스 시작 시 해제·ProPassView를 닫을 땐 안 띄움·다음 런루프에 세로일 때만(2026-10-11)
                            배너는 하나(`banner`)를 네 탭이 나눠 쓴다. 슬롯은 `bannerLoaded`(광고가 **실제로 실림**) 뒤에만 열린다 —
                            SDK 시작 시점에 높이를 예약하면 no-fill 동안 탭 바 밑에 빈 띠가 남는다(2026-09-23 TestFlight에서 확인)
                            `.adBanner()`는 각 탭의 **NavigationStack 안쪽** 루트 VStack에 단다(+ 푸시되는 SessionDetailView에도).
@@ -105,7 +112,10 @@ ios/Ribatto/
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다
   Views/                   IntroView(실행 때마다 1.6초 타이틀 카드, 영어 고정. 시스템 시작 화면이 같은 로고를 같은 자리에 그린다.
                            광고 시작(동의·ATT)은 카드가 사라진 뒤 — 카드 위에 프롬프트가 겹치지 않게)
-                           SessionDetailView(설정 카드는 클립이 생기면 한 줄 요약으로 접힌다) · ReelSheet(릴스 편집·순서·베스트N·pace) · ClipViews
+                           SessionDetailView(위에서부터 히어로(베스트 랠리 무음 루프) → 한 줄 요약(탭하면 설정 시트) → "30초 하이라이트 릴스" → 클립 격자.
+                           설정은 ⋯ → 설정 시트. 렌더 중 히어로는 원본 구간, 쉬는 세션은 완성 클립만 — iCloud 원본을 끌어오지 않게)
+                           ReelSheet(열자마자 만들고 결과 화면에 착지: 인스타·저장·공유·편집. 버튼 경로는 30초 예산·랠리당 15초 상한·
+                           최고 랠리 먼저·hook. 다시 만들기는 성공한 뒤에만 이 시트가 만든 이전 릴스를 지운다) · ClipViews
                            TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더. 썸네일 스트립은 TrimmerBar+PryntTrimmerView,
                            타구 위치를 눈금으로 찍고 VoiceOver용 스테퍼를 함께 둔다) · TargetPlayerSheet(추적 대상 선택)
                            LibraryView · StatsView · CaptionEditorView · ProPassView(Pro 안내 + 리워드 광고 버튼) 등
@@ -125,7 +135,8 @@ App Store 제품 페이지의 "앱 내 구입 없음" 표시와 어긋난다. �
 **인앱 구입은 없다.** 2026-09-15에 StoreKit·페이월·복원·오너 패스프레이즈를 코드에서 걷어냈다(광고 전용 운영).
 나중에 구매를 되살릴 때는 git 태그 `pro-iap-snapshot`의 `PurchaseManager.swift`·`PaywallView.swift`·`Ribatto.storekit`에서 가져온다.
 
-무료: 광고(배너+전면) · 720p · 워터마크 · 중앙 고정 크롭.
+무료: 광고(배너+전면) · 720p · 워터마크 · 세로는 블러 배경 위 원본 전체(`blurFilled`, 2026-10-11 전에는 중앙 고정 크롭).
+     그 전에 만든 클립은 다시 만들기 전까지 중앙 크롭 그대로다.
 Pro: **리워드 광고를 끝까지 보면 `ProPass.duration`(1시간) 동안** 열린다. `isPro = pass.active`(Debug는 `debugPro`도).
      렌더는 시작 시점의 tier를 굽는다 — 패스 중 만든 클립은 끝난 뒤에도 원본화질·워터마크 없음 그대로다.
      광고 없음 · 원본화질(가로4K/세로1080p) · 워터마크 없음 · 일괄저장 · 클립병합 · **스마트 세로 크롭**(SmartCrop) · **특정 인물 추적**(PlayerTracker, TargetPlayerSheet에서 선택)
@@ -240,8 +251,12 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 - Pro 시트(ProPassView)의 광고 버튼 블록은 접근성 크기에서 하단 고정을 풀고 스크롤에 넣는다. 고정하면 바가 화면을 통째로 먹어 기능 목록에 닿지 못한다.
 - 접근성 큰 글씨에서는 설정 행이 세로로 쌓인다(`settingRows`). 가로 배치를 강제하면 AX5에서 종목명이 한 글자로 잘린다.
   같은 규칙이 시즌 기록·코트 행에도 적용된다(`statRow`). 좌우 배치를 고집하면 아이콘이 글자를 덮거나 이름이 두 글자로 잘린다.
-- 세션 설정 카드는 감지 전·감지 0개·미적용 변경·원본 없음일 때 강제로 펼친다(`forced`). 그 외에는 접힌 요약에서 사용자가 연다.
-  접힌 상태에서 적용 버튼이 숨으므로, 설정을 바꾸면 `hasPendingChanges`로 곧바로 펼쳐져야 한다.
+- 세션 설정은 감지 전·감지 0개·미적용 변경·원본 없음일 때만 화면에 펼친다(`settingsForced`). 그 외에는 ⋯ → 설정 시트.
+  설정을 바꾸면 `hasPendingChanges`로 곧바로 펼쳐져야 한다(시트 안에서 바꿔도 적용 버튼이 보이게).
+  단 렌더가 중단됐거나 클립 파일을 비운 것은 "변경"이 아니다 — `Session.renderGap`(.unfinished/.cleared)이 있으면
+  설정 폼 대신 "클립 N개를 아직 못 만들었어요 · 이어서 만들기"/"클립 파일을 비웠어요 · 다시 만들기" 배너를 띄운다.
+  예전엔 `renderedOrientation == nil`을 변경으로 봐서 아무것도 안 바꾼 사용자에게 "설정이 변경되었습니다"가 떴다.
+  비우기는 마지막 렌더 설정을 `partialRender`(cleared: true)로 남겨 다시 만들기가 재개 경로를 탄다.
 - Pow(MIT, SPM)는 작은 반응 효과에만 쓴다. 라이선스 전문은 `Pow-MIT.txt`로 번들되어 LicensesView에 나온다 — 빼면 MIT 고지 의무 위반이다.
 - 장식 요소(정렬 칩, 썸네일 배지, 차트 축 라벨)는 `dynamicTypeSize(...)`로 상한을 둔다. 두면 한 글자씩 줄바꿈되어 화면을 삼킨다.
   클립 카드의 시각·타구수도 같다. 격자가 폭을 고정하므로 상한이 없으면 "00:02–0…"으로 잘린다.
@@ -270,7 +285,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
   첫 레이아웃에서 nil이면 NavigationStack이 배치할 것이 없어 시트가 제목까지 통째로 빈 채로 뜨고, 플레이어가 생겨도 그대로 남는다.
 - "업로드 없음"이라고 쓰지 말 것. PlaceLookup이 좌표를 애플 지오코더로 보낸다. 문구는 "영상은 기기 밖으로 나가지 않는다"로.
   "외부 SDK 없음·광고 없음"도 더는 사실이 아니다. AdMob이 광고 식별자·IP를 보낸다. PrivacyView의 p_ads_d와 공개 방침(`~/workspace/apps/ribatto/privacy/`, 게시 https://humsleep.github.io/apps/ribatto/privacy/)이 이를 적는다.
-- 전면광고는 렌더가 **끝난 직후**만이다(SessionDetailView·ReelSheet의 onChange). 플레이어·편집 시트·가져오기 도중에는 넣지 않는다.
+- 전면광고는 렌더·릴스가 끝났을 때 "빚"으로만 기록하고(`markInterstitialDue`), 사용자가 결과를 본 시트를 닫을 때 띄운다.
+  완료 순간에 띄우면 처음 결과를 보는 순간을 가린다(2026-10-11 UX 테스트). 플레이어·편집 시트·가져오기 도중에는 넣지 않는다.
   `.failed`는 결과가 아니라 메시지이므로 광고를 얹지 않는다.
 - 리워드 광고를 못 불러오는 빌드(Release에 광고 ID 없음)에서는 ProPassView가 버튼 대신 "지금은 광고를 불러올 수 없음"을 보여준다.
   불러오기에 실패하면 10초·30초 뒤 두 번 자동 재시도하고, 그래도 안 되면 "다시 시도" 버튼을 준다. 영원히 도는 스피너 금지 —
