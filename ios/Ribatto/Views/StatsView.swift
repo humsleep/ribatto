@@ -91,7 +91,7 @@ struct StatsView: View {
                     card {
                         Text(L.s("records", lang)).font(.caption).foregroundStyle(.secondary)
                         record("flame.fill", L.s("rec_longest", lang),
-                               String(Int(l.seconds)) + L.s("sec", lang),
+                               fmtLen(l.seconds, lang),
                                L.dateOnly(l.date, lang))
                         if let b = s.busiest {
                             record("chart.bar.fill", L.s("rec_busiest", lang),
@@ -402,7 +402,7 @@ private struct ShareCard: View {
             // thirty hours.
             pill(fmtDur(stats.monthSeconds), L.s("total", lang))
             if let l = stats.longest {
-                pill(String(Int(l.seconds)) + L.s("sec", lang), L.s("longest", lang))
+                pill(fmtLen(l.seconds, lang), L.s("longest", lang))
             }
         }
     }
@@ -415,7 +415,7 @@ private struct ShareCard: View {
                 .foregroundStyle(dim)
             if let l = stats.longest {
                 line("flame.fill", L.s("rec_longest", lang),
-                     String(Int(l.seconds)) + L.s("sec", lang))
+                     fmtLen(l.seconds, lang))
             }
             if let b = stats.busiest {
                 line("chart.bar.fill", L.s("rec_busiest", lang), String(b.rallies))
@@ -560,7 +560,9 @@ extension StatsView {
             s.totalSeconds += secs
             s.shots += hits
 
-            if let longest = clips.map(\.duration).max(),
+            // A 60 s+ block is usually several points the detector joined;
+            // as a "personal record" it was a number the user never played.
+            if let longest = clips.filter({ !$0.segment.looksMerged }).map(\.duration).max(),
                longest > (s.longest?.seconds ?? 0) {
                 s.longest = (longest, session.playedAt)
             }
