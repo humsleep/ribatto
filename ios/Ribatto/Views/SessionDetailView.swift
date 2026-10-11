@@ -189,8 +189,14 @@ struct SessionDetailView: View {
                                    selection.count),
                             isPresented: $confirmDeleteClips, titleVisibility: .visible) {
             Button(L.s("delete", lang), role: .destructive) {
-                store.deleteClips(selection, from: session)
-                selection.removeAll()
+                // Refused while anything runs on the session. Clearing the
+                // selection regardless made Delete look like it did nothing.
+                if store.deleteClips(selection, from: session) {
+                    selection.removeAll()
+                    selecting = false
+                } else {
+                    saveMessage = L.s("busy_wait", lang)
+                }
             }
             Button(L.s("cancel", lang), role: .cancel) {}
         }

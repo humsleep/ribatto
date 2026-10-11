@@ -155,6 +155,10 @@ struct ClipPlayerSheet: View {
     @State private var confirmDelete = false
     @State private var destination: Destination?
     @State private var message: String?
+    /// Set the moment a delete is confirmed. The store then shifts the next
+    /// rally into this index, and without the flag the sheet reloaded the
+    /// player onto that rally's file on its way out.
+    @State private var deleting = false
     @Environment(\.verticalSizeClass) private var vSize
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -190,13 +194,23 @@ struct ClipPlayerSheet: View {
     /// title still read the original in/out points while the file on disk was
     /// already the shorter one.
     private var live: RallySegment {
-        session?.segments?[safe: clip.index] ?? clip.segment
+        if deleting { return clip.segment }
+        return session?.segments?[safe: clip.index] ?? clip.segment
+    }
+    /// `clip` with the store's current in/out points. Trim, retarget and the
+    /// reel all take this, so a reel made after a trim cuts the trimmed rally
+    /// rather than the range the sheet opened with.
+    private var current: ClipInfo {
+        ClipInfo(id: clip.id, index: clip.index, url: clip.url, thumbURL: clip.thumbURL,
+                 segment: live, orientation: clip.orientation,
+                 sessionID: clip.sessionID, isReady: clip.isReady)
     }
 
     /// A trim rewrites the clip at the same URL, so the existing `AVPlayer`
     /// keeps serving the old asset and its old duration. Replacing the item
     /// is the only way to pick the new file up without closing the sheet.
     private func reloadPlayer() {
+        guard !deleting else { return }
         player?.pause()
         player = AVPlayer(url: clip.url)
     }
@@ -302,7 +316,7 @@ struct ClipPlayerSheet: View {
                 // reel sits on the clip itself rather than only behind selection
                 Button {
                     guard let session else { return }
-                    destination = .reel(ReelRequest(pairs: [(session, clip)]))
+                    destination = .reel(ReelRequest(pairs: [(session, current)]))
                 } label: {
                     Label(L.s("reel_make", lang),
                           systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
@@ -382,7 +396,14 @@ struct ClipPlayerSheet: View {
                 Button(L.s("delete", lang), role: .destructive) {
                     // A busy session keeps the clip; closing regardless left
                     // a "deleted" clip in the list behind the sheet.
-                    if store.deleteClip(clip) { dismiss() } else { message = L.s("busy_wait", lang) }
+                    deleting = true
+                    player?.pause()
+                    if store.deleteClip(current) {
+                        dismiss()
+                    } else {
+                        deleting = false
+                        message = L.s("busy_wait", lang)
+                    }
                 }
             }
             .alert(message ?? "", isPresented: Binding(
@@ -392,9 +413,9 @@ struct ClipPlayerSheet: View {
             .sheet(item: $destination) { dest in
                 switch dest {
                 case .trim:
-                    TrimSheet(clip: clip)
+                    TrimSheet(clip: current)
                 case .retarget:
-                    if let session { TargetPlayerSheet(session: session, clip: clip) }
+                    if let session { TargetPlayerSheet(session: session, clip: current) }
                 case .reel(let request):
                     ReelSheet(request: request)
                 }

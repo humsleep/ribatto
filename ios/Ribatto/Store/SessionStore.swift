@@ -475,7 +475,8 @@ final class SessionStore: ObservableObject {
         let canReference = granted == .authorized || granted == .limited
         if canReference, let asset = await Self.photoAsset(identifier) {
             if let id = await register(name: name, assetIdentifier: identifier,
-                                       asset: asset, localCopy: nil, detect: detect) {
+                                       asset: asset, localCopy: nil, detect: detect,
+                                       rescue: false) {
                 if let fallback { try? fm.removeItem(at: fallback) }
                 return id
             }
@@ -490,24 +491,48 @@ final class SessionStore: ObservableObject {
     /// Moves a file into the session folder — used for in-app recordings and
     /// when Photos access is unavailable. Returns true when a session was made.
     @discardableResult
-    func importVideo(from temp: URL, name: String, detect: Bool = true) async -> UUID? {
+    /// - Parameter rescue: true only for an in-app recording that exists
+    ///   nowhere else. Every other copy has its original in Photos or Files.
+    func importVideo(from temp: URL, name: String, detect: Bool = true,
+                     rescue: Bool = false) async -> UUID? {
         await register(name: name, assetIdentifier: nil, asset: nil, localCopy: temp,
-                       detect: detect)
+                       detect: detect, rescue: rescue)
     }
 
     /// Detects several freshly imported sessions one after another. Running
     /// them side by side would decode several originals at once for no gain.
+    ///
+    /// One queue for the whole store. Waiting sessions are marked `.queued`
+    /// so they read as busy — they used to look undetected, and tapping Detect
+    /// on one decoded a second original alongside the queue (the memory
+    /// pressure that kills the media server). A second import while the queue
+    /// runs joins it instead of starting a parallel one.
     func processQueued(_ ids: [UUID]) async {
+        for id in ids where !detectQueue.contains(id) && !isBusy(id) {
+            detectQueue.append(id)
+            progress[id] = .queued
+        }
+        guard !queueRunning, let first = detectQueue.first else { return }
+        queueRunning = true
         // One background task for the whole queue: a new one can only be
         // requested with the app in front, and by the second video the user
         // has usually left.
-        guard let first = ids.first else { return }
         beginWork(first)
-        defer { background.end(success: true) }
-        for id in ids where sessions.contains(where: { $0.id == id }) {
+        defer {
+            queueRunning = false
+            background.end(success: true)
+        }
+        while !detectQueue.isEmpty {
+            let id = detectQueue.removeFirst()
+            if case .queued = progress[id] { progress[id] = nil }
+            // Deleted while waiting, or already detected some other way.
+            guard let s = sessions.first(where: { $0.id == id }),
+                  s.segments == nil else { continue }
             await process(sessionID: id)
         }
     }
+    private var detectQueue: [UUID] = []
+    private var queueRunning = false
 
     /// Puts an in-app recording into the Photos library and returns its
     /// identifier, so the session can reference it like any imported video.
@@ -533,7 +558,8 @@ final class SessionStore: ObservableObject {
 
     @discardableResult
     private func register(name: String, assetIdentifier: String?,
-                          asset: AVAsset?, localCopy: URL?, detect: Bool) async -> UUID? {
+                          asset: AVAsset?, localCopy: URL?, detect: Bool,
+                          rescue: Bool) async -> UUID? {
         let id = UUID()
         let sdir = root.appendingPathComponent(id.uuidString)
         do {
@@ -578,8 +604,11 @@ final class SessionStore: ObservableObject {
             // does not write to Photos — so deleting the session folder on a
             // failed probe destroyed a whole match. Put the movie somewhere
             // recoverable before the folder goes.
+            // Only that recording: rescuing every failed copy (a Files import
+            // that won't decode, a Photos fallback) filled this with movies
+            // that could not be saved back to Photos and could not be removed.
             let moved = sdir.appendingPathComponent("source.mov")
-            if fm.fileExists(atPath: moved.path) {
+            if rescue, fm.fileExists(atPath: moved.path) {
                 let rescue = root.appendingPathComponent("recovered", isDirectory: true)
                 try? fm.createDirectory(at: rescue, withIntermediateDirectories: true)
                 try? fm.moveItem(
@@ -611,6 +640,13 @@ final class SessionStore: ObservableObject {
         }
         objectWillChange.send()
         return saved
+    }
+
+    /// Throws the rescued recordings away. A movie Photos refuses (it does not
+    /// decode) could otherwise never leave the library screen.
+    func discardRecovered() {
+        for url in recoveredRecordings() { try? fm.removeItem(at: url) }
+        objectWillChange.send()
     }
 
     // MARK: - Storage
@@ -1042,6 +1078,13 @@ final class SessionStore: ObservableObject {
                     return SoundCheck.apply(verdicts, to: found)
                 }.value
             }()
+            // A re-detect that finds nothing must not replace finished clips
+            // with an empty folder: the staged swap went through with zero
+            // clips and wiped the session, trims and stars included.
+            if segments.isEmpty && hasFinishedClips(s) {
+                progress[sessionID] = .failed(L.s("redetect_none_kept", lang))
+                return
+            }
             await render(sessionID: sessionID, alreadyRunning: true,
                          detection: Detection(segments: segments, sport: sport, sensitivity: sens))
         } catch {
@@ -1114,6 +1157,13 @@ final class SessionStore: ObservableObject {
 
     private func commit(_ d: Detection, to id: UUID) {
         mutate(id) {
+            // Per-clip players are keyed by index. New rallies at the same
+            // index are different points, and the tracker followed whoever
+            // stood where the old pick was.
+            if $0.segments != d.segments {
+                $0.clipTargets = nil
+                $0.renderedClipTargets = nil
+            }
             $0.segments = d.segments
             $0.detectedSport = d.sport
             $0.detectedSensitivity = d.sensitivity
@@ -1154,7 +1204,9 @@ final class SessionStore: ObservableObject {
         let caption = s.caption
         let useSmartCrop = isPro && s.effectiveSmartCrop
         let target = useSmartCrop ? s.targetPlayer : nil
-        let perClip = useSmartCrop ? (s.clipTargets ?? [:]) : [:]
+        // A new detection's rallies don't line up with the old per-clip picks.
+        let rallies = detection == nil || detection?.segments == s.segments
+        let perClip = useSmartCrop && rallies ? (s.clipTargets ?? [:]) : [:]
         let stamp = RenderStamp(orientation: orient, pro: pro, smartCrop: useSmartCrop,
                                 caption: caption, clipTargets: perClip,
                                 targetPlayer: target, rallies: segments, lang: lang)
@@ -1218,7 +1270,7 @@ final class SessionStore: ObservableObject {
                             // portrait clip kept a 16:9 still, and the card had to
                             // stretch to hold it.
                             thumbURL: cdir.appendingPathComponent("\(base).jpg"),
-                            targetPlayer: useSmartCrop ? s.target(forClip: i) : nil)
+                            targetPlayer: useSmartCrop ? (perClip[String(i)] ?? target) : nil)
                         #if DEBUG
                         DebugLog.write("clip \(i + 1) done state=\(UIApplication.shared.applicationState.rawValue)")
                         #endif
@@ -1337,7 +1389,17 @@ final class SessionStore: ObservableObject {
             $0.segments = segments
         }
 
-        return await rerenderClip(session, segments: segments, index: clip.index)
+        // The encoder writes to a temporary file, so on failure the old clip is
+        // still on disk. Put the old in/out points back with it — keeping the
+        // new ones showed times the video did not match, and nothing flagged
+        // the clip for Apply to fix.
+        if await rerenderClip(session, segments: segments, index: clip.index) { return true }
+        let old = session.segments?[clip.index]
+        mutate(session.id) {
+            guard let old, $0.segments?[safe: clip.index] == segment else { return }
+            $0.segments?[clip.index] = old
+        }
+        return false
     }
 
     /// Renders one clip again with the settings the session was last rendered
@@ -1773,30 +1835,17 @@ final class SessionStore: ObservableObject {
     /// in the list.
     @discardableResult
     func deleteClip(_ clip: ClipInfo) -> Bool {
-        guard !isBusy(clip.sessionID),
-              var s = sessions.first(where: { $0.id == clip.sessionID }),
-              var segments = s.segments,
-              clip.index < segments.count else { return false }
-        segments.remove(at: clip.index)
-        s.segments = segments
-        let kept = Array(0..<(segments.count + 1)).filter { $0 != clip.index }
-        s.clipTargets = remap(s.clipTargets, survivors: kept)
-        s.renderedClipTargets = remap(s.renderedClipTargets, survivors: kept)
-        let cdir = clipsDir(s)
-        try? fm.removeItem(at: clip.url)
-        try? fm.removeItem(at: clip.thumbURL)
-        // shift remaining files down so ids stay aligned with segments
-        for j in (clip.index + 1)...(segments.count + 1) where j >= 1 {
-            for ext in ["mp4", "jpg"] {
-                let old = cdir.appendingPathComponent(String(format: "clip_%02d.%@", j + 1, ext))
-                let new = cdir.appendingPathComponent(String(format: "clip_%02d.%@", j, ext))
-                if fm.fileExists(atPath: old.path) {
-                    try? fm.moveItem(at: old, to: new)
-                }
-            }
-        }
-        save(s)
-        return true
+        // The sheet holds a snapshot. If the rallies moved under it (re-detect,
+        // a split elsewhere), the same index is now a different rally — refuse
+        // rather than delete the wrong one.
+        guard let seg = sessions.first(where: { $0.id == clip.sessionID })?
+                .segments?[safe: clip.index],
+              seg.start == clip.segment.start, seg.end == clip.segment.end,
+              let s = sessions.first(where: { $0.id == clip.sessionID }) else { return false }
+        // One path for both: the single delete used to skip the partial-render
+        // stamp (next Apply re-rendered everything) and renamed onto existing
+        // files without clearing them, misaligning clips with rallies.
+        return deleteClips([clip.id], from: s)
     }
 }
 

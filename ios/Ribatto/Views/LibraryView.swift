@@ -34,6 +34,7 @@ struct LibraryView: View {
     @State private var pendingSource: ImportSource?
     @State private var askSport = false
     @State private var rescueMessage: String?
+    @State private var confirmDiscard = false
     @State private var importing = false
     @State private var showPro = false
     @State private var recording = false
@@ -169,7 +170,8 @@ struct LibraryView: View {
                             id = await store.importFromPhotos(identifier: asset, fallback: url,
                                                               name: name, detect: false)
                         } else {
-                            id = await store.importVideo(from: url, name: name, detect: false)
+                            id = await store.importVideo(from: url, name: name, detect: false,
+                                                         rescue: true)
                         }
                         importing = false
                         guard let id else { importError = L.s("import_failed", lang); return }
@@ -497,6 +499,17 @@ struct LibraryView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .rcSecondary()
+                Button(role: .destructive) { confirmDiscard = true } label: {
+                    Label(L.s("delete", lang), systemImage: "trash")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity)
+                }
+                .rcSecondary(destructive: true)
+            }
+            .confirmationDialog(L.s("recovered_discard_confirm", lang),
+                                isPresented: $confirmDiscard, titleVisibility: .visible) {
+                Button(L.s("delete", lang), role: .destructive) { store.discardRecovered() }
+                Button(L.s("cancel", lang), role: .cancel) {}
             }
             .padding(14)
             .rcCard()

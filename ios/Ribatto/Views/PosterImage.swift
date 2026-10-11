@@ -39,16 +39,25 @@ enum PosterCache {
 /// the main actor and fades it in.
 struct PosterImage: View {
     let url: URL
+    /// Keyed on the cache key, not the path: a trim rewrites clip_NN.jpg in
+    /// place, and a delete renames the next clip's poster onto this path.
+    /// Read in init so it is one of the view's inputs — read only inside the
+    /// body, SwiftUI saw the same URL, skipped the body, and the grid kept the
+    /// deleted rally's poster in the slot (it looked as if Delete had removed
+    /// the wrong clip).
+    let key: String
+    init(url: URL) {
+        self.url = url
+        self.key = PosterCache.key(for: url) as String
+    }
     var body: some View {
-        // Keyed on the cache key, not the path: a trim rewrites clip_NN.jpg in
-        // place, so identity by path kept the pre-trim frame on screen until
-        // the whole screen was torn down.
-        _PosterImage(url: url)
+        _PosterImage(url: url, key: key)
     }
 }
 
 private struct _PosterImage: View {
     let url: URL
+    let key: String
     @State private var image: UIImage?
 
     var body: some View {
@@ -59,7 +68,7 @@ private struct _PosterImage: View {
                 Theme.surfaceHigh
             }
         }
-        .task(id: PosterCache.key(for: url) as String) {
+        .task(id: key) {
             if let hit = PosterCache.cached(url) { image = hit; return }
             let loaded = await Task.detached(priority: .userInitiated) {
                 PosterCache.load(url)

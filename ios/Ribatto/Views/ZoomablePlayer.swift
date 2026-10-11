@@ -42,6 +42,10 @@ struct ZoomableVideo: View {
     @State private var duration: Double = 1
     @State private var scrubbing = false
     @State private var observer: Any?
+    /// The player the observer was added to. Callers swap `player` under a
+    /// mounted view (trim, delete, reel rebuild); removing the old observer from
+    /// the new player raises an AVFoundation exception and kills the app.
+    @State private var observed: AVPlayer?
     /// Shown once per install, not once per view. Rotating the phone tears
     /// down the landscape player and builds the portrait one, so a per-view
     /// flag put the hint back on screen after every turn.
@@ -70,6 +74,11 @@ struct ZoomableVideo: View {
             if !hintSeen { showHint = true; hintSeen = true }
         }
         .onDisappear { detach() }
+        .onChange(of: ObjectIdentifier(player)) { _, _ in
+            detach()
+            duration = 1; time = 0
+            attach()
+        }
     }
 
     // MARK: Gestures
@@ -198,6 +207,7 @@ struct ZoomableVideo: View {
                 }
             }
         }
+        observed = player
         observer = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.1, preferredTimescale: 600), queue: .main) { t in
             guard !scrubbing else { return }
@@ -211,8 +221,9 @@ struct ZoomableVideo: View {
     }
 
     private func detach() {
-        if let observer { player.removeTimeObserver(observer) }
+        if let observer, let observed { observed.removeTimeObserver(observer) }
         observer = nil
-        player.pause()
+        observed?.pause()
+        observed = nil
     }
 }
