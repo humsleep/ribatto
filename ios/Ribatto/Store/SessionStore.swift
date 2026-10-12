@@ -185,7 +185,9 @@ final class SessionStore: ObservableObject {
             DebugLog.write("clip \(i + 1) \(seg.start)-\(seg.end) start availMB=\(ClipExporter.availableMB())")
             do {
                 try await ClipExporter.export(
-                    source: source, segment: seg, orientation: s.effectiveOrientation, pro: false,
+                    // Vertical: the free portrait path (blur fill) is the one
+                    // most free users hit and the costliest on device.
+                    source: source, segment: seg, orientation: "vertical", pro: false,
                     caption: nil, smartCrop: false,
                     clipURL: dir.appendingPathComponent("d\(i + 1).mp4"), thumbURL: nil)
                 DebugLog.write("clip \(i + 1) OK availMB=\(ClipExporter.availableMB())")
