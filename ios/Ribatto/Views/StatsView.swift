@@ -9,7 +9,8 @@ struct SeasonStats {
     var rallies = 0
     var totalSeconds = 0.0
     var shots = 0
-    var longest: (seconds: Double, date: Date)?
+    /// With where it was, so the record opens the rally it is about.
+    var longest: (seconds: Double, date: Date, session: UUID, number: Int)?
     var busiest: (rallies: Int, date: Date)?
     var monthMatches = 0
     var monthRallies = 0
@@ -31,6 +32,12 @@ struct SeasonStats {
     var avgTrend: Double {
         (prevAvgShots > 0 && monthAvgShots > 0) ? monthAvgShots - prevAvgShots : 0
     }
+}
+
+/// Where the season's longest rally is, to open it.
+private struct LongestRally: Hashable {
+    let session: UUID
+    let number: Int
 }
 
 struct StatsView: View {
@@ -66,6 +73,9 @@ struct StatsView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .adBanner()
+            .navigationDestination(for: LongestRally.self) { target in
+                SessionDetailView(sessionID: target.session, openNumber: target.number)
+            }
         }
     }
 
@@ -90,9 +100,23 @@ struct StatsView: View {
                 if let l = s.longest {
                     card {
                         Text(L.s("records", lang)).font(.caption).foregroundStyle(.secondary)
-                        record("flame.fill", L.s("rec_longest", lang),
-                               fmtLen(l.seconds, lang),
-                               L.dateOnly(l.date, lang))
+                        // A record you can watch: it opens the match and
+                        // plays that rally.
+                        NavigationLink(value: LongestRally(session: l.session,
+                                                           number: l.number)) {
+                            HStack(spacing: 6) {
+                                record("flame.fill", L.s("rec_longest", lang),
+                                       fmtLen(l.seconds, lang),
+                                       L.dateOnly(l.date, lang))
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                                    .dynamicTypeSize(...DynamicTypeSize.large)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(L.s("rec_play_hint", lang))
                         if let b = s.busiest {
                             record("chart.bar.fill", L.s("rec_busiest", lang),
                                    String(b.rallies), L.dateOnly(b.date, lang))
@@ -562,9 +586,10 @@ extension StatsView {
 
             // A 60 s+ block is usually several points the detector joined;
             // as a "personal record" it was a number the user never played.
-            if let longest = clips.filter({ !$0.segment.looksMerged }).map(\.duration).max(),
-               longest > (s.longest?.seconds ?? 0) {
-                s.longest = (longest, session.playedAt)
+            if let longest = clips.filter({ !$0.segment.looksMerged })
+                .max(by: { $0.duration < $1.duration }),
+               longest.duration > (s.longest?.seconds ?? 0) {
+                s.longest = (longest.duration, session.playedAt, session.id, longest.number)
             }
             if clips.count > (s.busiest?.rallies ?? 0) {
                 s.busiest = (clips.count, session.playedAt)

@@ -8,7 +8,7 @@ import SwiftUI
 /// loudest crowd were each a guess at "the good ones", which `best` already
 /// scores from all of them — and shot counts are the number CLAUDE.md calls
 /// unreliable. Nothing persists the choice, so no stored value needs mapping.
-enum ClipSort: CaseIterable {
+enum ClipSort: String, CaseIterable {
     case best, time, favourite
 
     var key: String {

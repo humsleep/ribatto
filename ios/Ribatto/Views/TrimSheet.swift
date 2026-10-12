@@ -150,7 +150,14 @@ struct TrimSheet: View {
                                 // taken while a trim was pending cut at a point
                                 // outside the range the user could see.
                                 if start != clip.segment.start || end != clip.segment.end {
-                                    await store.trimClip(clip, start: start, end: end)
+                                    // A trim that did not take must not be
+                                    // followed by a split of the untrimmed rally.
+                                    guard await store.trimClip(clip, start: start, end: end) else {
+                                        working = false
+                                        message = L.s(store.isBusy(clip.sessionID)
+                                                      ? "busy_wait" : "render_failed", lang)
+                                        return
+                                    }
                                 }
                                 let ok = await store.splitRally(clip, at: splitAt)
                                 working = false
@@ -282,7 +289,7 @@ struct TrimSheet: View {
             HStack(spacing: 8) {
                 Text(title).font(.caption).foregroundStyle(.secondary)
                 Spacer(minLength: 4)
-                Text(fmtTs(value.wrappedValue)).font(.caption.monospacedDigit())
+                Text(fmtPos(value.wrappedValue)).font(.caption.monospacedDigit())
             }
         } onIncrement: {
             move(value, to: value.wrappedValue + step, in: range)
@@ -328,7 +335,7 @@ struct TrimSheet: View {
             HStack {
                 Text(title).font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Text(fmtTs(value.wrappedValue))
+                Text(fmtPos(value.wrappedValue))
                     .font(.caption.monospacedDigit())
             }
             Slider(value: value,
@@ -338,7 +345,7 @@ struct TrimSheet: View {
             }
             .tint(Theme.accent)
             .accessibilityLabel(title)
-            .accessibilityValue(fmtTs(value.wrappedValue))
+            .accessibilityValue(fmtPos(value.wrappedValue))
             .disabled(working)
         }
     }

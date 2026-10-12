@@ -568,12 +568,12 @@ struct ReelSheet: View {
                         .buttonStyle(.plain)
                         // VoiceOver read a bare "button" per row with no hint of
                         // which rally or whether it was in the reel.
-                        .accessibilityLabel("#\(entry.clip.index + 1) · "
+                        .accessibilityLabel("#\(entry.clip.number) · "
                             + fmtDur(pace.estimatedLength(of: entry.clip.segment))
                             + (entry.id == bestID ? " · " + L.s("best_rally", lang) : ""))
                         .accessibilityAddTraits(entry.included ? .isSelected : [])
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("#\(entry.clip.index + 1) · "
+                            Text("#\(entry.clip.number) · "
                                  + fmtDur(pace.estimatedLength(of: entry.clip.segment)))
                                 .font(.subheadline.weight(.medium))
                             HStack(spacing: 6) {
@@ -914,6 +914,10 @@ struct ReelSheet: View {
                 savedToPhotos = result == .saved
                 guard savedToPhotos else { report(result); return }
             }
+            // Instagram opens on its own home screen, not on this video:
+            // where to find it is said before the switch.
+            toast = L.s("ig_hint", lang)
+            try? await Task.sleep(for: .milliseconds(1500))
             open("instagram://app", "Instagram")
         }
     }

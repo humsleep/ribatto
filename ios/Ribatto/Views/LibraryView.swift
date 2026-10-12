@@ -173,10 +173,18 @@ struct LibraryView: View {
                                     }
                                 }
                             }
-                            if selecting { deleteBar }
                             Color.clear.frame(height: 62)
                         }
                         .padding()
+                    }
+                    // Pinned like the session screen's: at the end of the list
+                    // it was a long scroll away from the cards it acts on.
+                    .safeAreaInset(edge: .bottom) {
+                        if selecting {
+                            deleteBar
+                                .padding(.horizontal)
+                                .padding(.bottom, 8)
+                        }
                     }
                 }
             }
@@ -194,6 +202,11 @@ struct LibraryView: View {
             .sheet(isPresented: $showSettings) { AppSettingsView() }
             // Hidden controls must not keep filtering: deleting down to seven
             // matches left a search no one could see or clear.
+            // A match filtered out of view is not one the user can see they
+            // are about to delete.
+            .onChange(of: visibleSessions.map(\.id)) { _, visible in
+                selection.formIntersection(visible)
+            }
             .onChange(of: searchable) { _, shown in
                 guard !shown else { return }
                 search = ""
@@ -278,6 +291,8 @@ struct LibraryView: View {
                     selection.removeAll()
                     selecting = false
                 }
+            } message: {
+                Text(L.s("delete_sessions_note", lang))
             }
             .onChange(of: pickerItems) { _, items in
                 guard !items.isEmpty else { return }
@@ -416,8 +431,7 @@ struct LibraryView: View {
             .disabled(selection.isEmpty)
         }
         .padding(14)
-        .rcCard()
-        .padding(.top, 4)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
     }
 
     private var bigImportLabel: some View {
@@ -762,6 +776,14 @@ struct StageLabel: View {
 func fmtDur(_ s: Double) -> String {
     let t = Int(s.rounded())
     return String(format: "%d:%02d", t / 60, t % 60)
+}
+
+/// A position in the video as people read one: "0:03", "12:40", "1:02:05" —
+/// no padded "00:03".
+func fmtPos(_ s: Double) -> String {
+    let t = max(0, Int(s))
+    return t >= 3600 ? String(format: "%d:%02d:%02d", t / 3600, t / 60 % 60, t % 60)
+                     : String(format: "%d:%02d", t / 60, t % 60)
 }
 
 func fmtTs(_ s: Double) -> String {

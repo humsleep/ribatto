@@ -16,6 +16,8 @@ struct ClipCard: View {
     var uniformAspect: CGFloat? = nil
     /// nil = not in selection mode
     var selected: Bool? = nil
+    /// Just added or split: outlined for a moment so it can be found.
+    var highlighted = false
     let onTap: () -> Void
 
     var body: some View {
@@ -63,7 +65,16 @@ struct ClipCard: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
-                    if let selected {
+                    if selected != nil && !clip.isReady {
+                        // Not selectable yet: an hourglass, not an empty
+                        // checkbox that ignores the tap.
+                        Image(systemName: "hourglass")
+                            .font(.title3)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .padding(8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity,
+                                   alignment: .bottomLeading)
+                    } else if let selected {
                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                             .font(.title2)
                             .symbolRenderingMode(.palette)
@@ -78,7 +89,7 @@ struct ClipCard: View {
                         HStack {
                             // Badges sit on a fixed-size thumbnail; scaling
                             // them made the rank and duration chips overlap.
-                            Text("#" + String(clip.index + 1))
+                            Text("#" + String(clip.number))
                                 .font(.caption2.bold())
                                 .dynamicTypeSize(...DynamicTypeSize.large)
                                 .padding(.horizontal, 7).padding(.vertical, 3)
@@ -136,7 +147,8 @@ struct ClipCard: View {
             .background(Theme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.tint, lineWidth: selected == true ? 3 : 0))
+                .strokeBorder(.tint, lineWidth: selected == true || highlighted ? 3 : 0))
+            .animation(.easeOut(duration: 0.3), value: highlighted)
             .opacity(selected == false ? 0.55 : 1)
         }
         .buttonStyle(.plain)
@@ -145,7 +157,7 @@ struct ClipCard: View {
     // The grid fixes the cell width, so these two cannot grow with the type
     // size — unbounded they clipped to "00:02–0…", which is not a timestamp.
     private var timeLabel: some View {
-        Text("\(fmtTs(clip.segment.start))–\(fmtTs(clip.segment.end))")
+        Text("\(fmtPos(clip.segment.start))–\(fmtPos(clip.segment.end))")
             .font(.caption2.monospacedDigit().bold())
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .lineLimit(1).minimumScaleFactor(0.7)
@@ -480,8 +492,8 @@ struct ClipPlayerSheet: View {
                 // clipped to "00:0…" at every text size, not only large ones.
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 0) {
-                        Text("#" + String(clip.index + 1)).font(.headline)
-                        Text(fmtTs(live.start) + "–" + fmtTs(live.end))
+                        Text("#" + String(current.number)).font(.headline)
+                        Text(fmtPos(live.start) + "–" + fmtPos(live.end))
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                     .lineLimit(1)
@@ -532,7 +544,8 @@ struct ClipPlayerSheet: View {
                     }
                 }
             }
-            .confirmationDialog(L.s("delete_clip", lang), isPresented: $confirmDelete) {
+            .confirmationDialog(L.s("delete_clip", lang), isPresented: $confirmDelete,
+                                titleVisibility: .visible) {
                 Button(L.s("delete", lang), role: .destructive) {
                     // A busy session keeps the clip; closing regardless left
                     // a "deleted" clip in the list behind the sheet.
@@ -542,9 +555,16 @@ struct ClipPlayerSheet: View {
                         dismiss()
                     } else {
                         deleting = false
-                        message = L.s("busy_wait", lang)
+                        // Two different refusals: something is running, or
+                        // the rallies changed under this sheet and this index
+                        // is no longer the rally on screen.
+                        message = L.s(store.isBusy(clip.sessionID) ? "busy_wait"
+                                                                   : "rally_changed", lang)
                     }
                 }
+            } message: {
+                // What a delete takes and what it leaves.
+                Text(L.s("delete_clips_note", lang))
             }
             .alert(message ?? "", isPresented: Binding(
                 get: { message != nil }, set: { if !$0 { message = nil } })) {

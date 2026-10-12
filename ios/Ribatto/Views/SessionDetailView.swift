@@ -10,13 +10,17 @@ struct SessionDetailView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scenePhase) private var scenePhase
     let sessionID: UUID
+    /// A rally to open on arrival — the Season tab's longest-rally record.
+    var openNumber: Int? = nil
+    @State private var openedRequested = false
     /// The id of the last sheet this screen presented, kept past its
     /// dismissal: onDismiss runs after `destination` is already nil, and
     /// closing the pass sheet — where the user just watched an ad, or chose
     /// not to — must not be answered with another one.
     @State private var lastPresented: String?
 
-    @State private var sort: ClipSort = .time
+    /// Kept across launches: re-picking "Best" on every match was a chore.
+    @AppStorage("rc_clip_sort") private var sort: ClipSort = .time
     @State private var destination: Destination?
     @State private var confirmDeleteSession = false
     @State private var confirmDeleteClips = false
@@ -39,6 +43,13 @@ struct SessionDetailView: View {
     @State private var offerOutcome: PassOfferOutcome?
     @State private var offerActions: (granted: () -> Void, declined: () -> Void)?
     @State private var toast: String?
+    /// The last delete, with the rallies it took, for five seconds of undo.
+    @State private var undo: (text: String, rallies: [RallySegment])?
+    /// Clips just added or split, lit for a moment so the eye finds them.
+    @State private var highlighted: Set<Int> = []
+    @State private var scrollTarget: String?
+    /// A re-detect would reset stars and hand edits; asked first.
+    @State private var confirmRedetect = false
     /// Apply would re-render Pro clips after the pass ran out.
     @State private var confirmFreeRender = false
     @State private var confirmClearClips = false
@@ -138,11 +149,12 @@ struct SessionDetailView: View {
                     // open the player instead of selecting.
                     // While a render runs the best rally may not be a file yet;
                     // its poster stands in until it is.
-                    if !selecting,
-                       let best = busy ? preferringSingleRallies(ranked).first
+                    // Dimmed, not removed, while selecting: removing it made
+                    // the whole grid jump up under the user's finger.
+                    if let best = busy ? preferringSingleRallies(ranked).first
                                        : preferringSingleRallies(ranked.filter(\.isReady)).first {
                         HeroRally(clip: best, session: session,
-                                  paused: destination != nil,
+                                  paused: destination != nil || selecting,
                                   // Never the original: during a render that
                                   // was a second 4K decode alongside the encoder
                                   // — the memory pressure behind -11819 on
@@ -151,6 +163,9 @@ struct SessionDetailView: View {
                                   fromOriginal: false) {
                             destination = .clip(best)
                         }
+                        .opacity(selecting ? 0.35 : 1)
+                        .allowsHitTesting(!selecting)
+                        .accessibilityHidden(selecting)
                     }
                     summaryLine(session)
                     reelCTA(session, ranked: ranked, busy: busy)
@@ -176,19 +191,48 @@ struct SessionDetailView: View {
             .onChange(of: scrollToTop) { _, _ in
                 withAnimation { proxy.scrollTo("top", anchor: .top) }
             }
+            .onChange(of: scrollTarget) { _, target in
+                guard let target else { return }
+                withAnimation { proxy.scrollTo(target, anchor: .center) }
+                scrollTarget = nil
+            }
             }
         }
         // Pinned, not appended: below the grid the bar sat a whole screen away
         // from the clips it acts on.
+        // The undo bar lives in the same pinned inset as the selection bar.
+        // As an overlay it was laid out against the scroll view and, at some
+        // scroll positions, ended up under the floating tab bar — which took
+        // the tap, so "Undo" did nothing and the bar simply timed out.
+        // Inside the stack (`.adBanner()` comes after) it always sits above
+        // the banner and the tab bar.
         .safeAreaInset(edge: .bottom) {
-            if selecting {
-                selectionBar(session, busy: busy)
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
+            VStack(spacing: 8) {
+                undoBar
+                if selecting {
+                    selectionBar(session, busy: busy)
+                }
             }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
         }
         .adBanner()
         .passToast($toast)
+        // Selection is by clip id, which is the clip's position: after any
+        // change to the rallies the same id is a different rally.
+        .onChange(of: session.segments) { _, _ in selection.removeAll() }
+        .onChange(of: store.lastEdit) { _, edit in
+            guard let edit, edit.sessionID == sessionID else { return }
+            handle(edit, session)
+        }
+        .confirmationDialog(L.s("redetect_title", lang), isPresented: $confirmRedetect,
+                            titleVisibility: .visible) {
+            Button(L.s("redetect", lang), role: .destructive) { runApply(session, confirmed: true) }
+            Button(L.s("cancel", lang), role: .cancel) {}
+        } message: {
+            Text(String(format: L.s("redetect_confirm_fmt", lang),
+                        (session.segments ?? []).filter(\.isFavourite).count))
+        }
         .navigationTitle(L.dateTime(session.playedAt, lang))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -207,14 +251,15 @@ struct SessionDetailView: View {
                         Label(L.s("settings", lang), systemImage: "slider.horizontal.3")
                     }
                     if !clips.isEmpty {
+                        // A disabled item says why; greyed out alone it read
+                        // as broken.
                         Button { destination = .addRally } label: {
-                            Label(L.s("add_rally", lang), systemImage: "plus")
+                            menuLabel("add_rally", "plus", busy: busy)
                         }
-                        .disabled(busy || store.sourceMissing(session))
+                        .disabled(busy || store.sourceMissing(session) || selecting)
                         Button { saveAll(session) } label: {
-                            Label(L.s("save_all", lang),
-                                  systemImage: pass.isPro ? "square.and.arrow.down.on.square"
-                                                          : "lock.fill")
+                            menuLabel("save_all", pass.isPro ? "square.and.arrow.down.on.square"
+                                                             : "lock.fill", busy: busy)
                         }
                         .disabled(busy)
                     }
@@ -261,6 +306,9 @@ struct SessionDetailView: View {
                 }
             }
             Button(L.s("cancel", lang), role: .cancel) {}
+        } message: {
+            // What a delete takes and what it leaves.
+            Text(L.s("delete_clips_note", lang))
         }
         .confirmationDialog(L.s("delete_session", lang),
                             isPresented: $confirmDeleteSession, titleVisibility: .visible) {
@@ -283,7 +331,14 @@ struct SessionDetailView: View {
         } message: {
             Text(L.s("clear_clips_msg", lang))
         }
-        .onAppear { onScreen = true }
+        .onAppear {
+            onScreen = true
+            guard let openNumber, !openedRequested else { return }
+            openedRequested = true
+            if let clip = store.clips(of: session).first(where: { $0.number == openNumber }) {
+                destination = .clip(clip)
+            }
+        }
         .onDisappear { onScreen = false }
         .confirmationDialog(L.s("pro_expired_title", lang), isPresented: $confirmFreeRender,
                             titleVisibility: .visible) {
@@ -809,7 +864,7 @@ struct SessionDetailView: View {
             }
             .rcPrimary()
             .disabled(!needsDetect && !session.needsRerender)
-            .disabled(busy || store.sourceMissing(session))
+            .disabled(busy || store.sourceMissing(session) || selecting)
     }
 
     /// One line under a control saying what it actually does. The labels alone
@@ -1000,7 +1055,14 @@ struct SessionDetailView: View {
     /// Renders bake the tier in. Clips made during a pass would silently come
     /// back at 720p with a watermark because the user fixed a caption an hour
     /// later, so ask first.
-    private func runApply(_ session: Session) {
+    private func runApply(_ session: Session, confirmed: Bool = false) {
+        // A re-detect replaces the rallies wholesale: stars (beyond the ones
+        // that carry over), trims, hand-added rallies, splits and deletes all
+        // go with them. Said before, not discovered after.
+        if !confirmed, session.needsRedetect, hasEdits(session) {
+            confirmRedetect = true
+            return
+        }
         if session.renderedPro == true && !pass.isPro
             && store.clips(of: session).contains(where: \.isReady) {
             confirmFreeRender = true
@@ -1243,9 +1305,15 @@ struct SessionDetailView: View {
     }
 
     private func mergeSelection(_ session: Session) {
-        Task { if let url = await store.mergeClips(selection, in: session) {
+        Task {
+            if let url = await store.mergeClips(selection, in: session) {
                 destination = .merged(url)
-            } }
+            } else if store.progress[sessionID] == nil {
+                // A refusal (busy, fewer than two finished clips) said
+                // nothing; a failure shows its own card.
+                saveMessage = L.s(store.isBusy(sessionID) ? "busy_wait" : "merge_failed", lang)
+            }
+        }
     }
 
     /// Joining clips is a Pro capability.
@@ -1420,17 +1488,9 @@ struct SessionDetailView: View {
     }
 
     private func clipHeader(_ clips: [ClipInfo]) -> some View {
-        // Count and total length beside the title. Four stat tiles used to sit
-        // here and pushed the first clip below the middle of the screen; the
-        // shot total among them is the number CLAUDE.md calls unreliable.
-        let total = clips.reduce(0) { $0 + $1.duration }
-        let title = HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(L.s("clips_title", lang)).font(.headline)
-            Text(String(clips.count) + " · " + fmtDur(total))
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
+        // Title only: the count and total are on the summary line just above,
+        // and saying them twice made the two read as different numbers.
+        let title = Text(L.s("clips_title", lang)).font(.headline)
 
         // One row when it fits. At accessibility sizes, or in a language whose
         // labels run long, sharing the width breaks words mid-way — the sort
@@ -1467,11 +1527,16 @@ struct SessionDetailView: View {
         return LazyVGrid(columns: columns, spacing: 10) {
             ForEach(clips) { clip in
                 ClipCard(clip: clip,
-                         selected: selecting ? selection.contains(clip.id) : nil) {
+                         selected: selecting ? selection.contains(clip.id) : nil,
+                         highlighted: highlighted.contains(clip.number)) {
                     if selecting {
                         // Unfinished clips preview, but there is no file to
-                        // save, merge or put in a reel.
-                        guard clip.isReady else { return }
+                        // save, merge or put in a reel — say so rather than
+                        // ignore the tap.
+                        guard clip.isReady else {
+                            saveMessage = L.s("clip_not_ready", lang)
+                            return
+                        }
                         if selection.contains(clip.id) { selection.remove(clip.id) }
                         else { selection.insert(clip.id) }
                     } else {
@@ -1481,6 +1546,92 @@ struct SessionDetailView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// Anything a re-detect would throw away: stars, trims (hand-added and
+    /// split rallies are marked trimmed), deleted rallies (gaps in the
+    /// numbers), per-clip players.
+    private func hasEdits(_ session: Session) -> Bool {
+        let segs = session.segments ?? []
+        return segs.contains { $0.isFavourite || $0.trimmed == true }
+            || (segs.compactMap(\.number).max() ?? 0) > segs.count
+            || !(session.clipTargets ?? [:]).isEmpty
+    }
+
+    /// Answers a change to the rallies: an undo for a delete; for a split or
+    /// an added rally, back to this screen with the new clips in view and lit.
+    private func handle(_ edit: RallyEdit, _ session: Session) {
+        switch edit.kind {
+        case .deleted(let rallies):
+            undo = (String(format: L.s("deleted_n_fmt", lang), rallies.count), rallies)
+        case .split(let a, let b):
+            destination = nil
+            toast = String(format: L.s("split_done_fmt", lang), a, a, b)
+            light([a, b], session)
+        case .added(let n, let start):
+            destination = nil
+            toast = String(format: L.s("rally_added_fmt", lang), fmtPos(start))
+            light([n], session)
+        }
+    }
+
+    private func light(_ numbers: Set<Int>, _ session: Session) {
+        highlighted = numbers
+        if let first = store.clips(of: session).first(where: { numbers.contains($0.number) }) {
+            // After the sheets have gone, or the scroll is lost under them.
+            Task {
+                try? await Task.sleep(for: .milliseconds(450))
+                scrollTarget = first.id
+                try? await Task.sleep(for: .seconds(2))
+                withAnimation { highlighted = [] }
+            }
+        }
+    }
+
+    /// "2 clips deleted · Undo", for five seconds above the tab bar.
+    @ViewBuilder private var undoBar: some View {
+        if let undo {
+            HStack(spacing: 12) {
+                Text(undo.text)
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    let rallies = undo.rallies
+                    self.undo = nil
+                    Task {
+                        if !(await store.restoreRallies(rallies, in: sessionID)) {
+                            saveMessage = L.s("undo_failed", lang)
+                        }
+                    }
+                } label: {
+                    Text(L.s("undo", lang))
+                        .font(.subheadline.bold())
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 12)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.leading, 16).padding(.trailing, 4).padding(.vertical, 2)
+            .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 14))
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .task(id: undo.text + String(undo.rallies.count)) {
+                try? await Task.sleep(for: .seconds(8))
+                withAnimation { self.undo = nil }
+            }
+        }
+    }
+
+    /// A menu item that, when greyed out because the match is busy, says so.
+    private func menuLabel(_ key: String, _ icon: String, busy: Bool) -> some View {
+        Label {
+            Text(L.s(key, lang))
+            if busy { Text(L.s("busy_short", lang)) }
+        } icon: {
+            Image(systemName: icon)
         }
     }
 

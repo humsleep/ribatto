@@ -171,10 +171,10 @@ struct ZoomableVideo: View {
             .tint(Theme.accent)
             // Unlabelled, VoiceOver read the scrubber as a bare percentage.
             .accessibilityLabel(L.s("playback_position", lang))
-            .accessibilityValue(fmtTs(time))
+            .accessibilityValue(fmtPos(time))
 
             HStack {
-                Text(fmtTs(time))
+                Text(fmtPos(time))
                 Spacer()
                 Button {
                     playing.toggle()
@@ -186,7 +186,7 @@ struct ZoomableVideo: View {
                 }
                 .foregroundStyle(Theme.accent)
                 Spacer()
-                Text(fmtTs(duration))
+                Text(fmtPos(duration))
             }
             .font(.caption2.monospacedDigit())
             // A timestamp is five characters wide and shares its row with the

@@ -40,15 +40,15 @@ struct AddRallySheet: View {
 
                 VStack(spacing: 14) {
                     row(L.s("target_frame", lang), value: $centre,
-                        range: 0...max(1, session.duration), text: fmtTs(centre))
+                        range: 0...max(1, session.duration), text: fmtPos(centre))
                     row(L.s("length", lang), value: $length,
                         range: store.minClipSeconds...40, text: fmtDur(length))
                     HStack {
-                        Text(fmtTs(start)).font(.caption.monospacedDigit())
+                        Text(fmtPos(start)).font(.caption.monospacedDigit())
                         Spacer()
                         Text("→").font(.caption).foregroundStyle(.secondary)
                         Spacer()
-                        Text(fmtTs(end)).font(.caption.monospacedDigit())
+                        Text(fmtPos(end)).font(.caption.monospacedDigit())
                     }
                     .foregroundStyle(Theme.accent)
                 }

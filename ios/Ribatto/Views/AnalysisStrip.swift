@@ -203,7 +203,7 @@ struct AnalysisStrip: View {
         .accessibilityActions {
             if tappable {
                 ForEach(Array(rallies.prefix(shown).enumerated()), id: \.offset) { i, seg in
-                    Button("#\(i + 1) · " + fmtTs(seg.start)) { onTapRally(i) }
+                    Button("#\(seg.number ?? i + 1) · " + fmtPos(seg.start)) { onTapRally(i) }
                 }
             }
         }

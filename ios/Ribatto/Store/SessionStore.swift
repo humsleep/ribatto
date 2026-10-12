@@ -17,6 +17,23 @@ struct ClipInfo: Identifiable, Equatable {
     /// false while the clip is still encoding
     let isReady: Bool
     var duration: Double { segment.end - segment.start }
+    /// What the user sees as "#N": the rally's own number, which survives
+    /// deletes. `index` stays the position — files and per-clip overrides
+    /// are keyed by it.
+    var number: Int { segment.number ?? index + 1 }
+}
+
+/// A change to a session's rallies the screen should answer: scroll to and
+/// light up what changed, and offer an undo for a delete.
+struct RallyEdit: Equatable {
+    enum Kind: Equatable {
+        case deleted([RallySegment])
+        case split(first: Int, second: Int)
+        case added(number: Int, start: Double)
+    }
+    let id = UUID()
+    let sessionID: UUID
+    let kind: Kind
 }
 
 @MainActor
@@ -31,6 +48,8 @@ final class SessionStore: ObservableObject {
     @Published private(set) var rendersInBackground = false
     /// Mirrored from ProPass so the export path knows the tier.
     @Published var isPro = false
+    /// The last delete, split or added rally, for the session screen.
+    @Published var lastEdit: RallyEdit?
     /// Live progress, envelope and found rallies while a match is analysed.
     /// Owned here, observed only by the progress card.
     let analysis = AnalysisFeed()
@@ -252,12 +271,18 @@ final class SessionStore: ObservableObject {
         for idStr in ids {
             guard let id = UUID(uuidString: idStr) else { continue }
             guard let data = try? Data(contentsOf: metaURL(id)),
-                  let s = try? JSONDecoder().decode(Session.self, from: data) else {
+                  var s = try? JSONDecoder().decode(Session.self, from: data) else {
                 // A folder that will not decode holds clips and possibly a whole
                 // recording. Skipping it silently left gigabytes the user could
                 // neither see nor free, so it is at least counted.
                 unreadable += 1
                 continue
+            }
+            // Sessions from before rallies had numbers get them once, in
+            // their current order, and keep them from then on.
+            if let segs = s.segments, segs.contains(where: { $0.number == nil }) {
+                s.segments = segs.fillingNumbers()
+                try? JSONEncoder().encode(s).write(to: metaURL(s.id), options: .atomic)
             }
             out.append(s)
             purgeTemporaries(in: clipsDir(s))
@@ -817,9 +842,11 @@ final class SessionStore: ObservableObject {
         // The segment count before the list grows: every one of these must be
         // on disk for the renumber shortcut to be safe.
         let rendered = segments.count
-        let seg = RallySegment(start: max(0, start),
+        var seg = RallySegment(start: max(0, start),
                                end: min(session.duration, end),
                                hits: 0, score: nil, trimmed: true)
+        // The next unused number, though it sits in time order in the grid.
+        seg.number = segments.nextNumber
         let at = segments.firstIndex { $0.start > seg.start } ?? segments.count
         segments.insert(seg, at: at)
         mutate(session.id) {
@@ -827,8 +854,12 @@ final class SessionStore: ObservableObject {
             // indices moved, so per-clip overrides no longer point at the
             // clips they were chosen for
             $0.clipTargets = shift($0.clipTargets, insertedAt: at)
-            $0.renderedClipTargets = nil
+            // Shifted the same way, not cleared: cleared, a PASS session with
+            // a per-clip player was left claiming unapplied changes forever.
+            $0.renderedClipTargets = shift($0.renderedClipTargets, insertedAt: at)
         }
+        lastEdit = RallyEdit(sessionID: session.id,
+                             kind: .added(number: seg.number ?? at + 1, start: seg.start))
         await renumberAndRender(session.id, segments: segments,
                                 renderedCount: rendered, insertedAt: at,
                                 newIndices: [at])
@@ -841,7 +872,8 @@ final class SessionStore: ObservableObject {
     /// the text is in the pixels.
     private func captionFollowsIndex(_ s: Session) -> Bool {
         guard let c = s.renderedCaption, c.enabled else { return false }
-        return c.text.contains("{rally}") || c.text.contains("{rank}")
+        // `{rally}` prints the rally's own number now, which no insert moves.
+        return c.text.contains("{rank}")
     }
 
     /// Moves rendered clips from `from` upward by one place so `clip_NN` lines
@@ -937,15 +969,22 @@ final class SessionStore: ObservableObject {
         first.racketConf = seg.racketConf
         second.racketConf = seg.racketConf
         second.crowdConf = seg.crowdConf
-        // The star describes the point the user was looking at, and that point
-        // is the one that ends where the original ended — the second half.
+        // Both halves keep the star: which half was the point the user liked
+        // is not something the app can know, and losing it read as a bug.
+        first.favourite = seg.favourite
         second.favourite = seg.favourite
+        // The first half keeps the rally's number; the second is new.
+        first.number = seg.number
+        second.number = segments.nextNumber
         segments.replaceSubrange(clip.index...clip.index, with: [first, second])
         mutate(session.id) {
             $0.segments = segments
             $0.clipTargets = shift($0.clipTargets, insertedAt: clip.index + 1)
-            $0.renderedClipTargets = nil
+            $0.renderedClipTargets = shift($0.renderedClipTargets, insertedAt: clip.index + 1)
         }
+        lastEdit = RallyEdit(sessionID: session.id,
+                             kind: .split(first: first.number ?? clip.index + 1,
+                                          second: second.number ?? clip.index + 2))
         // Everything after the cut shifts up one; the two halves are the only
         // clips whose pixels are actually new.
         await renumberAndRender(session.id, segments: segments,
@@ -1170,10 +1209,12 @@ final class SessionStore: ObservableObject {
                 progress[sessionID] = .failed(L.s("redetect_none_kept", lang))
                 return
             }
+            // A detection numbers its rallies afresh, 1…n in time order.
+            let numbered = segments.numberedInOrder()
             // The rallies go onto the strip before the first clip is cut.
-            feed.found(sessionID, rallies: segments, staged: hasFinishedClips(s))
+            feed.found(sessionID, rallies: numbered, staged: hasFinishedClips(s))
             await render(sessionID: sessionID, alreadyRunning: true,
-                         detection: Detection(segments: segments, sport: sport, sensitivity: sens))
+                         detection: Detection(segments: numbered, sport: sport, sensitivity: sens))
         } catch {
             // Only reading the audio or detecting can throw here — `render`
             // handles its own failures — so no clip has been touched yet. This
@@ -1251,7 +1292,17 @@ final class SessionStore: ObservableObject {
                 $0.clipTargets = nil
                 $0.renderedClipTargets = nil
             }
-            $0.segments = d.segments
+            // Stars survive a re-detect: a new rally covering at least half of
+            // a starred old one is the same point found again.
+            let starred = ($0.segments ?? []).filter(\.isFavourite)
+            $0.segments = d.segments.map { seg in
+                var s = seg
+                if starred.contains(where: { old in
+                    let overlap = min(old.end, seg.end) - max(old.start, seg.start)
+                    return overlap >= 0.5 * min(old.duration, seg.duration)
+                }) { s.favourite = true }
+                return s
+            }
             $0.detectedSport = d.sport
             $0.detectedSensitivity = d.sensitivity
             $0.detectionFoundNothing = d.segments.isEmpty
@@ -1408,6 +1459,7 @@ final class SessionStore: ObservableObject {
                 $0.renderedTargetPlayer = target
                 $0.renderedClipTargets = perClip
                 $0.renderedLook = RenderStamp.currentLook
+                $0.ranksStale = nil
                 $0.partialRender = nil
             }
             objectWillChange.send()
@@ -1577,6 +1629,11 @@ final class SessionStore: ObservableObject {
         }
 
         s.segments = survivors.map { segments[$0] }
+        // Burned-in ranks are now off by the deleted ones.
+        if s.renderedCaption?.enabled == true, s.renderedCaption?.text.contains("{rank}") == true {
+            s.ranksStale = true
+        }
+        let removed = doomed.sorted().map { segments[$0] }
         s.clipTargets = remap(s.clipTargets, survivors: survivors)
         s.renderedClipTargets = remap(s.renderedClipTargets, survivors: survivors)
         // The user removed these; a later empty screen must not blame detection.
@@ -1603,7 +1660,39 @@ final class SessionStore: ObservableObject {
             }
         }
         save(s)
+        lastEdit = RallyEdit(sessionID: s.id, kind: .deleted(removed))
         return true
+    }
+
+    /// Puts deleted rallies back — same numbers, same stars — and makes only
+    /// their clips again. The undo for a delete; one at a time through the
+    /// same path as adding a rally, so the files after each slot move up.
+    @discardableResult
+    func restoreRallies(_ restored: [RallySegment], in sessionID: UUID) async -> Bool {
+        var any = false
+        for seg in restored.sorted(by: { $0.start < $1.start }) {
+            // Something still finishing on the session (a re-cut started just
+            // before the delete) is waited out, not taken as a reason to drop
+            // the undo on the floor.
+            var waited = 0
+            while isBusy(sessionID) && waited < 600 {
+                try? await Task.sleep(for: .milliseconds(100))
+                waited += 1
+            }
+            guard let s = sessions.first(where: { $0.id == sessionID }),
+                  let current = s.segments, !isBusy(sessionID) else { return any }
+            guard let (segments, at) = current.restoring(seg) else { continue }
+            any = true
+            let rendered = current.count
+            mutate(sessionID) {
+                $0.segments = segments
+                $0.clipTargets = shift($0.clipTargets, insertedAt: at)
+                $0.renderedClipTargets = shift($0.renderedClipTargets, insertedAt: at)
+            }
+            await renumberAndRender(sessionID, segments: segments, renderedCount: rendered,
+                                    insertedAt: at, newIndices: [at])
+        }
+        return any
     }
 
     /// After a single clip was re-cut in an unfinished render, the stamp
@@ -1710,7 +1799,8 @@ final class SessionStore: ObservableObject {
                    preset: ReelPreset? = nil,
                    caption: CaptionSettings? = nil,
                    hook: Bool = false,
-                   replay: Bool = false) async -> (url: URL, plan: ReelPlan)? {
+                   replay: Bool = false,
+                   createdAt: Date? = nil) async -> (url: URL, plan: ReelPlan)? {
         // The order is the caller's. ReelSheet seeds it by timeline and lets
         // the user drag rows around; sorting here again silently undid that
         // drag while the screen still said "Drag to reorder". `sources` is
@@ -1786,7 +1876,7 @@ final class SessionStore: ObservableObject {
             // is written first: a crash between the two used to leave a
             // several-hundred-megabyte file the app could neither show nor
             // remove. `reels()` drops entries whose mp4 never arrived.
-            let placeholder = ReelInfo(id: id, createdAt: Date(), target: target.rawValue,
+            let placeholder = ReelInfo(id: id, createdAt: createdAt ?? Date(), target: target.rawValue,
                                        frame: frame.rawValue, pace: pace.rawValue,
                                        preset: preset?.rawValue, rallies: 0, duration: 0,
                                        place: ordered.first?.session.placeName,
@@ -1814,7 +1904,7 @@ final class SessionStore: ObservableObject {
             try? ClipExporter.writeThumbnail(
                 of: out, at: min(1.0, max(0, plan.duration - 0.2)),
                 to: reelsDir.appendingPathComponent(id + ".jpg"))
-            let info = ReelInfo(id: id, createdAt: Date(), target: target.rawValue,
+            let info = ReelInfo(id: id, createdAt: createdAt ?? Date(), target: target.rawValue,
                                 frame: frame.rawValue, pace: pace.rawValue,
                                 preset: preset?.rawValue,
                                 rallies: plan.used, duration: plan.duration,
@@ -1907,6 +1997,16 @@ final class SessionStore: ObservableObject {
     /// The clip a reel source points at today. Matched by time: the rally that
     /// overlaps the recorded one the most, as long as it covers at least half
     /// of it — a trim still finds its rally, a deleted one finds nothing.
+    /// Every ready clip lying (mostly) inside the source's range, in time
+    /// order. Empty when the source has no recorded range.
+    private func clips(within source: ReelSource, in session: Session) -> [ClipInfo] {
+        guard let start = source.start, let end = source.end, end > start else { return [] }
+        return clips(of: session).filter(\.isReady).filter { c in
+            let overlap = min(end, c.segment.end) - max(start, c.segment.start)
+            return overlap >= 0.5 * c.duration
+        }.sorted { $0.segment.start < $1.segment.start }
+    }
+
     private func clip(for source: ReelSource, in session: Session) -> ClipInfo? {
         let ready = clips(of: session).filter(\.isReady)
         guard let start = source.start, let end = source.end, end > start else {
@@ -1935,20 +2035,38 @@ final class SessionStore: ObservableObject {
             guard let session = sessions.first(where: { $0.id == source.sessionID }) else {
                 return nil
             }
+            // A rally split since covers the source with two clips; both go
+            // back in, or the rebuilt reel quietly lost half the point.
+            // Each clamped to the recorded range, so a reel cut to the strikes
+            // or to a rally's last seconds is rebuilt with the same cut.
+            let pieces = clips(within: source, in: session)
+            if !pieces.isEmpty, let start = source.start, let end = source.end {
+                pairs += pieces.map { c in
+                    var seg = c.segment
+                    seg.start = max(seg.start, start)
+                    seg.end = min(seg.end, end)
+                    return (session, c.with(segment: seg))
+                }
+                continue
+            }
             guard let clip = clip(for: source, in: session) else { return nil }
             pairs.append((session, clip))
         }
-        guard await buildReel(from: pairs,
+        guard let rebuilt = await buildReel(from: pairs,
                               target: ReelTarget(rawValue: reel.target) ?? .reels,
                               frame: OutputFrame(reel.frame),
                               pace: ReelPace(rawValue: reel.pace) ?? .full,
                               preset: reel.preset.flatMap(ReelPreset.init(rawValue:)),
                               caption: caption,
                               hook: reel.hook ?? false,
-                              replay: reel.replay ?? false) != nil
+                              replay: reel.replay ?? false,
+                              createdAt: reel.createdAt)
         else { return nil }
         deleteReel(reel)
-        return reels().first
+        // By id, and dated like the reel it replaces: a caption fix used to
+        // jump the reel to the front of the tab as if it were new.
+        let newID = rebuilt.url.deletingPathExtension().lastPathComponent
+        return reels().first { $0.id == newID }
     }
 
     /// Saves a finished reel to Photos so it can be picked up by Instagram or

@@ -53,7 +53,8 @@ enum CaptionText {
         put("{tempo}", seg.tempo.map {
             String(format: L.s("tempo_fmt", lang), Int($0.rounded())) } ?? "")
         put("{duration}", String(format: L.s("tok_duration_fmt", lang), Int(seg.duration.rounded())))
-        put("{rally}", String(format: L.s("tok_rally_fmt", lang), index + 1))
+        // The rally's own number, as on its card: it survives deletes.
+        put("{rally}", String(format: L.s("tok_rally_fmt", lang), seg.number ?? index + 1))
         put("{rank}", rank(in: segments, index).map {
             String(format: L.s("tok_rank_fmt", lang), $0) } ?? "")
         put("{place}", session.placeName ?? "")

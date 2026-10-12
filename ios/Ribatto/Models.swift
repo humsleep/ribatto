@@ -147,6 +147,12 @@ struct RallySegment: Codable, Equatable {
     /// `SoundCheck`'s confidence of a crowd reaction — cheering, applause,
     /// laughter — just after the point, 0…1.
     var crowdConf: Double? = nil
+    /// The number the user sees — "#3". Given 1…n in time order when a
+    /// detection lands and never reused after: deleting #2 used to relabel
+    /// the old #3 as "#2" (the label was the position), which read as if the
+    /// delete had taken the wrong clip. Gaps are fine. nil only in files
+    /// written before it existed; `SessionStore.load` fills those in.
+    var number: Int? = nil
 
     var duration: Double { end - start }
 
@@ -363,6 +369,10 @@ struct Session: Identifiable, Codable, Equatable {
     /// free mild zoom existed. A single-clip re-render matches it, so a trim
     /// in an old session does not drop one zoomed clip among unzoomed ones.
     var renderedLook: Int? = nil
+    /// The burned-in caption carries `{rank}` and a delete has since changed
+    /// the ranking, so the clips say "Best #3" about a rally that is now #2.
+    /// Shown as an ordinary pending change; the next render clears it.
+    var ranksStale: Bool? = nil
     /// Pro: one specific person to keep centred in the vertical crop. nil means
     /// use SmartCrop's aggregate-motion framing. Only takes effect on a vertical
     /// crop of a wider source, with smart crop on.
@@ -435,6 +445,7 @@ struct Session: Identifiable, Codable, Equatable {
     var needsRerender: Bool {
         guard segments != nil, !needsRedetect else { return false }
         return renderedOrientation != effectiveOrientation
+            || ranksStale == true
             || (renderedCaption ?? CaptionSettings()) != (caption ?? CaptionSettings())
             // Compared against what the last render was ALLOWED to do. A free
             // render can never satisfy a Pro flag, so comparing the raw setting
@@ -498,7 +509,7 @@ struct Session: Identifiable, Codable, Equatable {
              caption, renderedCaption,
              smartCrop, renderedSmartCrop, detectionFoundNothing,
              targetPlayer, renderedTargetPlayer,
-             clipTargets, renderedClipTargets, partialRender, renderedLook
+             clipTargets, renderedClipTargets, partialRender, renderedLook, ranksStale
     }
 }
 
@@ -619,4 +630,44 @@ struct ReelSource: Codable, Equatable {
     let clipIndex: Int
     var start: Double? = nil
     var end: Double? = nil
+}
+
+extension Array where Element == RallySegment {
+    /// A fresh detection: 1…n in time order.
+    func numberedInOrder() -> [RallySegment] {
+        enumerated().map { i, seg in
+            var s = seg
+            s.number = i + 1
+            return s
+        }
+    }
+
+    /// Fills in only the missing numbers, after the highest one present — an
+    /// old session gets 1…n by its current order, once.
+    func fillingNumbers() -> [RallySegment] {
+        var next = (compactMap(\.number).max() ?? 0) + 1
+        return map { seg in
+            guard seg.number == nil else { return seg }
+            var s = seg
+            s.number = next
+            next += 1
+            return s
+        }
+    }
+
+    /// The number a newly made rally (added by hand, or the second half of a
+    /// split) takes: never one that was used before in this list.
+    var nextNumber: Int { Swift.max(compactMap(\.number).max() ?? 0, count) + 1 }
+}
+
+extension Array where Element == RallySegment {
+    /// The list with `seg` put back in time order, and where it went. nil
+    /// when a rally with the same number is already there (undone twice).
+    func restoring(_ seg: RallySegment) -> (segments: [RallySegment], at: Int)? {
+        if let n = seg.number, contains(where: { $0.number == n }) { return nil }
+        var out = self
+        let at = out.firstIndex { $0.start > seg.start } ?? out.count
+        out.insert(seg, at: at)
+        return (out, at)
+    }
 }

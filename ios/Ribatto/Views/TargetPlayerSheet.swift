@@ -44,7 +44,7 @@ struct TargetPlayerSheet: View {
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle(clip == nil
                              ? L.s("target_title", lang)
-                             : "#" + String(clip!.index + 1) + " · "
+                             : "#" + String(clip!.number) + " · "
                                + L.s("target_clip_title", lang))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -136,7 +136,7 @@ struct TargetPlayerSheet: View {
                 }
                 .tint(Theme.accent)
                 .accessibilityLabel(L.s("target_frame", lang))
-                .accessibilityValue(fmtTs(frameTime))
+                .accessibilityValue(fmtPos(frameTime))
                 .disabled(loading)
             }
             .padding(.horizontal, 20)
