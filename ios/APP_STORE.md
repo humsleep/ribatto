@@ -149,7 +149,8 @@ starts by launching the app and shows the typical flow: onboarding, the ad
 consent and tracking prompts, importing a match video from Photos, choosing a
 sport, automatic rally detection, playing a clip, trimming it, making a
 vertical reel and saving it to Photos, then opening the one-hour pass by
-watching a rewarded ad. The app has no accounts (no registration, login or
+watching a rewarded ad from the pass sheet (it shows the user's own clip free
+vs. with the pass, with an equal "Not now" that keeps the free export). The app has no accounts (no registration, login or
 deletion), no user-generated content shared with other users, and no paid
 content: the only gated features open for one hour after a rewarded video ad,
 and there are no in-app purchases.
@@ -201,8 +202,8 @@ The app is not offered in mainland China.
 Not applicable. The app is not in a regulated industry and contains no
 protected third-party content. It only processes videos the user recorded.
 Bundled fonts (Anton, Bebas Neue) are under the SIL Open Font License and the
-Pow library under MIT; their licenses are shown in the app (globe menu at the
-top of the Library > Open-source licences).
+Pow library under MIT; their licenses are shown in the app (gear button at the
+top of "My Matches" > Open-source licences).
 ```
 
 #### 화면 녹화 순서 (실기기, 최신 iOS, 2~4분)
@@ -212,7 +213,8 @@ top of the Library > Open-source licences).
 3. 인트로 → 온보딩 → (동의 창) → 추적 허용 창
 4. + → 사진 보관함에서 → 샘플 영상 → 종목 Tennis → 감지 완료까지 (기다리는 구간은 그대로 둬도 된다)
 5. 클립 하나 재생 → 트림 버튼(구간 선택 아이콘)으로 길이 조정 → 닫기 → "30초 하이라이트 릴스" → 결과 화면에서 사진에 저장
-6. 패스 받기 → 광고 보기 → 끝까지 시청 → 패스 표시 확인
+6. 무료 상태에서 "사진 앱에 저장" → 패스 제안 시트(무료/패스 비교) → "광고 보고 1시간 패스" → 끝까지 시청
+   → "패스가 열렸어요" 토스트 → 릴스가 패스 화질로 다시 만들어지고 저장되는 것까지
 7. 릴스 탭·시즌 탭을 잠깐 보여주고 기록 종료
 
 얼굴이 나오지 않는 샘플 영상만 쓴다. 알림이 녹화에 찍히지 않게 방해 금지 모드를 켠다.
