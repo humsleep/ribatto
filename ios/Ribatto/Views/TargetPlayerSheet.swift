@@ -73,7 +73,13 @@ struct TargetPlayerSheet: View {
     private func picker(_ image: UIImage) -> some View {
         VStack(spacing: 12) {
             VStack(spacing: 6) {
-                Text(L.s(detected.isEmpty ? "target_none" : "target_hint", lang))
+                // The instruction first. "No people found" only once a
+                // detection on this frame has actually come back empty and
+                // the user has not drawn a box of their own — it used to sit
+                // there while a new frame was still being read, and after the
+                // user had already drawn.
+                Text(L.s(!loading && detected.isEmpty && chosen == nil
+                         ? "target_none" : "target_hint", lang))
                     .font(.footnote).foregroundStyle(.secondary)
                 // Said at the moment of choosing, where the expectation is set:
                 // tracking a person in court-side footage is not a guarantee.

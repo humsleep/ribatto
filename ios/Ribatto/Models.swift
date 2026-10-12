@@ -359,6 +359,10 @@ struct Session: Identifiable, Codable, Equatable {
     /// Pro: follow the players when cropping to vertical. nil = on by default.
     var smartCrop: Bool? = nil
     var renderedSmartCrop: Bool? = nil
+    /// `RenderStamp.currentLook` of the last finished render; nil before the
+    /// free mild zoom existed. A single-clip re-render matches it, so a trim
+    /// in an old session does not drop one zoomed clip among unzoomed ones.
+    var renderedLook: Int? = nil
     /// Pro: one specific person to keep centred in the vertical crop. nil means
     /// use SmartCrop's aggregate-motion framing. Only takes effect on a vertical
     /// crop of a wider source, with smart crop on.
@@ -494,7 +498,7 @@ struct Session: Identifiable, Codable, Equatable {
              caption, renderedCaption,
              smartCrop, renderedSmartCrop, detectionFoundNothing,
              targetPlayer, renderedTargetPlayer,
-             clipTargets, renderedClipTargets, partialRender
+             clipTargets, renderedClipTargets, partialRender, renderedLook
     }
 }
 
@@ -515,13 +519,22 @@ struct RenderStamp: Codable, Equatable {
     /// that settings changed. Not part of `matches`: an Apply afterwards is a
     /// render of the same pixels into an empty folder.
     var cleared: Bool? = nil
+    /// The renderer's framing generation. 2 = free portrait clips mildly
+    /// zoomed on the play. Old stamps carry nil and never match a new one,
+    /// so an unfinished render from before is redone whole on the next Apply
+    /// rather than finished with clips of a different look.
+    var look: Int? = nil
+    static let currentLook = 2
+
+    /// Whether a render with this look zooms the free frame.
+    static func zooms(_ look: Int?) -> Bool { (look ?? 1) >= 2 }
 
     /// Same pixels, not same record: a favourite star, a hit count or a
     /// per-clip target override does not change the clips already made, and
     /// comparing whole segments sent a session back to a full re-render the
     /// moment the user starred a rally.
     func matches(_ other: RenderStamp) -> Bool {
-        orientation == other.orientation && pro == other.pro
+        orientation == other.orientation && pro == other.pro && look == other.look
             && smartCrop == other.smartCrop && caption == other.caption
             && targetPlayer == other.targetPlayer
             && (lang == nil || other.lang == nil || lang == other.lang)
@@ -572,6 +585,11 @@ struct ReelInfo: Codable, Identifiable, Equatable {
     /// The caption burned into this reel, when it was given one here rather
     /// than inherited from each session.
     var caption: CaptionSettings? = nil
+    /// Whether the reel opened with its hook title and ended on the slow
+    /// winning-shot replay, so a caption-only rebuild makes the same reel.
+    /// nil on reels made before either existed: rebuilt without them.
+    var hook: Bool? = nil
+    var replay: Bool? = nil
 
     // Filled in when listed; never written to the sidecar.
     var url: URL = URL(fileURLWithPath: "/")
@@ -584,7 +602,7 @@ struct ReelInfo: Codable, Identifiable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case id, createdAt, target, frame, pace, preset, rallies, duration, place
-        case sources, caption
+        case sources, caption, hook, replay
     }
 }
 

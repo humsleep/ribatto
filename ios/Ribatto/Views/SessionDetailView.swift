@@ -33,6 +33,12 @@ struct SessionDetailView: View {
     /// be looking at.
     @State private var applyAfterSettings = false
     @State private var scrollToTop = 0
+    /// What a pass offer interrupted, run once its sheet has closed: at PASS
+    /// quality after the reward, on the free tier after "later", not at all
+    /// when the sheet was swiped away.
+    @State private var offerOutcome: PassOfferOutcome?
+    @State private var offerActions: (granted: () -> Void, declined: () -> Void)?
+    @State private var toast: String?
     /// Apply would re-render Pro clips after the pass ran out.
     @State private var confirmFreeRender = false
     @State private var confirmClearClips = false
@@ -55,6 +61,7 @@ struct SessionDetailView: View {
         case addRally
         case reel(ReelRequest)
         case settings
+        case offer(PassOfferRequest)
 
         var id: String {
             switch self {
@@ -66,6 +73,7 @@ struct SessionDetailView: View {
             case .addRally: return "add-rally"
             case .reel(let r): return "reel-" + r.id.uuidString
             case .settings: return "settings"
+            case .offer(let r): return "offer-" + r.id.uuidString
             }
         }
     }
@@ -180,6 +188,7 @@ struct SessionDetailView: View {
             }
         }
         .adBanner()
+        .passToast($toast)
         .navigationTitle(L.dateTime(session.playedAt, lang))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -278,7 +287,11 @@ struct SessionDetailView: View {
         .onDisappear { onScreen = false }
         .confirmationDialog(L.s("pro_expired_title", lang), isPresented: $confirmFreeRender,
                             titleVisibility: .visible) {
-            Button(L.s("pro_expired_watch", lang)) { destination = .pro(feature: nil) }
+            Button(L.s("pro_expired_watch", lang)) {
+                offer(session, declineKey: "offer_later_free",
+                      granted: { Task { await store.apply(sessionID: sessionID) } },
+                      declined: { Task { await store.apply(sessionID: sessionID) } })
+            }
             Button(L.s("pro_expired_free", lang)) {
                 Task { await store.apply(sessionID: sessionID) }
             }
@@ -299,13 +312,21 @@ struct SessionDetailView: View {
             // just saw, and owing an ad for it put one on a later, unrelated
             // dismissal.
             guard destination == nil, onScreen, scenePhase == .active else { return }
-            if case .render? = old, new == nil { ads.markInterstitialDue() }
+            // A render made on a PASS owes nothing, even when the pass ran
+            // out while it was running (the tier is baked at the start).
+            if case .render? = old, new == nil, self.session?.renderedPro != true {
+                ads.markInterstitialDue()
+            }
         }
         .onChange(of: destination?.id) { _, new in
             if let new { lastPresented = new }
         }
         .sheet(item: $destination, onDismiss: {
             settingsDestination = nil
+            if lastPresented?.hasPrefix("offer-") == true {
+                finishOffer()
+                return
+            }
             guard applyAfterSettings else {
                 // The owed ad, if any: a sheet the user opened has closed and
                 // this screen is in front. Not when one sheet was swapped for
@@ -350,6 +371,40 @@ struct SessionDetailView: View {
             ReelSheet(request: request)
         case .settings:
             settingsSheet(session)
+        case .offer(let request):
+            PassOfferSheet(request: request, outcome: $offerOutcome)
+        }
+    }
+
+    /// Opens the pass offer for `session`'s best rally, remembering what to
+    /// do once it closes. Every PASS gate on this screen comes through here.
+    private func offer(_ session: Session, declineKey: String = "offer_later",
+                       title: String = "offer_title",
+                       granted: @escaping () -> Void,
+                       declined: @escaping () -> Void = {}) {
+        offerOutcome = nil
+        offerActions = (granted, declined)
+        let best = preferringSingleRallies(
+            store.clips(of: session).sorted { ClipSort.best.precedes($0, $1) }).first
+        open(.offer(PassOfferRequest(session: session,
+                                     segment: best?.segment.playTrimmed,
+                                     poster: best?.thumbURL,
+                                     titleKey: title, declineKey: declineKey)))
+    }
+
+    /// Runs what the offer interrupted. After the sheet is gone, so a gate
+    /// that opens another sheet (the player picker) does not collide with it.
+    private func finishOffer() {
+        guard let actions = offerActions else { return }
+        let outcome = offerOutcome
+        offerActions = nil
+        offerOutcome = nil
+        switch outcome {
+        case .granted?:
+            toast = passOpenedText(pass, lang)
+            actions.granted()
+        case .declined?: actions.declined()
+        case nil: break
         }
     }
 
@@ -429,7 +484,7 @@ struct SessionDetailView: View {
                 }
             }
             .modifier(SettingsAlerts(owner: self, session: session, inSheet: true))
-            .sheet(item: $settingsDestination) { dest in
+            .sheet(item: $settingsDestination, onDismiss: finishOffer) { dest in
                 // Type-erased: the sheet's content is this function's own
                 // caller, and an opaque type cannot contain itself.
                 AnyView(destinationView(dest, session))
@@ -622,7 +677,10 @@ struct SessionDetailView: View {
                     get: { pass.isPro && session.smartCropEnabled },
                     set: { on in
                         guard pass.isPro else {
-                            open(.pro(feature: L.s("smart_crop", lang)))
+                            // Granted: the switch the user flipped goes on.
+                            offer(session, title: "offer_title_crop") {
+                                store.setSmartCrop(session, true)
+                            }
                             return
                         }
                         store.setSmartCrop(session, on)
@@ -655,7 +713,8 @@ struct SessionDetailView: View {
                     Spacer()
                     Button {
                         guard !pass.isPro else { return }
-                        open(.pro(feature: L.s("feat_quality", lang)))
+                        // Nothing to run: the next render picks the quality up.
+                        offer(session, title: "offer_title_quality") {}
                     } label: {
                         // 4K is the wide path only: a portrait export is
                         // capped at a 1080 short side, and 9:16 is the app's
@@ -896,7 +955,14 @@ struct SessionDetailView: View {
         HStack(spacing: 8) {
             Button {
                 guard pass.isPro else {
-                    open(.pro(feature: L.s("target_player", lang)))
+                    // Granted: on to the picker they were reaching for.
+                    offer(session, title: "offer_title_target") {
+                        if OutputFrame(session.effectiveOrientation).isPortrait {
+                            open(.targetPlayer)
+                        } else {
+                            confirmSwitchVertical = true
+                        }
+                    }
                     return
                 }
                 if OutputFrame(session.effectiveOrientation).isPortrait {
@@ -1087,7 +1153,7 @@ struct SessionDetailView: View {
     /// under the grid repeated what Select → Save already does.
     private func saveAll(_ session: Session) {
         guard pass.isPro else {
-            destination = .pro(feature: L.s("save_all", lang))
+            offer(session) { saveAll(session) }
             return
         }
         Task {
@@ -1149,16 +1215,10 @@ struct SessionDetailView: View {
     private func saveBtn(_ session: Session, _ n: Int) -> some View {
         Button {
             guard pass.isPro || n <= 1 else {
-                destination = .pro(feature: L.s("feat_saveall", lang))
+                offer(session) { saveSelection(session) }
                 return
             }
-            Task {
-                if let saved = await store.saveClipsToPhotos(session, ids: selection) {
-                    saveMessage = String(format: L.s(saved == 1 ? "saved_one_fmt" : "saved_n_fmt", lang), saved)
-                } else {
-                    saveMessage = L.s("photos_denied", lang)
-                }
-            }
+            saveSelection(session)
         } label: {
             HStack(spacing: 6) {
                 Label(L.s("save", lang),
@@ -1172,13 +1232,27 @@ struct SessionDetailView: View {
         .disabled(n == 0)
     }
 
+    private func saveSelection(_ session: Session) {
+        Task {
+            if let saved = await store.saveClipsToPhotos(session, ids: selection) {
+                saveMessage = String(format: L.s(saved == 1 ? "saved_one_fmt" : "saved_n_fmt", lang), saved)
+            } else {
+                saveMessage = L.s("photos_denied", lang)
+            }
+        }
+    }
+
+    private func mergeSelection(_ session: Session) {
+        Task { if let url = await store.mergeClips(selection, in: session) {
+                destination = .merged(url)
+            } }
+    }
+
     /// Joining clips is a Pro capability.
     private func mergeBtn(_ session: Session, _ canMerge: Bool) -> some View {
         Button {
-            guard pass.isPro else { destination = .pro(feature: L.s("merge", lang)); return }
-            Task { if let url = await store.mergeClips(selection, in: session) {
-                    destination = .merged(url)
-                } }
+            guard pass.isPro else { offer(session) { mergeSelection(session) }; return }
+            mergeSelection(session)
         } label: {
             Label(L.s("merge", lang),
                   systemImage: pass.isPro ? "arrow.triangle.merge" : "lock.fill")
@@ -1238,7 +1312,10 @@ struct SessionDetailView: View {
     /// order until the next would overrun (always at least one); the best one
     /// leads, since the first seconds decide whether anyone keeps watching,
     /// and the rest follow in the order they were played.
-    private static let reelBudget: Double = 30
+    /// Room kept for the slow winning-shot replay the reel ends on, so the
+    /// whole thing still lands near thirty seconds. Reserved even when the
+    /// footage turns out too slow for one; the reel is then a little shorter.
+    private static let reelBudget: Double = 30 - ReelBuilder.replaySeconds
 
     /// The longest piece of one rally the highlight takes when it is the only
     /// one, and when there are others to fit beside it. At 25 s for every

@@ -220,7 +220,9 @@ enum ClipExporter {
                        smartCrop: Bool,
                        clipURL: URL,
                        thumbURL: URL?,
-                       targetPlayer: TargetPlayer? = nil) async throws {
+                       targetPlayer: TargetPlayer? = nil,
+                       hook: ReelHook? = nil,
+                       liteZoom: Bool = true) async throws {
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
             throw NSError(domain: "Ribatto", code: 10,
                           userInfo: [NSLocalizedDescriptionKey: "No video track"])
@@ -277,6 +279,20 @@ enum ClipExporter {
         let blurFill = OutputFrame(orientation).isPortrait && !smartCrop && canPan
             && fitHeight < out.height - 2
         let fitSize = CGSize(width: out.width, height: fitHeight)
+        // The free frame also follows the play, gently: on its own the full
+        // width put the players a few pixels tall. The same motion analysis
+        // smart crop uses (sparse seeks, about a second a rally — no second
+        // full decode), capped at a 1.35× zoom and a slow pan, and still drawn
+        // over the blur so no edge goes black. The full-height crop and player
+        // tracking stay the pass's.
+        // Only in front: in the background the seeks are slow CPU work on a
+        // clock iOS is already counting down, so that clip gets the plain
+        // fill. No motion found gives the plain fill too — never a guess.
+        var liteKeys: [SmartCrop.Keyframe] = []
+        if blurFill && liteZoom, await canAnalyse() {
+            liteKeys = await SmartCrop.track(asset: asset, segment: segment,
+                                             displaySize: CGSize(width: dw, height: dh))
+        }
         var keyframes: [SmartCrop.Keyframe] = []
         var trackedTarget = false
         if smartCrop && canPan {
@@ -361,9 +377,20 @@ enum ClipExporter {
                 li.setTransform(transform(window: window), at: .zero)
             }
         } else if blurFill {
-            // The whole frame, scaled to the output's width.
-            li.setTransform(transform(window: CGRect(x: 0, y: 0, width: dw, height: dh)),
+            // The frame (or, when motion was measured, a mildly zoomed window
+            // of it with the source's own shape), scaled to the output width.
+            let path = liteZoomPath(keyframes: liteKeys, source: source)
+            li.setTransform(transform(window: path.first?.window
+                                        ?? CGRect(x: 0, y: 0, width: dw, height: dh)),
                             at: .zero)
+            for (a, b) in zip(path, path.dropFirst()) where b.time > a.time {
+                li.setTransformRamp(
+                    fromStart: transform(window: a.window),
+                    toEnd: transform(window: b.window),
+                    timeRange: CMTimeRange(
+                        start: CMTime(seconds: a.time, preferredTimescale: 600),
+                        duration: CMTime(seconds: b.time - a.time, preferredTimescale: 600)))
+            }
         } else {
             li.setTransform(transform(window: centeredWindow), at: .zero)
         }
@@ -406,10 +433,19 @@ enum ClipExporter {
             let size = out
             compose = { image in ClipExporter.blurFilled(image, out: size) }
         }
+        // A reel's opening title, over the first seconds only.
+        var timed: Timed?
+        if let hook {
+            let captionRect = caption.flatMap { $0.isVisible ? captionImage($0, in: out)?.extent : nil }
+            let bandHeight = blurFill ? (out.height - fitHeight) / 2 : 0
+            if let image = hookImage(hook, in: out, band: bandHeight, avoid: captionRect) {
+                timed = hookLayer(image, startsAt: hook.startsAt)
+            }
+        }
         do {
             try await encode(asset: asset, composition: comp, audioMix: audioMix,
                              timeRange: range, out: out, fps: fps, pro: pro,
-                             overlay: overlay, compose: compose, to: staging)
+                             overlay: overlay, compose: compose, timed: timed, to: staging)
         } catch let error as NSError where error.domain == AVFoundationErrorDomain
                     // mediaServicesWereReset / operationInterrupted, as raw
                     // codes: the named cases are iOS-only and Tools/ builds
@@ -437,7 +473,7 @@ enum ClipExporter {
             do {
                 try await legacyEncode(asset: asset, composition: comp, audioMix: audioMix,
                                        timeRange: range, watermark: !pro, caption: caption,
-                                       compose: compose, out: out, to: staging)
+                                       compose: compose, timed: timed, out: out, to: staging)
             } catch {
                 #if DEBUG
                 trace?("  legacy failed: \(error)")
@@ -518,6 +554,214 @@ enum ClipExporter {
             kCIInputBackgroundImageKey: background,
             kCIInputMaskImageKey: mask,
         ]).cropped(to: bounds)
+    }
+
+    // MARK: - Free mild zoom
+
+    /// Whether the free zoom may run its analysis now. The app sets this to
+    /// "in the foreground"; the command-line tools leave it always true.
+    nonisolated(unsafe) static var canAnalyse: @Sendable () async -> Bool = { true }
+
+    /// Largest zoom the free frame takes, relative to the full-width fit.
+    private static let liteZoomMax: CGFloat = 1.35
+    /// Slower than the pass's follow by far: aggregate motion is not a subject
+    /// (see the motion path in `export`), so the free window drifts toward it
+    /// over seconds and never chases.
+    private static let liteHalfLife = 2.5
+    private static let liteMaxSpeed: CGFloat = 0.05     // share of width per second
+    /// Window centre, as a share of height from the top: below the middle,
+    /// where the court is. The top of a court-side frame is fence and sky.
+    private static let liteCenterY: CGFloat = 0.56
+
+    /// The free tier's window over time: the source's own shape, zoomed by up
+    /// to `liteZoomMax`, centred on a heavily smoothed motion centroid pulled
+    /// a third of the way back to the middle. Empty when there is no motion
+    /// to follow — the full frame is then used as before.
+    ///
+    /// The zoom is chosen once per rally from how far the action ranged: a
+    /// point played corner to corner gets little or none, so the zoom never
+    /// costs the user a player.
+    static func liteZoomPath(keyframes: [SmartCrop.Keyframe],
+                             source: CGSize) -> [(time: Double, window: CGRect)] {
+        let frames = keyframes.sorted { $0.time < $1.time }
+        guard frames.count > 1, source.width > 0, source.height > 0 else { return [] }
+        let xs = frames.map(\.centerX).sorted()
+        let spread = xs[Int(Double(xs.count - 1) * 0.9)] - xs[Int(Double(xs.count - 1) * 0.1)]
+        let zoom = min(liteZoomMax, max(1, source.width / (spread + source.width * 0.6)))
+        guard zoom > 1.02 else { return [] }
+        let size = CGSize(width: source.width / zoom, height: source.height / zoom)
+        let y = min(max(source.height * liteCenterY - size.height / 2, 0),
+                    source.height - size.height)
+        func window(_ cx: CGFloat) -> CGRect {
+            CGRect(x: min(max(cx - size.width / 2, 0), source.width - size.width),
+                   y: y, width: size.width, height: size.height)
+        }
+        func pulled(_ x: CGFloat) -> CGFloat { x * 0.7 + source.width / 2 * 0.3 }
+        // Open on the median of the first few samples, not the first one: a
+        // rally starts with a serve, and a single serve reading is noisy.
+        let opening = frames.prefix(5).map(\.centerX).sorted()
+        var centre = pulled(opening[opening.count / 2])
+        var last = frames[0].time
+        var path: [(time: Double, window: CGRect)] = []
+        for kf in frames {
+            let dt = max(0, kf.time - last)
+            let approach = dt > 0 ? 1 - pow(0.5, dt / liteHalfLife) : 0
+            var step = (pulled(kf.centerX) - centre) * CGFloat(approach)
+            let cap = liteMaxSpeed * source.width * CGFloat(dt)
+            step = min(max(step, -cap), cap)
+            centre += step
+            last = kf.time
+            path.append((kf.time, window(centre)))
+        }
+        return path
+    }
+
+    // MARK: - Pass preview
+
+    /// One frame of the user's own rally drawn both ways, for the pass offer:
+    /// the free frame (mild zoom over the blur, with the mark) and the pass
+    /// frame (full-height crop on the play, no mark). A single decoded frame
+    /// and a few sparse motion samples around it — no clip is rendered.
+    /// nil when the source is not wider than 9:16, where the two would look
+    /// the same, or when the frame cannot be read.
+    static func passPreview(asset: AVAsset, segment: RallySegment, at time: Double,
+                            width: CGFloat = 360) async -> (free: CGImage, pass: CGImage)? {
+        let gen = AVAssetImageGenerator(asset: asset)
+        gen.appliesPreferredTrackTransform = true
+        gen.maximumSize = CGSize(width: 1280, height: 1280)
+        gen.requestedTimeToleranceBefore = CMTime(seconds: 0.1, preferredTimescale: 600)
+        gen.requestedTimeToleranceAfter = CMTime(seconds: 0.1, preferredTimescale: 600)
+        guard let frame = try? await gen.image(at: CMTime(seconds: time,
+                                                          preferredTimescale: 600)).image
+        else { return nil }
+        let source = CIImage(cgImage: frame)
+        let dw = source.extent.width, dh = source.extent.height
+        let out = CGSize(width: width, height: (width * 16 / 9 / 2).rounded() * 2)
+        guard dw / dh > out.width / out.height * 1.1 else { return nil }
+        let size = CGSize(width: dw, height: dh)
+        // Motion over the four seconds around the frame, in this frame's units.
+        let nearby = RallySegment(start: max(segment.start, time - 2),
+                                  end: min(segment.end, time + 2), hits: 0)
+        guard !Task.isCancelled else { return nil }
+        let keys = await SmartCrop.track(asset: asset, segment: nearby, displaySize: size)
+        guard !Task.isCancelled else { return nil }
+
+        /// `window` (top-left origin, source points) scaled to `width` across.
+        func cropped(_ window: CGRect, toWidth w: CGFloat) -> CIImage {
+            let s = w / window.width
+            return source
+                .cropped(to: CGRect(x: window.minX, y: dh - window.maxY,
+                                    width: window.width, height: window.height))
+                .transformed(by: CGAffineTransform(translationX: -window.minX,
+                                                   y: -(dh - window.maxY)))
+                .transformed(by: CGAffineTransform(scaleX: s, y: s))
+        }
+        let lite = liteZoomPath(keyframes: keys, source: size)
+            .min { abs($0.time - time) < abs($1.time - time) }?.window
+            ?? CGRect(origin: .zero, size: size)
+        var free = blurFilled(cropped(lite, toWidth: out.width), out: out)
+        if let mark = watermarkImage(for: out) { free = mark.composited(over: free) }
+
+        // The pass frame as the motion path frames a rally: full height, at
+        // the median of the motion pulled 40% back toward the middle.
+        let xs = keys.map(\.centerX).sorted()
+        let centre = xs.isEmpty ? dw / 2 : xs[xs.count / 2] * 0.6 + dw / 2 * 0.4
+        let ww = dh * out.width / out.height
+        let passWindow = CGRect(x: min(max(centre - ww / 2, 0), dw - ww), y: 0,
+                                width: ww, height: dh)
+        let pass = cropped(passWindow, toWidth: out.width)
+
+        let context = CIContext(options: [.cacheIntermediates: false])
+        let bounds = CGRect(origin: .zero, size: out)
+        guard let a = context.createCGImage(free.cropped(to: bounds), from: bounds),
+              let b = context.createCGImage(pass.cropped(to: bounds), from: bounds)
+        else { return nil }
+        return (a, b)
+    }
+
+    // MARK: - Reel hook
+
+    /// A reel's opening title: "12-SHOT RALLY" over the place and date.
+    /// `startsAt` is where this part begins in the reel, so a title that
+    /// spans the hook pace's short teaser and the rally after it carries on
+    /// across the cut instead of starting over.
+    struct ReelHook: Sendable {
+        let line1: String
+        let line2: String?
+        let startsAt: Double
+    }
+
+    /// Seconds the hook is fully shown, then how long it fades.
+    static let hookShown = 1.5
+    static let hookFade = 0.3
+
+    /// Something drawn over part of the clip only; nil where it is not shown.
+    /// Called per frame with seconds from the clip's start.
+    typealias Timed = @Sendable (Double) -> CIImage?
+
+    private static func hookLayer(_ image: CIImage, startsAt: Double) -> Timed {
+        { local in
+            let t = local + startsAt
+            guard t < hookShown + hookFade else { return nil }
+            let a = t <= hookShown ? 1 : max(0, 1 - (t - hookShown) / hookFade)
+            guard a < 0.999 else { return image }
+            return image.applyingFilter("CIColorMatrix", parameters: [
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(a)),
+            ])
+        }
+    }
+
+    /// The two lines as one image, placed. In the blurred band above the
+    /// picture when there is one — the title then covers no play at all —
+    /// else in the upper third. Moved to the other side when the user's
+    /// caption is already there; the watermark sits low on the right and
+    /// yields to the caption, so the top is free of it.
+    private static func hookImage(_ hook: ReelHook, in size: CGSize,
+                                  band: CGFloat, avoid: CGRect?) -> CIImage? {
+        // Bebas has Latin (with the accents of the app's European languages)
+        // and nothing else. A title it cannot set whole — Korean, Japanese, a
+        // Vietnamese place name — takes the condensed system face instead of
+        // mixing two fonts in one line.
+        let bebas = CTFontCopyCharacterSet(resolveFont(.bebas, size: 12)) as CharacterSet
+        func face(_ s: String) -> CaptionFont {
+            s.unicodeScalars.allSatisfy { bebas.contains($0) || $0.properties.isWhitespace }
+                ? .bebas : .condensed
+        }
+        let white = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
+        let ink = CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.6)
+        let usable = size.width * 0.9
+        func line(_ text: String, _ fontSize: CGFloat) -> CGImage? {
+            let draw = { (fs: CGFloat) in
+                textImage(text, font: face(text), fontSize: fs, color: white, bar: nil,
+                          edge: ink, edgeWidth: -4, tracking: fs * 0.03)
+            }
+            guard let first = draw(fontSize) else { return nil }
+            guard CGFloat(first.width) > usable else { return first }
+            return draw(max(10, fontSize * usable / CGFloat(first.width))) ?? first
+        }
+        guard let top = line(hook.line1, size.height * 0.072) else { return nil }
+        let bottom = hook.line2.flatMap { $0.isEmpty ? nil : line($0, size.height * 0.026) }
+        let w1 = CGFloat(top.width), h1 = CGFloat(top.height)
+        let w2 = CGFloat(bottom?.width ?? 0), h2 = CGFloat(bottom?.height ?? 0)
+        // The bitmaps carry their own padding; tuck the second line up.
+        let gap = -min(h1, h2) * 0.35
+        let height = h1 + (bottom == nil ? 0 : h2 + gap)
+        func centred(atY centreY: CGFloat) -> CIImage {
+            let base = centreY - height / 2
+            var image = CIImage(cgImage: top).transformed(by: CGAffineTransform(
+                translationX: (size.width - w1) / 2, y: base + (bottom == nil ? 0 : h2 + gap)))
+            if let bottom {
+                image = image.composited(over: CIImage(cgImage: bottom).transformed(
+                    by: CGAffineTransform(translationX: (size.width - w2) / 2, y: base)))
+            }
+            return image
+        }
+        // CoreImage counts y from the bottom.
+        let upper = band > height ? size.height - band / 2 : size.height * 0.80
+        let lower = band > height ? band / 2 : size.height * 0.36
+        let first = centred(atY: upper)
+        if let avoid, avoid.intersects(first.extent) { return centred(atY: lower) }
+        return first
     }
 
     // MARK: - Loudness
@@ -623,6 +867,7 @@ enum ClipExporter {
                                pro: Bool,
                                overlay: CIImage?,
                                compose: Compose? = nil,
+                               timed: Timed? = nil,
                                to url: URL) async throws {
 #if targetEnvironment(simulator)
         let hevc = false
@@ -779,7 +1024,7 @@ enum ClipExporter {
                 let time = CMSampleBufferGetPresentationTimeStamp(sample)
                 // Nothing to draw: the composition's own buffer goes straight
                 // through, untouched and uncopied.
-                guard overlay != nil || compose != nil else {
+                guard overlay != nil || compose != nil || timed != nil else {
                     if videoIn.append(sample) { return true }
                     abort(writer.error ?? NSError(domain: "Ribatto", code: 23))
                     return false
@@ -801,6 +1046,10 @@ enum ClipExporter {
                 var image = CIImage(cvPixelBuffer: source)
                 if let compose { image = compose(image) }
                 if let overlay { image = overlay.composited(over: image) }
+                if let timed,
+                   let layer = timed(CMTimeGetSeconds(CMTimeSubtract(time, timeRange.start))) {
+                    image = layer.composited(over: image)
+                }
                 context.render(image, to: target)
                 if adaptor.append(target, withPresentationTime: time) { return true }
                 abort(writer.error ?? NSError(domain: "Ribatto", code: 23))
@@ -917,6 +1166,7 @@ enum ClipExporter {
                                      watermark: Bool,
                                      caption: CaptionSettings?,
                                      compose: Compose? = nil,
+                                     timed: Timed? = nil,
                                      out: CGSize,
                                      to url: URL) async throws {
         guard let session = AVAssetExportSession(
@@ -932,7 +1182,7 @@ enum ClipExporter {
         // wrote the frame at `fitSize`, and this pass draws it into the full
         // output frame — so the fallback looks the same as the main path.
         try await burnOverlays(into: url, watermark: watermark, caption: caption,
-                               compose: compose, out: out)
+                               compose: compose, timed: timed, out: out)
     }
 
     // MARK: - Burned-in overlays
@@ -967,8 +1217,10 @@ enum ClipExporter {
                                      watermark: Bool,
                                      caption: CaptionSettings?,
                                      compose: Compose? = nil,
+                                     timed: Timed? = nil,
                                      out: CGSize? = nil) async throws {
-        guard watermark || (caption?.isVisible ?? false) || compose != nil else { return }
+        guard watermark || (caption?.isVisible ?? false) || compose != nil || timed != nil
+        else { return }
 
         let asset = AVURLAsset(url: url)
         guard let track = try await asset.loadTracks(withMediaType: .video).first else { return }
@@ -976,12 +1228,17 @@ enum ClipExporter {
         // Composed, the output is the full frame, not the fitted strip.
         let size = compose != nil ? (out ?? natural) : natural
         let overlay = overlayImage(for: size, watermark: watermark, caption: caption)
-        guard overlay != nil || compose != nil else { return }
+        guard overlay != nil || compose != nil || timed != nil else { return }
 
         let comp = AVMutableVideoComposition(asset: asset) { request in
             var image = request.sourceImage
             if let compose { image = compose(image) }
             if let overlay { image = overlay.composited(over: image) }
+            // The preset pass wrote the range from zero, so composition time
+            // is already the clip's own clock.
+            if let timed, let layer = timed(request.compositionTime.seconds) {
+                image = layer.composited(over: image)
+            }
             request.finish(with: image, context: nil)
         }
         comp.renderSize = size

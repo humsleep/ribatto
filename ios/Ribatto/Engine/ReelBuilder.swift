@@ -166,6 +166,10 @@ struct ReelItem {
     let targetPlayer: TargetPlayer?
     /// Which session the asset came from, so a dead one can be reloaded.
     var sessionID: UUID? = nil
+    /// The reel's opening title if this rally ends up first. Per item, because
+    /// the first rally asked for is not always the first one placed — one too
+    /// short for the cap is dropped, and the title must describe what plays.
+    var hookTitle: (line1: String, line2: String?)? = nil
 }
 
 /// What actually made it in, so the UI can be honest about a cap that bit.
@@ -174,6 +178,8 @@ struct ReelPlan: Equatable {
     var dropped = 0
     var trimmed = false
     var duration: Double = 0
+    /// The slow winning-shot replay made it in.
+    var replayed = false
 }
 
 enum ReelBuilder {
@@ -199,12 +205,15 @@ enum ReelBuilder {
     /// Separate from `build` because the answer is worth having on its own: it
     /// is how a finished reel whose sidecar predates source tracking is matched
     /// back to the rallies it was made from.
+    /// `reserve` is held back from the platform cap for something appended
+    /// after the rallies — the slow replay — so the finished reel still fits.
     static func plan(segments: [RallySegment],
                      target: ReelTarget,
-                     pace: ReelPace) -> (plan: ReelPlan, pieces: [PlannedPiece]) {
+                     pace: ReelPace,
+                     reserve: Double = 0) -> (plan: ReelPlan, pieces: [PlannedPiece]) {
         var pieces: [PlannedPiece] = []
         var plan = ReelPlan()
-        var remaining = target.maxDuration ?? .greatestFiniteMagnitude
+        var remaining = (target.maxDuration ?? .greatestFiniteMagnitude) - reserve
         for (i, segment) in segments.enumerated() {
             let before = pieces.count
             var placed = 0.0
@@ -249,6 +258,8 @@ enum ReelBuilder {
                       frame: OutputFrame = .vertical,
                       pace: ReelPace = .full,
                       pro: Bool,
+                      hook: Bool = false,
+                      replay: Bool = false,
                       to output: URL,
                       reload: ((UUID) async -> AVAsset?)? = nil,
                       waitUntilActive: (@MainActor () async -> Void)? = nil,
@@ -260,7 +271,8 @@ enum ReelBuilder {
 
         // 1) Decide what fits.
         let (plan, pieces) = Self.plan(segments: items.map(\.segment),
-                                       target: target, pace: pace)
+                                       target: target, pace: pace,
+                                       reserve: replay ? replaySeconds : 0)
         let planned = pieces.map { (item: items[$0.rally], segment: $0.segment,
                                     seconds: $0.seconds) }
 
@@ -283,7 +295,17 @@ enum ReelBuilder {
         // asset every remaining piece of that session shares is dead, so
         // without this one failure took the rest of the reel with it.
         var fresh: [UUID: AVAsset] = [:]
+        // Where each part starts in the finished reel, for the hook title.
+        var elapsed = 0.0
         for (i, entry) in planned.enumerated() {
+            // From the rally that actually opens the reel.
+            let partHook = (hook ? planned.first?.item.hookTitle : nil)
+                .flatMap { h -> ClipExporter.ReelHook? in
+                    elapsed < ClipExporter.hookShown + ClipExporter.hookFade
+                        ? ClipExporter.ReelHook(line1: h.line1, line2: h.line2, startsAt: elapsed)
+                        : nil
+                }
+            elapsed += entry.seconds
             await progress(i, planned.count)
             let seg = RallySegment(start: entry.segment.start,
                                    end: entry.segment.start + entry.seconds,
@@ -300,7 +322,8 @@ enum ReelBuilder {
                                               smartCrop: entry.item.smartCrop,
                                               clipURL: part,
                                               thumbURL: nil,
-                                              targetPlayer: entry.item.targetPlayer)
+                                              targetPlayer: entry.item.targetPlayer,
+                                              hook: partHook)
             }
             let asset = sid.flatMap { fresh[$0] } ?? entry.item.asset
             // Encoding is GPU work iOS refuses in the background. Each piece
@@ -319,6 +342,38 @@ enum ReelBuilder {
             }
             parts.append(part)
         }
+        // 2b) The winning shot again, slowly — after the last rally only, so
+        // the reel stays short. Never fatal: a reel without the replay beats
+        // no reel.
+        var result = plan
+        if replay, let last = planned.last {
+            let sid = last.item.sessionID
+            let part = work.appendingPathComponent("part_replay.mp4")
+            func attempt(_ asset: AVAsset) async throws -> Double? {
+                try await slowReplay(of: last.item, piece: last.segment,
+                                     seconds: last.seconds, asset: asset,
+                                     frame: frame, pro: pro, to: part)
+            }
+            // The same care as a rally part: wait for the foreground, and one
+            // retry on a fresh asset if the media server went away.
+            await waitUntilActive?()
+            var added: Double?
+            do {
+                added = try await attempt(sid.flatMap { fresh[$0] } ?? last.item.asset)
+            } catch {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await waitUntilActive?()
+                if let sid, let reload, let replacement = await reload(sid) {
+                    fresh[sid] = replacement
+                    added = try? await attempt(replacement)
+                }
+            }
+            if let added {
+                parts.append(part)
+                result.duration += added
+                result.replayed = true
+            }
+        }
         await progress(planned.count, planned.count)
 
         // 3) One file. A single part needs no merge pass at all.
@@ -328,7 +383,65 @@ enum ReelBuilder {
         } else {
             try await HighlightMerger.merge(clips: parts, to: output)
         }
-        return plan
+        return result
+    }
+}
+
+extension ReelBuilder {
+    /// Seconds either side of the winning shot in the replay, and its speed.
+    static let replayHalfSpan = 0.8
+    static let replayRate = 0.5
+    /// Below this the slowed frames stutter: half speed of 30 fps is 15.
+    static let replayMinFPS: Float = 50
+    /// Seconds a replay adds to a reel.
+    static var replaySeconds: Double { replayHalfSpan * 2 / replayRate }
+
+    /// Renders the last strike of `piece` at half speed into `url` and returns
+    /// its length, or nil when there is nothing to replay — no strike times,
+    /// or footage under 50 fps.
+    ///
+    /// The slowing is a composition scaled in time, handed to the exporter
+    /// like any source, so the frame, watermark and caption match the rest of
+    /// the reel. Video only: half-speed audio is a groan, and the reel's
+    /// sound simply pauses for it.
+    static func slowReplay(of item: ReelItem, piece: RallySegment, seconds: Double,
+                           asset: AVAsset, frame: OutputFrame, pro: Bool,
+                           to url: URL) async throws -> Double? {
+        // The rally's real last strike, and only if it made the reel: when
+        // the cap cut the final piece short, an earlier strike would be
+        // replayed as "the winning shot".
+        let end = piece.start + seconds
+        guard let hit = item.segment.hitTimes?
+                .filter({ $0 >= item.segment.start && $0 <= item.segment.end }).max(),
+              hit >= piece.start, hit <= end,
+              let track = try await asset.loadTracks(withMediaType: .video).first,
+              try await track.load(.nominalFrameRate) >= replayMinFPS else { return nil }
+        let total = try await asset.load(.duration).seconds
+        let from = max(0, hit - replayHalfSpan)
+        let to = min(total, hit + replayHalfSpan)
+        guard to - from > 0.4 else { return nil }
+        let comp = AVMutableComposition()
+        guard let video = comp.addMutableTrack(withMediaType: .video,
+                                               preferredTrackID: kCMPersistentTrackID_Invalid)
+        else { return nil }
+        let source = CMTimeRange(start: CMTime(seconds: from, preferredTimescale: 600),
+                                 end: CMTime(seconds: to, preferredTimescale: 600))
+        try video.insertTimeRange(source, of: track, at: .zero)
+        video.preferredTransform = try await track.load(.preferredTransform)
+        let slowed = (to - from) / replayRate
+        comp.scaleTimeRange(CMTimeRange(start: .zero, duration: source.duration),
+                            toDuration: CMTime(seconds: slowed, preferredTimescale: 600))
+        // The composition's own clock: the winning shot sits at its middle.
+        let seg = RallySegment(start: 0, end: slowed, hits: 0)
+        // A picked player is followed here too, on the replay's own clock:
+        // the tracker seeds at the start of `seg`, which is the composition's
+        // zero. Its usual reacquisition finds them if they moved since.
+        try await ClipExporter.export(source: comp, segment: seg,
+                                      orientation: frame.rawValue, pro: pro,
+                                      caption: item.caption, smartCrop: item.smartCrop,
+                                      clipURL: url, thumbURL: nil,
+                                      targetPlayer: item.smartCrop ? item.targetPlayer : nil)
+        return slowed
     }
 }
 
