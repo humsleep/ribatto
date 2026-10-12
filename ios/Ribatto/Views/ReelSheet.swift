@@ -63,6 +63,10 @@ struct ReelSheet: View {
     /// Off replaces every session's caption with a hidden one for this reel
     /// only; on keeps each session's own.
     @State private var captionOn = true
+    /// The big "12-SHOT RALLY" title over the first seconds.
+    @State private var hookOn = true
+    /// The last rally's winning shot again at half speed.
+    @State private var replayOn = true
     @State private var building = false
     /// The automatic first build has been started. `onAppear`-style hooks fire
     /// again when a sheet over this one closes, and a second build would
@@ -82,6 +86,27 @@ struct ReelSheet: View {
     @State private var message: String?
     @State private var savedToPhotos = false
     @State private var showPass = false
+    /// Whether the reel on screen was made on a PASS. A free one is what the
+    /// offer and the first-reel card are about; a PASS one owes no ad even
+    /// if the pass has run out since.
+    @State private var builtOnPass = false
+    /// The pass offer over a free reel's Save / Instagram, and the action it
+    /// interrupted.
+    @State private var offer: PassOfferRequest?
+    @State private var offerOutcome: PassOfferOutcome?
+    @State private var pendingAction: ReelAction?
+    /// "PASS on · until …", shown once the ad has closed.
+    @State private var toast: String?
+    /// The card's reward arrived; the toast waits for the ad to close.
+    @State private var toastAfterAd = false
+    /// The reel the first-reel card was shown on. That reel gets no passive
+    /// offer on top: one offer per screen.
+    @State private var cardShownFor: URL?
+    /// The card shows on the user's first free reel only, and never again
+    /// once closed or used.
+    @AppStorage("rc_first_reel_card_done") private var firstCardDone = false
+
+    private enum ReelAction { case save, instagram }
     @State private var reviewPending = false
     /// The running order, with each rally's own in/out switch. Seeded from the
     /// request and then owned by this screen, so reordering and excluding
@@ -97,7 +122,8 @@ struct ReelSheet: View {
 
     private var currentRecipe: String {
         chosen.map(\.id).joined(separator: ",") + "|" + pace.rawValue + "|"
-            + frame.rawValue + "|" + String(captionOn)
+            + frame.rawValue + "|" + String(captionOn) + "|" + String(hookOn)
+            + "|" + String(replayOn)
     }
     private var changed: Bool { builtWith != currentRecipe }
 
@@ -204,6 +230,19 @@ struct ReelSheet: View {
                 }
             }
             .sheet(isPresented: $showPass) { ProPassView() }
+            // On a different view from the pass sheet: two `.sheet`s on one
+            // view collide (ClipPlayerSheet's note).
+            .background {
+                Color.clear.sheet(item: $offer, onDismiss: finishOffer) { request in
+                    PassOfferSheet(request: request, outcome: $offerOutcome)
+                }
+            }
+            .onChange(of: ads.rewardedClosed) { _, _ in
+                guard toastAfterAd else { return }
+                toastAfterAd = false
+                toast = passOpenedText(pass, lang)
+            }
+            .passToast($toast)
         }
         .preferredColorScheme(.dark)
         .interactiveDismissDisabled(building)
@@ -354,14 +393,17 @@ struct ReelSheet: View {
                 VStack(spacing: 10) { saveButton(done.url); shareButton(done.url) }
             }
 
+            if showsFirstReelCard { firstReelCard }
+
             editButton
 
-            if !pass.isPro && ads.showing { passLine }
+            // One offer at a time: the quiet line waits while the card is up.
+            if !pass.isPro && ads.showing && !showsFirstReelCard { passLine }
         }
     }
 
     private func instagramButton(_ url: URL) -> some View {
-        Button { postToInstagram(url) } label: {
+        Button { run(.instagram, url) } label: {
             Label(L.s("reel_post_ig", lang), systemImage: "camera.aperture")
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -370,13 +412,7 @@ struct ReelSheet: View {
     }
 
     private func saveButton(_ url: URL) -> some View {
-        Button {
-            Task {
-                let result = await store.saveVideoToPhotos(url)
-                savedToPhotos = result == .saved
-                report(result)
-            }
-        } label: {
+        Button { run(.save, url) } label: {
             Label(savedToPhotos ? L.s("reel_saved", lang) : L.s("reel_save", lang),
                   systemImage: savedToPhotos ? "checkmark" : "square.and.arrow.down")
                 .fixedSize(horizontal: false, vertical: true)
@@ -446,14 +482,29 @@ struct ReelSheet: View {
             if entries.count > 1 { runningOrderCard }
             paceCard
             frameCard
-            if hasCaptions {
-                Toggle(isOn: $captionOn) {
-                    Text(L.s("show_caption", lang)).font(.subheadline)
+            VStack(alignment: .leading, spacing: 12) {
+                if hasCaptions {
+                    Toggle(isOn: $captionOn) {
+                        Text(L.s("show_caption", lang)).font(.subheadline)
+                    }
                 }
-                .tint(Theme.accent)
-                .padding(14)
-                .rcCard()
+                Toggle(isOn: $hookOn) {
+                    Text(L.s("reel_hook_toggle", lang)).font(.subheadline)
+                }
+                Toggle(isOn: $replayOn) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L.s("reel_replay_toggle", lang)).font(.subheadline)
+                        // Said up front: on 30 fps footage the switch is on
+                        // and nothing appears.
+                        Text(L.s("reel_replay_hint", lang))
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
+            .tint(Theme.accent)
+            .padding(14)
+            .rcCard()
             // Only once something differs from the reel on screen; after a
             // failure there is no reel, so it is always offered.
             if changed || done == nil {
@@ -681,6 +732,8 @@ struct ReelSheet: View {
         // Read before the await: a toggle flipped during the build must still
         // count as a change against what was actually built.
         let recipe = currentRecipe
+        // The tier this reel is made at, as the store reads it.
+        let onPass = pass.isPro
         // A busy session used to report that the user's original video was
         // gone from Photos, which is the most alarming thing the app can say
         // and was untrue.
@@ -691,7 +744,8 @@ struct ReelSheet: View {
         guard let out = await store.buildReel(from: pairs, target: target,
                                               frame: frame, pace: pace,
                                               preset: nil,
-                                              caption: captionOn ? nil : CaptionSettings())
+                                              caption: captionOn ? nil : CaptionSettings(),
+                                              hook: hookOn, replay: replayOn)
         else {
             failure = pairs.first(where: { store.sourceMissing($0.session) })
                 .map { L.s(store.sourceProblemKey($0.session), lang) }
@@ -722,10 +776,135 @@ struct ReelSheet: View {
             }
         }
         done = out
+        builtOnPass = onPass
         // Owed, not shown: an ad the moment the reel appeared covered the
         // first look at it. The screen that opened this sheet shows it once
-        // the sheet is closed.
-        ads.markInterstitialDue()
+        // the sheet is closed. Not for a reel made on a PASS, even if the
+        // pass ran out while it was being made.
+        if !onPass { ads.markInterstitialDue() }
+    }
+
+    // MARK: - Pass offer
+
+    /// The passive offer on a free reel's Save or Instagram — within its caps,
+    /// and never over another sheet, mid-build, within a minute of an
+    /// interstitial, during a pass, or without ads to show. Otherwise the
+    /// action simply runs.
+    private var offersPass: Bool {
+        !pass.isPro && ads.showing && !builtOnPass && !building && !showPass
+            && message == nil && offer == nil && PassOfferGate.allowsPassive
+            && (cardShownFor == nil || cardShownFor != done?.url)
+            && Date().timeIntervalSince(ads.lastInterstitialAt) > 60
+    }
+
+    private func run(_ action: ReelAction, _ url: URL) {
+        guard offersPass, let first = chosen.first else { perform(action, url); return }
+        player?.pause()
+        pendingAction = action
+        offerOutcome = nil
+        PassOfferGate.recordShown()
+        offer = PassOfferRequest(session: first.session, segment: first.clip.segment,
+                                 poster: first.clip.thumbURL,
+                                 titleKey: "offer_title_reel",
+                                 declineKey: "offer_later_save", passive: true)
+    }
+
+    /// After the offer: with the pass, the same reel is made again at PASS
+    /// quality and then saved or posted — the user asked once; "later" saves
+    /// the free one now; a swipe does nothing.
+    private func finishOffer() {
+        guard let action = pendingAction else { return }
+        pendingAction = nil
+        let outcome = offerOutcome
+        offerOutcome = nil
+        switch outcome {
+        case .granted?:
+            toast = passOpenedText(pass, lang)
+            Task {
+                // A build already running (the card's) is the one to wait
+                // for; starting another here returned at once and the save
+                // never happened.
+                while building { try? await Task.sleep(for: .milliseconds(200)) }
+                if !builtOnPass { await build() }
+                if builtOnPass, let url = done?.url { perform(action, url) }
+            }
+        case .declined?:
+            if let url = done?.url { perform(action, url) }
+        case nil:
+            player?.play()
+        }
+    }
+
+    private func perform(_ action: ReelAction, _ url: URL) {
+        switch action {
+        case .instagram:
+            postToInstagram(url)
+        case .save:
+            Task {
+                let result = await store.saveVideoToPhotos(url)
+                savedToPhotos = result == .saved
+                report(result)
+            }
+        }
+    }
+
+    private var showsFirstReelCard: Bool {
+        !firstCardDone && !builtOnPass && !pass.isPro && ads.showing
+    }
+
+    /// The first free reel only: the same reel, made again with a PASS, one
+    /// tap away. Outlined, not filled — the post button stays the one solid
+    /// accent on the screen.
+    private var firstReelCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L.s("card_title", lang)).font(.subheadline.bold())
+                Text(L.s("card_sub", lang))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { cardButton; cardClose }
+                VStack(alignment: .leading, spacing: 8) { cardButton; cardClose }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .rcCard()
+        .onAppear { cardShownFor = done?.url }
+    }
+
+    private var cardButton: some View {
+        Button {
+            player?.pause()
+            // Gone for good only once used — an ad closed early leaves the
+            // card where it was.
+            ads.showRewarded {
+                firstCardDone = true
+                pass.grant()
+                toastAfterAd = true
+                Task { await build() }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                if !ads.rewardedReady { ProgressView() }
+                Text(L.s("card_button", lang))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .rcSecondary()
+        .overlay(Capsule().strokeBorder(Theme.accent, lineWidth: 1.5))
+        .disabled(!ads.rewardedReady)
+    }
+
+    private var cardClose: some View {
+        Button(L.s("card_close", lang)) { firstCardDone = true }
+            .font(.subheadline)
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
     }
 
     private func postToInstagram(_ url: URL) {

@@ -50,6 +50,9 @@ final class SessionStore: ObservableObject {
     }
 
     init() {
+        ClipExporter.canAnalyse = {
+            await MainActor.run { UIApplication.shared.applicationState == .active }
+        }
         load()
         background.onChange = { [weak self] in
             guard let self else { return }
@@ -474,11 +477,20 @@ final class SessionStore: ObservableObject {
         return !fm.fileExists(atPath: sourceURL(s).path)
     }
 
-    private static func photoAsset(_ identifier: String) async -> AVAsset? {
+    /// The original only if it is already on the phone: nil for one that
+    /// would have to come down from iCloud. For previews, which are not worth
+    /// a multi-gigabyte download.
+    func loadLocalAsset(_ s: Session) async -> AVAsset? {
+        if let id = s.assetIdentifier { return await Self.photoAsset(id, network: false) }
+        let url = sourceURL(s)
+        return fm.fileExists(atPath: url.path) ? AVURLAsset(url: url) : nil
+    }
+
+    private static func photoAsset(_ identifier: String, network: Bool = true) async -> AVAsset? {
         let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
         guard let phAsset = fetch.firstObject else { return nil }
         let options = PHVideoRequestOptions()
-        options.isNetworkAccessAllowed = true     // pull it back from iCloud if needed
+        options.isNetworkAccessAllowed = network  // pull it back from iCloud if needed
         options.deliveryMode = .highQualityFormat
         return await withCheckedContinuation { cont in
             PHImageManager.default().requestAVAsset(
@@ -709,7 +721,8 @@ final class SessionStore: ObservableObject {
                     caption: $0.renderedCaption,
                     clipTargets: $0.renderedClipTargets ?? [:],
                     targetPlayer: $0.renderedTargetPlayer,
-                    rallies: $0.segments ?? [], lang: nil, cleared: true)
+                    rallies: $0.segments ?? [], lang: nil, cleared: true,
+                    look: $0.renderedLook)
             }
             $0.renderedOrientation = nil
         }
@@ -1283,7 +1296,8 @@ final class SessionStore: ObservableObject {
         let perClip = useSmartCrop && rallies ? (s.clipTargets ?? [:]) : [:]
         let stamp = RenderStamp(orientation: orient, pro: pro, smartCrop: useSmartCrop,
                                 caption: caption, clipTargets: perClip,
-                                targetPlayer: target, rallies: segments, lang: lang)
+                                targetPlayer: target, rallies: segments, lang: lang,
+                                look: RenderStamp.currentLook)
         // A first render that stopped part-way, with nothing changed since:
         // keep its clips and make only the missing ones. Redoing all of them
         // used to take as long as the first try and meet the same failure.
@@ -1393,6 +1407,7 @@ final class SessionStore: ObservableObject {
                 $0.renderedSmartCrop = useSmartCrop
                 $0.renderedTargetPlayer = target
                 $0.renderedClipTargets = perClip
+                $0.renderedLook = RenderStamp.currentLook
                 $0.partialRender = nil
             }
             objectWillChange.send()
@@ -1507,7 +1522,11 @@ final class SessionStore: ObservableObject {
                 smartCrop: smart,
                 clipURL: dir.appendingPathComponent("\(base).mp4"),
                 thumbURL: dir.appendingPathComponent("\(base).jpg"),
-                targetPlayer: smart ? session.target(forClip: index) : nil)
+                targetPlayer: smart ? session.target(forClip: index) : nil,
+                // The session's own look, not the newest: one re-cut clip must
+                // not be framed differently from the rest of the match.
+                liteZoom: RenderStamp.zooms(session.renderedOrientation != nil
+                                            ? session.renderedLook : partial?.look))
             syncPartialStamp(session.id)
             objectWillChange.send()
             return true
@@ -1579,6 +1598,7 @@ final class SessionStore: ObservableObject {
                 s.renderedSmartCrop = stamp.smartCrop
                 s.renderedTargetPlayer = stamp.targetPlayer
                 s.renderedClipTargets = stamp.smartCrop ? (s.clipTargets ?? [:]) : [:]
+                s.renderedLook = stamp.look
                 s.partialRender = nil
             }
         }
@@ -1688,7 +1708,9 @@ final class SessionStore: ObservableObject {
                    frame: OutputFrame = .vertical,
                    pace: ReelPace = .full,
                    preset: ReelPreset? = nil,
-                   caption: CaptionSettings? = nil) async -> (url: URL, plan: ReelPlan)? {
+                   caption: CaptionSettings? = nil,
+                   hook: Bool = false,
+                   replay: Bool = false) async -> (url: URL, plan: ReelPlan)? {
         // The order is the caller's. ReelSheet seeds it by timeline and lets
         // the user drag rows around; sorting here again silently undid that
         // drag while the screen still said "Drag to reorder". `sources` is
@@ -1741,7 +1763,8 @@ final class SessionStore: ObservableObject {
                                   smartCrop: useSmartCrop,
                                   targetPlayer: useSmartCrop
                                       ? pair.session.target(forClip: pair.clip.index) : nil,
-                                  sessionID: sid))
+                                  sessionID: sid,
+                                  hookTitle: hook ? hookTitle(for: pair) : nil))
         }
         guard !items.isEmpty else {
             progress[key] = .failed(missingMessage(key))
@@ -1767,12 +1790,13 @@ final class SessionStore: ObservableObject {
                                        frame: frame.rawValue, pace: pace.rawValue,
                                        preset: preset?.rawValue, rallies: 0, duration: 0,
                                        place: ordered.first?.session.placeName,
-                                       sources: sources, caption: caption)
+                                       sources: sources, caption: caption,
+                                       hook: hook, replay: replay)
             try? JSONEncoder().encode(placeholder)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
             let plan = try await ReelBuilder.build(
                 items: items, target: target, frame: frame, pace: pace,
-                pro: pro, to: out,
+                pro: pro, hook: hook, replay: replay, to: out,
                 reload: { [weak self] sid in
                     guard let self,
                           let s = self.sessions.first(where: { $0.id == sid }) else { return nil }
@@ -1795,7 +1819,11 @@ final class SessionStore: ObservableObject {
                                 preset: preset?.rawValue,
                                 rallies: plan.used, duration: plan.duration,
                                 place: ordered.first?.session.placeName,
-                                sources: sources, caption: caption)
+                                sources: sources, caption: caption,
+                                // What the file holds: a replay asked for but
+                                // skipped (slow footage, a failure) is off, so
+                                // the toggle and a rebuild match the video.
+                                hook: hook, replay: replay && plan.replayed)
             try? JSONEncoder().encode(info)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
             objectWillChange.send()
@@ -1807,6 +1835,22 @@ final class SessionStore: ObservableObject {
             progress[key] = .failed(failureText(error))
             return nil
         }
+    }
+
+    /// The reel's opening title for a rally: "12-SHOT RALLY" over place ·
+    /// date. Uppercase in the reel's language — the display face is capitals.
+    private func hookTitle(for pair: (session: Session, clip: ClipInfo))
+        -> (line1: String, line2: String?) {
+        let hits = pair.clip.segment.hits
+        // A count only where it is believable: under five the detector may
+        // have missed strikes, over forty a neighbouring court was probably
+        // counted too — and a wrong number burned into a post is worse than
+        // none (the reason the in-video counter was removed).
+        let line1 = ((5...40).contains(hits) ? String(format: L.s("hook_shots_fmt", lang), hits)
+                               : L.s("hook_rally", lang)).uppercased(with: L.locale(lang))
+        let line2 = [pair.session.placeName, L.dateOnly(pair.session.playedAt, lang)]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+        return (line1, line2.isEmpty ? nil : line2)
     }
 
     /// Works out which rallies a reel was made from when its sidecar never
@@ -1899,7 +1943,9 @@ final class SessionStore: ObservableObject {
                               frame: OutputFrame(reel.frame),
                               pace: ReelPace(rawValue: reel.pace) ?? .full,
                               preset: reel.preset.flatMap(ReelPreset.init(rawValue:)),
-                              caption: caption) != nil
+                              caption: caption,
+                              hook: reel.hook ?? false,
+                              replay: reel.replay ?? false) != nil
         else { return nil }
         deleteReel(reel)
         return reels().first

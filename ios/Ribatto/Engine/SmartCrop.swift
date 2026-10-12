@@ -2,7 +2,9 @@ import AVFoundation
 import CoreGraphics
 
 /// Follows the action so a vertical crop of a wide match keeps the rally in
-/// frame. Pro only — the free tier falls back to a fixed centre crop.
+/// frame. The pass uses it for the full-height crop; the free tier uses the
+/// same keyframes for a capped, slow 1.35× zoom over its blurred fill
+/// (`ClipExporter.liteZoomPath`).
 ///
 /// Uses frame-to-frame motion rather than person detection. On real match
 /// footage the camera sits far from the court, so players are only ~3% of the

@@ -164,6 +164,7 @@ final class AdsManager: NSObject, ObservableObject {
     /// never shared — then starts the SDK. A Pro user never sees the prompt.
     func start(isPro: Bool) async {
         self.isPro = isPro
+        holdAfterRecentPass()
         guard !isPro, !starting, !started, Self.configured else { refreshShowing(); return }
         // `starting`, not `started`: marking the SDK started before the
         // consent gate below meant that one failed consent call on a fresh
@@ -203,7 +204,11 @@ final class AdsManager: NSObject, ObservableObject {
     /// A pass switches ads off the moment it is granted, and back on the
     /// minute it ends, without a relaunch.
     func setPro(_ pro: Bool) {
+        // A pass just ran out: the first free minutes are not an ad's moment.
+        // The usual spacing counts from the expiry, as if one had just shown.
+        if isPro && !pro { lastInterstitial = Date() }
         isPro = pro
+        holdAfterRecentPass()
         refreshShowing()
         if !pro && !started { Task { await start(isPro: false) } }
     }
@@ -317,9 +322,40 @@ final class AdsManager: NSObject, ObservableObject {
         guard started, let ad = rewarded else { return false }
         rewarded = nil
         rewardedReady = false
+        // Whether or not it is watched to the end, the user has just sat
+        // through an ad they chose: an interstitial right after it — the owed
+        // one from a render, or the next due — would be two back to back.
+        lastInterstitial = Date()
+        pendingSince = nil
         ad.present(from: nil) { onReward() }
         return true
     }
+
+    /// The same hold across a relaunch: a pass that ended in the last
+    /// interval counts as the last interstitial. Read from the pass's own
+    /// stored end, so quitting the app does not reset the gap.
+    private func holdAfterRecentPass() {
+        guard let until = UserDefaults.standard.object(forKey: "rc_pro_pass_until") as? Date,
+              until < Date(), Date().timeIntervalSince(until) < Self.interstitialInterval
+        else { return }
+        lastInterstitial = max(lastInterstitial, until)
+    }
+
+    /// Bumped each time a rewarded ad closes. A sheet that offered the pass
+    /// waits for this before it dismisses itself: dismissing while the ad is
+    /// still on top raced the SDK's own dismissal bookkeeping.
+    @Published private(set) var rewardedClosed = 0
+
+    /// The user turned a pass offer down. Whatever interstitial was owed goes
+    /// with it: answering "not now" to one ad and getting another is the
+    /// worst of both.
+    func declinePassOffer() {
+        pendingSince = nil
+    }
+
+    /// When the last interstitial was shown, so a pass offer never lands
+    /// within a minute of one.
+    var lastInterstitialAt: Date { lastInterstitial }
 
     private func loadRewarded() {
         guard started, consentAllows, Self.configured, rewarded == nil, !loadingRewarded,
@@ -458,7 +494,14 @@ extension AdsManager: FullScreenContentDelegate {
     // Both formats share the delegate; reloading both after either closes is
     // cheap and keeps whichever one just played ready for the next time.
     nonisolated func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
+        let wasRewarded = ad is RewardedAd
         Task { @MainActor in
+            // Spacing counts from the end of a rewarded ad, not its start —
+            // a 30-second ad otherwise ate a sixth of the gap.
+            if wasRewarded {
+                lastInterstitial = Date()
+                rewardedClosed += 1
+            }
             loadInterstitial()
             loadRewarded()
         }
