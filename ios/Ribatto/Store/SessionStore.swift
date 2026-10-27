@@ -1174,6 +1174,8 @@ final class SessionStore: ObservableObject {
                         self?.syncBackground()
                     }
                 }
+                // Deleted while the audio was read: skip the FFT pass.
+                guard !wasDeleted(sessionID) else { return [] }
                 feed.startDetect(sessionID)
                 progress[sessionID] = .detect
                 return await Task.detached(priority: .userInitiated) {
@@ -1202,6 +1204,7 @@ final class SessionStore: ObservableObject {
                     return SoundCheck.apply(verdicts, to: found)
                 }.value
             }()
+            if wasDeleted(sessionID) { progress[sessionID] = nil; return }
             // A re-detect that finds nothing must not replace finished clips
             // with an empty folder: the staged swap went through with zero
             // clips and wiped the session, trims and stars included.
@@ -1227,7 +1230,9 @@ final class SessionStore: ObservableObject {
     /// Work actually in flight. A `.failed` entry is a message left on screen,
     /// so it must not lock the session out of being retried.
     func isBusy(_ id: UUID) -> Bool {
-        guard let stage = progress[id] else { return false }
+        // A match deleted mid-import keeps its entry until the work notices;
+        // counted busy, it held the screen awake and sent a false "paused".
+        guard !deleted.contains(id), let stage = progress[id] else { return false }
         if case .failed = stage { return false }
         return true
     }

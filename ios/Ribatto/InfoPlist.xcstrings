@@ -1,0 +1,306 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSCameraUsageDescription": {
+      "comment": "Privacy - Camera Usage Description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto records your match with the camera."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto가 카메라로 경기를 녹화합니다."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribattoはカメラで試合を録画します。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto graba tu partido con la cámara."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Ribatto grava sua partida com a câmera."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto nimmt dein Match mit der Kamera auf."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto filme votre match avec l'appareil photo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto registra la tua partita con la fotocamera."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto 使用相机录制你的比赛。"
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription": {
+      "comment": "Privacy - Microphone Usage Description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto records sound with your match video so it can find rallies by the sound of the ball."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto가 경기 영상과 함께 소리를 녹음해 공 소리로 랠리를 찾습니다."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribattoは試合の動画と一緒に音声を録音し、ボールの音でラリーを見つけます。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto graba el sonido junto con el vídeo del partido para encontrar los puntos por el sonido de la pelota."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Ribatto grava o som junto com o vídeo da partida para encontrar os pontos pelo som da bola."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto nimmt zum Matchvideo den Ton auf, um Ballwechsel am Klang des Balls zu erkennen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto enregistre le son avec la vidéo du match pour trouver les échanges au bruit de la balle."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto registra l'audio insieme al video della partita per trovare gli scambi dal suono della palla."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto 在录制比赛视频时一并录音，以便通过击球声找出回合。"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription": {
+      "comment": "Privacy - Photo Library Additions Usage Description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto saves the clips it makes to your Photos library."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto가 만든 클립을 사진 보관함에 저장합니다."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribattoは作成したクリップを写真ライブラリに保存します。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto guarda los clips que crea en tu fototeca."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Ribatto salva os clipes que cria na sua fototeca."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto speichert die erstellten Clips in deiner Fotos-Mediathek."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto enregistre les clips qu'il crée dans votre photothèque Photos."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto salva i clip che crea nella tua libreria di Foto."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto 会将生成的片段存储到你的照片图库。"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription": {
+      "comment": "Privacy - Photo Library Usage Description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto reads the match videos you pick so it never has to copy them."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 경기 영상을 Ribatto가 직접 읽으므로 따로 복사할 필요가 없습니다."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribattoは選んだ試合の動画を直接読み込むので、コピーする必要がありません。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto lee los vídeos de partidos que eliges, así nunca tiene que copiarlos."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Ribatto lê os vídeos de partidas que você escolhe, assim nunca precisa copiá-los."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto liest die von dir gewählten Matchvideos direkt, damit es sie nie kopieren muss."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto lit les vidéos de match que vous choisissez, sans jamais avoir à les copier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto legge i video delle partite che scegli, così non deve mai copiarli."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto 直接读取你选择的比赛视频，无需复制。"
+          }
+        }
+      }
+    },
+    "NSUserTrackingUsageDescription": {
+      "comment": "Privacy - Tracking Usage Description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allows tracking so ads in the free version can be more relevant. Your videos and clips are never shared."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추적을 허용하면 무료 버전의 광고가 더 관련성 있게 표시됩니다. 영상과 클립은 절대 공유되지 않습니다."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トラッキングを許可すると、無料版の広告がより関連性の高いものになります。動画やクリップが共有されることはありません。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite el seguimiento para que los anuncios de la versión gratuita sean más relevantes. Tus vídeos y clips nunca se comparten."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite o rastreamento para que os anúncios da versão gratuita sejam mais relevantes. Seus vídeos e clipes nunca são compartilhados."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn du Tracking erlaubst, ist die Werbung in der kostenlosen Version relevanter. Deine Videos und Clips werden nie geteilt."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorise le suivi pour que les publicités de la version gratuite soient plus pertinentes. Vos vidéos et vos clips ne sont jamais partagés."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consente il tracciamento perché gli annunci della versione gratuita siano più pertinenti. I tuoi video e clip non vengono mai condivisi."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许跟踪后，免费版中的广告会更贴合你的兴趣。你的视频和片段绝不会被分享。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

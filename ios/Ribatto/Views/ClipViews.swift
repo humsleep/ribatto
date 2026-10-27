@@ -509,7 +509,14 @@ struct ClipPlayerSheet: View {
                     .accessibilityLabel(L.s("done", lang))
                 }
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(role: .destructive) { confirmDelete = true } label: {
+                    Button(role: .destructive) {
+                        // Said before the confirm, not as its answer.
+                        if store.isBusy(clip.sessionID) {
+                            message = L.s("busy_wait", lang)
+                        } else {
+                            confirmDelete = true
+                        }
+                    } label: {
                         Image(systemName: "trash")
                     }
                     .accessibilityLabel(L.s("delete_clip", lang))
@@ -544,8 +551,9 @@ struct ClipPlayerSheet: View {
                     }
                 }
             }
-            .confirmationDialog(L.s("delete_clip", lang), isPresented: $confirmDelete,
-                                titleVisibility: .visible) {
+            // A centred alert: iOS 26 draws a confirmation dialog as a popover
+            // anchored to the view it hangs on, far from the trash button.
+            .alert(L.s("delete_clip", lang), isPresented: $confirmDelete) {
                 Button(L.s("delete", lang), role: .destructive) {
                     // A busy session keeps the clip; closing regardless left
                     // a "deleted" clip in the list behind the sheet.
@@ -562,6 +570,7 @@ struct ClipPlayerSheet: View {
                                                                    : "rally_changed", lang)
                     }
                 }
+                Button(L.s("cancel", lang), role: .cancel) {}
             } message: {
                 // What a delete takes and what it leaves.
                 Text(L.s("delete_clips_note", lang))

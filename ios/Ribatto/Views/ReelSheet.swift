@@ -46,7 +46,10 @@ struct ReelSheet: View {
     @AppStorage("rc_lang") private var lang = "en"
     /// Set once the rating prompt has been offered, so it is asked for at
     /// most once from here — Apple rations it further on its own.
-    @AppStorage("rc_review_asked") private var reviewAsked = false
+    /// The version last asked about: once per release, not once per install.
+    @AppStorage("rc_review_asked_ver") private var reviewAskedVersion = ""
+    private static let version =
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
     @Environment(\.requestReview) private var requestReview
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -224,7 +227,7 @@ struct ReelSheet: View {
                     message = nil
                     if reviewPending {
                         reviewPending = false
-                        reviewAsked = true
+                        reviewAskedVersion = Self.version
                         requestReview()
                     }
                 }
@@ -448,18 +451,7 @@ struct ReelSheet: View {
     /// finished reel read as the price of the reel.
     private var passLine: some View {
         // The pass sheet plays an ad of its own; the reel kept going under it.
-        Button { player?.pause(); showPass = true } label: {
-            (Text(Image(systemName: "sparkles")) + Text("  ")
-             + Text(L.s("reel_pass_line", lang))
-             + Text("  ") + Text(Image(systemName: "chevron.right")).font(.caption2))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        PassLine { player?.pause(); showPass = true }
     }
 
     // MARK: - Edit
@@ -791,10 +783,9 @@ struct ReelSheet: View {
     /// interstitial, during a pass, or without ads to show. Otherwise the
     /// action simply runs.
     private var offersPass: Bool {
-        !pass.isPro && ads.showing && !builtOnPass && !building && !showPass
-            && message == nil && offer == nil && PassOfferGate.allowsPassive
+        PassOfferGate.allowsPassive(pass: pass, ads: ads)
+            && !builtOnPass && !building && !showPass && message == nil && offer == nil
             && (cardShownFor == nil || cardShownFor != done?.url)
-            && Date().timeIntervalSince(ads.lastInterstitialAt) > 60
     }
 
     private func run(_ action: ReelAction, _ url: URL) {
@@ -928,7 +919,7 @@ struct ReelSheet: View {
             message = L.s("reel_saved", lang)
             // The first reel that made it to the camera roll is the moment the
             // app has just done its whole job. Asked once the alert is closed.
-            if !reviewAsked { reviewPending = true }
+            if reviewAskedVersion != Self.version { reviewPending = true }
         case .denied:
             offerSettings = true
             message = L.s("photos_denied", lang)

@@ -100,6 +100,8 @@ Steps:
 4. Open a clip to play it, or tap "30-second highlight reel": the vertical reel
    is built at once and can be saved or shared from the result screen.
 5. The pass: tap "Get PASS" under the title, then "Watch an ad".
+   An optional PASS offer may appear while importing or before Apply; tapping
+   "Later · make it free" continues the free flow unchanged.
 
 Please note about step 5: review builds request Google's public test ad
 units (a sandbox receipt is treated as a pre-release install), so the rewarded
@@ -179,6 +181,8 @@ No login is required and there is nothing to configure.
 - Pass: tap "Get PASS" under the "My Matches" title, then "Watch an ad". After the
   rewarded ad ends, export quality, framing and ad-free use are unlocked for
   one hour. Review builds use Google's test ad units, labelled "Test mode".
+  An optional PASS offer may appear while importing or before Apply; tapping
+  "Later · make it free" continues the free flow unchanged.
 
 4. EXTERNAL SERVICES
 - Google AdMob (Google Mobile Ads SDK) for banner, interstitial and rewarded
@@ -238,7 +242,7 @@ AdMob의 최신 공개 안내(Google "Prepare for Apple's App Store data disclos
 
 ## 6. 제출 전 최종 점검
 
-- [ ] `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` 확인 (현재 1.0 / 1)
+- [ ] `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` 확인 (현재 1.1.0 / 21)
 - [ ] Release 구성으로 Archive (`Product → Archive`) → Validate → Distribute
 - [ ] 실기기에서 최소 3개 이상의 실제 경기 영상으로 감지 품질 확인 ([DEVICE_TESTING.md](DEVICE_TESTING.md))
 - [ ] 번들 ID가 App Store Connect와 일치하는지

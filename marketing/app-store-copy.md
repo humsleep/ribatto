@@ -16,13 +16,14 @@ Ribatto: Rally Clips
 Rally clips for racket sports
 ```
 
-**Keywords** (max 100, comma separated, no spaces) — 96 chars
+**Keywords** (max 100, comma separated, no spaces) — 97 chars
 ```
-pickleball,badminton,padel,reel,shorts,clip,highlights,cut,point,trim,editor,racquet,match,court
+pickleball,badminton,padel,tennis,reel,highlights,cut,point,trim,editor,racquet,match,court,video
 ```
-Sport terms that already appear in the name or subtitle are left out on purpose: Apple indexes the
-three fields together, so repeating a word spends space without adding reach.
-Do not repeat words already in the name or subtitle — Apple indexes those separately.
+Apple indexes the name, subtitle and keywords together, so words already in the name or subtitle
+(rally, clips, racket, sports) are left out — repeating one spends space without adding reach.
+`tennis` is in neither, so it belongs here. Other apps' trademarks (Shorts, Reels, TikTok,
+Instagram) are not used as keywords (guideline 2.3.7).
 
 **Promotional text** (max 170, editable without a new build) — 116 chars
 ```
@@ -39,7 +40,7 @@ NO COURT-SIDE RIG, NO SETUP
 Detection works from sound, not from a fixed camera angle, so the phone does not have to see the whole court. Prop it on a bag, a fence or a bench — anywhere it can sit still. Tuned on outdoor tennis, with settings for other racket sports. It listens for the strike, so it does best where that sound carries clearly.
 
 BUILT FOR REELS
-Every rally is exported vertical for Reels, Shorts and TikTok, or 4:5 for the feed. With a pass, smart crop follows the play instead of cutting down the middle.
+Every rally is exported vertical for Reels, Shorts and TikTok, or 4:5 for the feed. Free vertical clips keep the whole frame over a blurred background; with a pass, smart crop follows the rally.
 
 FOLLOW ONE PLAYER
 With a pass, pick yourself once and every vertical clip stays centred on you, even as you move across the court.
@@ -57,6 +58,13 @@ FREE, WITH A FREE PASS ON DEMAND
 Ribatto is free to use and supported by ads. Watch one short ad and a one-hour pass opens everything: no ads, source quality with no watermark, smart vertical crop and player tracking. Clips and reels you make in that hour keep their quality.
 
 Free: unlimited imports, 720p, watermark.
+```
+
+**What's New (1.1.0)**
+```
+- See what a PASS adds (original quality, no watermark) while your match is analysed and before you rebuild clips. Not interested? Everything carries on for free.
+- Delete confirmations for clips, matches and reels now appear centred.
+- Fixes for Undo, the PASS and ads.
 ```
 
 **What's New (1.0)**
@@ -98,7 +106,7 @@ Ribatto: 랠리 클립
 영상이 아니라 소리로 찾기 때문에 카메라 각도를 맞출 필요가 없고, 코트 전체가 화면에 들어오지 않아도 됩니다. 가방 위, 펜스, 벤치 — 흔들리지 않게 둘 수 있는 곳이면 됩니다. 실외 테니스를 기준으로 맞췄고, 다른 라켓 스포츠용 설정도 있습니다. 타구음을 듣기 때문에 그 소리가 잘 전달되는 곳에서 가장 정확합니다.
 
 릴스에 맞춘 결과물
-모든 랠리를 릴스·쇼츠·틱톡용 세로로, 또는 피드용 4:5로 내보냅니다. 패스가 있으면 가운데를 자르는 대신 스마트 크롭이 플레이를 따라갑니다.
+모든 랠리를 릴스·쇼츠·틱톡용 세로로, 또는 피드용 4:5로 내보냅니다. 무료 세로 클립은 흐린 배경 위에 화면 전체를 담고, 패스가 있으면 스마트 크롭이 랠리를 따라갑니다.
 
 한 선수만 따라가기
 패스가 있으면 본인을 한 번만 지정해도 코트를 옮겨 다녀도 모든 세로 클립이 본인을 중심으로 잡힙니다.
@@ -116,6 +124,18 @@ Ribatto: 랠리 클립
 Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 보면 1시간짜리 패스가 열려 모든 기능을 씁니다 — 광고 없음, 워터마크 없는 원본 화질, 스마트 세로 크롭, 선수 추적. 그 사이 만든 클립과 릴스는 품질이 그대로 남습니다.
 
 무료: 가져오기 무제한, 720p, 워터마크.
+```
+
+**새로운 기능 (1.1.0)**
+```
+- 경기 영상을 분석하는 동안과 클립을 다시 만들기 전에, 패스로 무엇이 좋아지는지(원본 화질·워터마크 없음) 바로 알려 드려요. 원하지 않으면 무료로 그대로 진행됩니다.
+- 클립·경기·릴스 삭제 확인 창이 화면 가운데에 깔끔하게 뜹니다.
+- 되돌리기, 패스, 광고 관련 안정성을 개선했어요.
+```
+
+**새로운 기능 (1.0)**
+```
+첫 출시입니다.
 ```
 
 ---
@@ -152,7 +172,7 @@ Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 
 映像ではなく音で探すので、カメラの角度を合わせる必要がありません。コート全体が画面に入らなくても大丈夫。バッグの上、フェンス、ベンチ — 動かずに置ける場所ならどこでも。屋外テニスを基準に調整しており、ほかのラケット競技用の設定もあります。打球音を聞き取るので、その音がよく通る場所で最も正確です。
 
 リール向けの書き出し
-すべてのラリーをリール・ショート・TikTok用の縦型、またはフィード用の4:5で書き出します。パスがあれば、真ん中で切るのではなくスマートクロップがプレーを追います。
+すべてのラリーをリール・ショート・TikTok用の縦型、またはフィード用の4:5で書き出します。無料の縦型クリップはぼかした背景の上に画面全体を収め、パスがあればスマートクロップがラリーを追います。
 
 ひとりを追いかける
 パスがあれば、最初に自分を選んでおくだけでコートを動いても縦型クリップの中心に残り続けます。
@@ -170,6 +190,13 @@ Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 
 Ribattoは広告で運営される無料アプリです。短い広告を1本見ると1時間のパスが開き、すべての機能が使えます — 広告なし、ウォーターマークなしの元画質、スマート縦切り抜き、選手追尾。その間に作ったクリップとリールは、終わったあとも画質そのままです。
 
 無料: 取り込み無制限、720p、ウォーターマークあり。
+```
+
+**What's New (1.1.0)**
+```
+- 試合を解析している間とクリップを作り直す前に、パスで何が良くなるか(元画質・ウォーターマークなし)をお知らせします。不要ならそのまま無料で進みます。
+- クリップ・試合・リールの削除確認が画面中央に表示されるようになりました。
+- 取り消す、パス、広告まわりの安定性を改善しました。
 ```
 
 **What's New (1.0)**
@@ -211,7 +238,7 @@ SIN TRÍPODE, SIN MONTAJE
 La detección funciona por sonido, no por el ángulo de cámara, así que el móvil no necesita ver toda la pista. Apóyalo en una bolsa, una valla o un banco: donde pueda quedarse quieto. Ajustado con tenis al aire libre, con opciones para otros deportes de raqueta. Escucha el golpeo, así que funciona mejor donde ese sonido se oye bien.
 
 PENSADO PARA REELS
-Cada punto se exporta en vertical para Reels, Shorts y TikTok, o en 4:5 para el feed. Con un pase, el recorte inteligente sigue el juego en lugar de cortar por el centro.
+Cada punto se exporta en vertical para Reels, Shorts y TikTok, o en 4:5 para el feed. Los clips verticales gratis muestran el encuadre completo sobre un fondo desenfocado; con un pase, el recorte inteligente sigue el punto.
 
 SIGUE A UN JUGADOR
 Con un pase, elígete una vez y cada clip vertical se mantiene centrado en ti, aunque te muevas por la pista.
@@ -229,6 +256,13 @@ GRATIS, CON UN PASE CUANDO LO NECESITES
 Ribatto es gratis y se financia con anuncios. Mira un anuncio corto y un pase de una hora lo abre todo: sin anuncios, calidad original sin marca de agua, recorte vertical inteligente y seguimiento de jugador. Los clips y reels que hagas en esa hora conservan su calidad.
 
 Gratis: importaciones ilimitadas, 720p, marca de agua.
+```
+
+**What's New (1.1.0)**
+```
+- Mientras se analiza tu partido y antes de rehacer los clips, verás qué añade un PASE (calidad original, sin marca de agua). ¿No te interesa? Todo sigue gratis.
+- Las confirmaciones para borrar clips, partidos y reels ahora aparecen centradas.
+- Correcciones en Deshacer, el PASE y los anuncios.
 ```
 
 **What's New (1.0)**
@@ -270,7 +304,7 @@ SEM TRIPÉ, SEM PREPARO
 A detecção funciona pelo som, não pelo ângulo da câmera, então o celular não precisa enxergar a quadra inteira. Apoie numa bolsa, na grade ou num banco — onde ele puder ficar parado. Ajustado com tênis ao ar livre, com opções para outros esportes de raquete. Ele escuta a batida, então funciona melhor onde esse som se propaga bem.
 
 FEITO PARA REELS
-Cada rally é exportado na vertical para Reels, Shorts e TikTok, ou em 4:5 para o feed. Com um passe, o corte inteligente acompanha a jogada em vez de cortar pelo meio.
+Cada rally é exportado na vertical para Reels, Shorts e TikTok, ou em 4:5 para o feed. Os clipes verticais grátis mostram o quadro inteiro sobre um fundo desfocado; com um passe, o corte inteligente acompanha o rally.
 
 SIGA UM JOGADOR
 Com um passe, escolha você mesmo uma vez e cada clipe vertical continua centrado em você, mesmo quando você se move pela quadra.
@@ -288,6 +322,13 @@ GRÁTIS, COM UM PASSE QUANDO PRECISAR
 O Ribatto é grátis e mantido por anúncios. Assista a um anúncio curto e um passe de uma hora abre tudo: sem anúncios, qualidade original sem marca d'água, corte vertical inteligente e rastreamento de jogador. Os clipes e reels feitos nessa hora mantêm a qualidade.
 
 Grátis: importações ilimitadas, 720p, marca d'água.
+```
+
+**What's New (1.1.0)**
+```
+- Enquanto sua partida é analisada e antes de refazer os clipes, veja o que um PASSE acrescenta (qualidade original, sem marca d'água). Não quer? Tudo continua grátis.
+- As confirmações para apagar clipes, partidas e reels agora aparecem centralizadas.
+- Correções em Desfazer, no PASSE e nos anúncios.
 ```
 
 **What's New (1.0)**
@@ -329,7 +370,7 @@ KEIN STATIV, KEIN AUFBAU
 Die Erkennung läuft über den Ton, nicht über den Kamerawinkel. Das Handy muss den Platz nicht ganz im Bild haben. Stell es auf eine Tasche, an den Zaun oder auf eine Bank — irgendwohin, wo es still stehen kann. Abgestimmt auf Tennis im Freien, mit Einstellungen für andere Schlägersportarten. Die Erkennung hört den Schlag, funktioniert also dort am besten, wo dieser Ton gut trägt.
 
 FÜR REELS GEMACHT
-Jeder Ballwechsel wird hochkant für Reels, Shorts und TikTok exportiert, oder in 4:5 für den Feed. Mit einem Pass folgt der smarte Zuschnitt dem Spiel, statt mittig zu schneiden.
+Jeder Ballwechsel wird hochkant für Reels, Shorts und TikTok exportiert, oder in 4:5 für den Feed. Kostenlose Hochkant-Clips zeigen das ganze Bild vor einem unscharfen Hintergrund; mit einem Pass folgt der smarte Zuschnitt dem Ballwechsel.
 
 EINER PERSON FOLGEN
 Mit einem Pass wählst du dich einmal aus, und jeder Hochkant-Clip bleibt auf dir, auch wenn du über den Platz läufst.
@@ -347,6 +388,13 @@ KOSTENLOS, MIT PASS BEI BEDARF
 Ribatto ist kostenlos und finanziert sich über Werbung. Sieh dir eine kurze Anzeige an, und ein Pass öffnet eine Stunde lang alles: keine Werbung, Originalqualität ohne Wasserzeichen, smarter Hochkant-Ausschnitt und Spielerverfolgung. Clips und Reels aus dieser Stunde behalten ihre Qualität.
 
 Kostenlos: unbegrenzt importieren, 720p, Wasserzeichen.
+```
+
+**What's New (1.1.0)**
+```
+- Während dein Match ausgewertet wird und bevor du Clips neu erstellst, siehst du, was ein PASS bringt (Originalqualität, kein Wasserzeichen). Kein Interesse? Alles läuft kostenlos weiter.
+- Löschbestätigungen für Clips, Matches und Reels erscheinen jetzt mittig.
+- Fehlerbehebungen bei Rückgängig, dem PASS und der Werbung.
 ```
 
 **What's New (1.0)**
@@ -388,7 +436,7 @@ PAS DE TRÉPIED, PAS D'INSTALLATION
 La détection se fait au son, pas à l'angle de caméra : le téléphone n'a pas besoin de voir tout le court. Posez-le sur un sac, contre un grillage ou sur un banc — partout où il peut rester immobile. Réglé sur du tennis en extérieur, avec des options pour d'autres sports de raquette. La détection écoute la frappe : elle est donc plus juste là où ce son porte bien.
 
 PENSÉ POUR LES REELS
-Chaque échange est exporté en vertical pour Reels, Shorts et TikTok, ou en 4:5 pour le fil. Avec un pass, le recadrage intelligent suit le jeu au lieu de couper au milieu.
+Chaque échange est exporté en vertical pour Reels, Shorts et TikTok, ou en 4:5 pour le fil. Les clips verticaux gratuits gardent l'image entière sur un fond flouté ; avec un pass, le recadrage intelligent suit l'échange.
 
 SUIVRE UN JOUEUR
 Avec un pass, choisissez-vous une fois et chaque clip vertical reste centré sur vous, même quand vous traversez le court.
@@ -406,6 +454,13 @@ GRATUIT, AVEC UN PASS QUAND IL FAUT
 Ribatto est gratuit et financé par la publicité. Regardez une courte publicité et un pass d'une heure ouvre tout : sans publicité, qualité d'origine sans filigrane, cadrage vertical intelligent et suivi du joueur. Les clips et reels créés pendant cette heure gardent leur qualité.
 
 Gratuit : imports illimités, 720p, filigrane.
+```
+
+**What's New (1.1.0)**
+```
+- Pendant l'analyse de votre match et avant de refaire vos clips, découvrez ce qu'apporte un PASS (qualité d'origine, sans filigrane). Pas intéressé ? Tout continue gratuitement.
+- Les confirmations de suppression des clips, matchs et reels s'affichent maintenant au centre.
+- Corrections pour Annuler, le PASS et les publicités.
 ```
 
 **What's New (1.0)**
@@ -447,7 +502,7 @@ NIENTE TREPPIEDE, NIENTE PREPARAZIONE
 Il rilevamento funziona con il suono, non con l'angolo di ripresa: il telefono non deve inquadrare tutto il campo. Appoggialo su una borsa, alla rete o su una panchina — dove può stare fermo. Tarato sul tennis all'aperto, con impostazioni per altri sport con racchetta. Ascolta il colpo, quindi funziona meglio dove quel suono si sente bene.
 
 FATTO PER I REEL
-Ogni scambio viene esportato in verticale per Reel, Shorts e TikTok, o in 4:5 per il feed. Con un pass, il ritaglio intelligente segue il gioco invece di tagliare al centro.
+Ogni scambio viene esportato in verticale per Reel, Shorts e TikTok, o in 4:5 per il feed. Le clip verticali gratuite mostrano l'inquadratura intera su uno sfondo sfocato; con un pass, il ritaglio intelligente segue lo scambio.
 
 SEGUI UN GIOCATORE
 Con un pass, scegli te stesso una volta e ogni clip verticale resta centrata su di te, anche mentre ti muovi in campo.
@@ -465,6 +520,13 @@ GRATIS, CON UN PASS QUANDO SERVE
 Ribatto è gratis e si sostiene con la pubblicità. Guarda un annuncio breve e un pass di un'ora apre tutto: niente pubblicità, qualità originale senza filigrana, inquadratura verticale intelligente e inseguimento del giocatore. Le clip e i reel creati in quell'ora mantengono la loro qualità.
 
 Gratis: importazioni illimitate, 720p, filigrana.
+```
+
+**What's New (1.1.0)**
+```
+- Mentre la partita viene analizzata e prima di rifare le clip, vedi cosa aggiunge un PASS (qualità originale, senza filigrana). Non ti interessa? Tutto continua gratis.
+- Le conferme di eliminazione di clip, partite e reel ora compaiono al centro.
+- Correzioni per Annulla, il PASS e gli annunci.
 ```
 
 **What's New (1.0)**
@@ -506,7 +568,7 @@ Rally Clips 回合剪辑
 靠声音识别，不靠拍摄角度，手机不必拍到整个球场。放在包上、挂在围网、搁在长椅上都行，只要能放稳。以室外网球为基准调校，也提供其他球拍项目的设置。它靠击球声识别，所以在声音传得清楚的地方最准确。
 
 为短视频而做
-每个回合都可以导出竖版，适配 Reels、Shorts 和抖音，也可以导出 4:5 发动态。有通行证时，智能裁切会跟着球走，而不是从中间硬裁。
+每个回合都可以导出竖版，适配 Reels、Shorts 和抖音，也可以导出 4:5 发动态。免费竖版片段会在模糊背景上保留完整画面；有通行证时，智能裁切会跟着回合走。
 
 只跟着一个人
 有通行证时，先选好自己，之后每个竖版片段都会一直把你放在画面中间，哪怕你在场上跑动。
@@ -524,6 +586,13 @@ Rally Clips 回合剪辑
 Ribatto 免费使用，由广告支持。看完一段短广告，一小时通行证就会开放全部功能：无广告、无水印的原画质、智能竖版裁切、球员追踪。这一小时内做好的片段和短片，之后画质依然保留。
 
 免费版：导入次数不限，720p，带水印。
+```
+
+**What's New (1.1.0)**
+```
+- 在分析比赛视频时以及重新生成片段前，会告诉你通行证能带来什么（原画质、无水印）。不需要？一切照常免费进行。
+- 删除片段、比赛和短片的确认窗口现在显示在屏幕中央。
+- 修复了撤销、通行证和广告相关的问题。
 ```
 
 **What's New (1.0)**

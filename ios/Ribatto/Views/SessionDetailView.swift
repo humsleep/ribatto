@@ -41,7 +41,7 @@ struct SessionDetailView: View {
     /// quality after the reward, on the free tier after "later", not at all
     /// when the sheet was swiped away.
     @State private var offerOutcome: PassOfferOutcome?
-    @State private var offerActions: (granted: () -> Void, declined: () -> Void)?
+    @State private var offerActions: (granted: () -> Void, declined: () -> Void, passive: Bool)?
     @State private var toast: String?
     /// The last delete, with the rallies it took, for five seconds of undo.
     @State private var undo: (text: String, rallies: [RallySegment])?
@@ -50,8 +50,6 @@ struct SessionDetailView: View {
     @State private var scrollTarget: String?
     /// A re-detect would reset stars and hand edits; asked first.
     @State private var confirmRedetect = false
-    /// Apply would re-render Pro clips after the pass ran out.
-    @State private var confirmFreeRender = false
     @State private var confirmClearClips = false
     /// Whether this screen is the one in front. `destination` only covers this
     /// screen's own sheets; switching tabs mid-render left it nil, and the
@@ -214,7 +212,8 @@ struct SessionDetailView: View {
                 }
             }
             .padding(.horizontal)
-            .padding(.bottom, 8)
+            // A little more off a loaded banner, or Delete sits on the ad.
+            .padding(.bottom, ads.bannerLoaded && ads.showing ? 20 : 8)
         }
         .adBanner()
         .passToast($toast)
@@ -225,8 +224,9 @@ struct SessionDetailView: View {
             guard let edit, edit.sessionID == sessionID else { return }
             handle(edit, session)
         }
-        .confirmationDialog(L.s("redetect_title", lang), isPresented: $confirmRedetect,
-                            titleVisibility: .visible) {
+        // Alerts, not confirmation dialogs, for every confirm on this screen:
+        // iOS 26 floats a dialog as a popover anchored to the whole screen.
+        .alert(L.s("redetect_title", lang), isPresented: $confirmRedetect) {
             Button(L.s("redetect", lang), role: .destructive) { runApply(session, confirmed: true) }
             Button(L.s("cancel", lang), role: .cancel) {}
         } message: {
@@ -291,10 +291,10 @@ struct SessionDetailView: View {
             get: { saveMessage != nil }, set: { if !$0 { saveMessage = nil } })) {
             Button("OK", role: .cancel) { saveMessage = nil }
         }
-        .confirmationDialog(String(format: L.s(selection.count == 1 ? "delete_one_clip"
-                                                                     : "delete_n_clips", lang),
-                                   selection.count),
-                            isPresented: $confirmDeleteClips, titleVisibility: .visible) {
+        .alert(String(format: L.s(selection.count == 1 ? "delete_one_clip"
+                                                        : "delete_n_clips", lang),
+                      selection.count),
+               isPresented: $confirmDeleteClips) {
             Button(L.s("delete", lang), role: .destructive) {
                 // Refused while anything runs on the session. Clearing the
                 // selection regardless made Delete look like it did nothing.
@@ -310,8 +310,7 @@ struct SessionDetailView: View {
             // What a delete takes and what it leaves.
             Text(L.s("delete_clips_note", lang))
         }
-        .confirmationDialog(L.s("delete_session", lang),
-                            isPresented: $confirmDeleteSession, titleVisibility: .visible) {
+        .alert(L.s("delete_session", lang), isPresented: $confirmDeleteSession) {
             Button(L.s("delete", lang), role: .destructive) {
                 store.deleteSession(session)
                 // The library pushes this screen with a value link and holds
@@ -319,9 +318,11 @@ struct SessionDetailView: View {
                 // on a blank screen after confirming.
                 dismiss()
             }
+            Button(L.s("cancel", lang), role: .cancel) {}
+        } message: {
+            Text(L.s("delete_sessions_note", lang))
         }
-        .confirmationDialog(L.s("clear_clips_title", lang), isPresented: $confirmClearClips,
-                            titleVisibility: .visible) {
+        .alert(L.s("clear_clips_title", lang), isPresented: $confirmClearClips) {
             Button(L.s("clear_clips", lang), role: .destructive) {
                 store.clearClipFiles(session)
                 selecting = false
@@ -340,20 +341,6 @@ struct SessionDetailView: View {
             }
         }
         .onDisappear { onScreen = false }
-        .confirmationDialog(L.s("pro_expired_title", lang), isPresented: $confirmFreeRender,
-                            titleVisibility: .visible) {
-            Button(L.s("pro_expired_watch", lang)) {
-                offer(session, declineKey: "offer_later_free",
-                      granted: { Task { await store.apply(sessionID: sessionID) } },
-                      declined: { Task { await store.apply(sessionID: sessionID) } })
-            }
-            Button(L.s("pro_expired_free", lang)) {
-                Task { await store.apply(sessionID: sessionID) }
-            }
-            Button(L.s("cancel", lang), role: .cancel) {}
-        } message: {
-            Text(L.s("pro_expired_msg", lang))
-        }
         // A finished render earns an interstitial, but it is only owed here.
         // Shown on the spot it covered the first look at the clips the user
         // had waited minutes for; it now waits until they have watched one and
@@ -393,7 +380,9 @@ struct SessionDetailView: View {
                 let watched = ["clip-", "merged-", "reel-"].contains {
                     lastPresented?.hasPrefix($0) == true
                 }
-                if destination == nil, onScreen, watched {
+                // Not over the undo bar: a clip deleted in the player owes
+                // its ad to the next result instead.
+                if destination == nil, onScreen, watched, undo == nil {
                     ads.showPendingInterstitial()
                 }
                 return
@@ -433,18 +422,25 @@ struct SessionDetailView: View {
 
     /// Opens the pass offer for `session`'s best rally, remembering what to
     /// do once it closes. Every PASS gate on this screen comes through here.
+    /// `passive`: shown unasked, so a swipe-away still runs `declined` — the
+    /// user tapped Apply, and that has to happen either way.
     private func offer(_ session: Session, declineKey: String = "offer_later",
-                       title: String = "offer_title",
+                       title: String = "offer_title", message: String? = nil,
+                       passive: Bool = false,
                        granted: @escaping () -> Void,
                        declined: @escaping () -> Void = {}) {
         offerOutcome = nil
-        offerActions = (granted, declined)
+        offerActions = (granted, declined, passive)
+        // "Bigger players" is the 9:16 crop; a landscape match gets quality.
+        let landscape = !OutputFrame(session.effectiveOrientation).isPortrait
+        let title = title == "offer_title" && landscape ? "offer_title_quality" : title
         let best = preferringSingleRallies(
             store.clips(of: session).sorted { ClipSort.best.precedes($0, $1) }).first
         open(.offer(PassOfferRequest(session: session,
                                      segment: best?.segment.playTrimmed,
                                      poster: best?.thumbURL,
-                                     titleKey: title, declineKey: declineKey)))
+                                     titleKey: title, messageKey: message,
+                                     declineKey: declineKey, passive: passive)))
     }
 
     /// Runs what the offer interrupted. After the sheet is gone, so a gate
@@ -459,7 +455,7 @@ struct SessionDetailView: View {
             toast = passOpenedText(pass, lang)
             actions.granted()
         case .declined?: actions.declined()
-        case nil: break
+        case nil: if actions.passive { actions.declined() }
         }
     }
 
@@ -823,7 +819,8 @@ struct SessionDetailView: View {
             if session.hasPendingChanges && session.renderGap == nil {
                 Label(L.s("apply_hint", lang), systemImage: "exclamationmark.circle.fill")
                     .font(.caption)
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -1063,11 +1060,21 @@ struct SessionDetailView: View {
             confirmRedetect = true
             return
         }
-        if session.renderedPro == true && !pass.isPro
-            && store.clips(of: session).contains(where: \.isReady) {
-            confirmFreeRender = true
+        let apply: () -> Void = { Task { await store.apply(sessionID: sessionID) } }
+        let hasClips = store.clips(of: session).contains(where: \.isReady)
+        if session.renderedPro == true && !pass.isPro && hasClips {
+            // Straight to the offer, with the downgrade said in it.
+            offer(session, declineKey: "offer_later_free", title: "pro_expired_title",
+                  message: "pro_expired_msg", granted: apply, declined: apply)
+        } else if PassOfferGate.allowsPassive(pass: pass, ads: ads), hasClips,
+                  !store.isBusy(session.id), !session.needsRedetect,
+                  session.renderGap == nil {
+            // A free re-render is the moment a pass changes the result.
+            PassOfferGate.recordShown()
+            offer(session, declineKey: "offer_later_free", passive: true,
+                  granted: apply, declined: apply)
         } else {
-            Task { await store.apply(sessionID: sessionID) }
+            apply()
         }
     }
 
@@ -1102,6 +1109,11 @@ struct SessionDetailView: View {
                 .font(.caption)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
+            // While detecting the tier is still open; from render on it is baked.
+            if !pass.isPro, ads.showing, stage.tierOpen {
+                PassLine { open(.pro(feature: nil)) }
+                    .padding(.top, 2)
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1187,20 +1199,27 @@ struct SessionDetailView: View {
     // MARK: - Pro
 
     private func upgradeBanner() -> some View {
-        HStack(spacing: 12) {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+            : AnyLayout(HStackLayout(spacing: 12))
+        return layout {
             Image(systemName: "arrow.up.circle.fill")
-                .font(.title3).foregroundStyle(.tint)
+                .font(.title3).foregroundStyle(.secondary)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             VStack(alignment: .leading, spacing: 2) {
                 Text(L.s("pro_rerender_t", lang)).font(.subheadline.bold())
                 Text(L.s("pro_rerender_d", lang))
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 8)
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
             // `render` returns silently when the session is already working,
             // so without this the button looks dead mid-render.
-            Button(L.s("rerender", lang)) {
+            Button {
                 Task { await store.render(sessionID: sessionID) }
+            } label: {
+                Text(L.s("rerender", lang))
+                    .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil)
             }
             .rcSecondary()
             .disabled(store.isBusy(sessionID))
@@ -1331,7 +1350,6 @@ struct SessionDetailView: View {
     }
 
     private func deleteBtn(_ session: Session, _ n: Int) -> some View {
-        // The same action in All Clips confirms; here the clips just vanished.
         Button(role: .destructive) { confirmDeleteClips = true } label: {
             Label(L.s("delete", lang), systemImage: "trash")
                 .font(.subheadline.bold()).frame(maxWidth: .infinity, minHeight: 24)
@@ -1564,7 +1582,10 @@ struct SessionDetailView: View {
     private func handle(_ edit: RallyEdit, _ session: Session) {
         switch edit.kind {
         case .deleted(let rallies):
-            undo = (String(format: L.s("deleted_n_fmt", lang), rallies.count), rallies)
+            // Undo re-cuts from the original; without it there is nothing to undo.
+            let text = rallies.count == 1 ? L.s("deleted_one", lang)
+                : String(format: L.s("deleted_n_fmt", lang), rallies.count)
+            undo = store.sourceMissing(session) ? nil : (text, rallies)
         case .split(let a, let b):
             destination = nil
             toast = String(format: L.s("split_done_fmt", lang), a, a, b)
@@ -1589,7 +1610,7 @@ struct SessionDetailView: View {
         }
     }
 
-    /// "2 clips deleted · Undo", for five seconds above the tab bar.
+    /// "2 clips deleted · Undo", for eight seconds above the tab bar.
     @ViewBuilder private var undoBar: some View {
         if let undo {
             HStack(spacing: 12) {
@@ -1618,7 +1639,8 @@ struct SessionDetailView: View {
             .padding(.leading, 16).padding(.trailing, 4).padding(.vertical, 2)
             .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 14))
             .transition(.move(edge: .bottom).combined(with: .opacity))
-            .task(id: undo.text + String(undo.rallies.count)) {
+            // Keyed on the rallies, so a second delete restarts the clock.
+            .task(id: undo.rallies.map(\.start)) {
                 try? await Task.sleep(for: .seconds(8))
                 withAnimation { self.undo = nil }
             }

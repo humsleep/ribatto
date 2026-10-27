@@ -138,6 +138,8 @@ final class AdsManager: NSObject, ObservableObject {
     /// the user has to sit through to the end. In exchange it opens every
     /// Pro feature for `ProPass.duration`.
     private var rewarded: RewardedAd?
+    /// Google expires a loaded rewarded ad after about an hour.
+    private var rewardedAt = Date.distantPast
     private var loadingRewarded = false
     private var lastInterstitial = Date.distantPast
     /// A render or reel finished and has earned an interstitial, but it waits.
@@ -161,11 +163,13 @@ final class AdsManager: NSObject, ObservableObject {
 
     /// Called once the tier is known. Asks for tracking permission first —
     /// the prompt has to precede the first ad request or the identifier is
-    /// never shared — then starts the SDK. A Pro user never sees the prompt.
+    /// never shared — then starts the SDK. Also during a pass: the rewarded
+    /// ad that extends it needs the SDK; `refreshShowing` keeps the banner and
+    /// interstitial off.
     func start(isPro: Bool) async {
         self.isPro = isPro
         holdAfterRecentPass()
-        guard !isPro, !starting, !started, Self.configured else { refreshShowing(); return }
+        guard !starting, !started, Self.configured else { refreshShowing(); return }
         // `starting`, not `started`: marking the SDK started before the
         // consent gate below meant that one failed consent call on a fresh
         // install left `started == true` with `consentAllows == false`, and
@@ -197,7 +201,7 @@ final class AdsManager: NSObject, ObservableObject {
     /// gate. Called when the app comes back to the foreground, which is the
     /// natural moment for "the user turned the network back on".
     func retryIfNeverStarted() async {
-        guard !started, !starting, !isPro else { return }
+        guard !started, !starting else { return }
         await start(isPro: isPro)
     }
 
@@ -322,6 +326,11 @@ final class AdsManager: NSObject, ObservableObject {
         guard started, let ad = rewarded else { return false }
         rewarded = nil
         rewardedReady = false
+        // Stale: presenting it fails. Fetch a fresh one; the button shows loading.
+        if Date().timeIntervalSince(rewardedAt) > 55 * 60 {
+            loadRewarded()
+            return false
+        }
         // Whether or not it is watched to the end, the user has just sat
         // through an ad they chose: an interstitial right after it — the owed
         // one from a render, or the next due — would be two back to back.
@@ -367,6 +376,7 @@ final class AdsManager: NSObject, ObservableObject {
                 let ad = try await RewardedAd.load(with: Unit.rewarded, request: Request())
                 ad.fullScreenContentDelegate = self
                 rewarded = ad
+                rewardedAt = Date()
                 rewardedReady = true
                 rewardedFailed = false
                 rewardedAttempts = 0
@@ -509,10 +519,9 @@ extension AdsManager: FullScreenContentDelegate {
 
     nonisolated func ad(_ ad: FullScreenPresentingAd,
                         didFailToPresentFullScreenContentWithError error: Error) {
+        // The failed ad was already taken out when it was presented; clearing
+        // both here threw away a good rewarded ad when an interstitial failed.
         Task { @MainActor in
-            interstitial = nil
-            rewarded = nil
-            rewardedReady = false
             loadInterstitial()
             loadRewarded()
         }

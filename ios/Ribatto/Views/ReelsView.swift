@@ -71,13 +71,14 @@ struct ReelsView: View {
             .sheet(item: $playing) { reel in
                 ReelPlayerSheet(reel: reel)
             }
-            .confirmationDialog(L.s("reel_delete", lang),
-                                isPresented: Binding(get: { confirmDelete != nil },
-                                                     set: { if !$0 { confirmDelete = nil } })) {
+            .alert(L.s("reel_delete", lang),
+                   isPresented: Binding(get: { confirmDelete != nil },
+                                        set: { if !$0 { confirmDelete = nil } })) {
                 Button(L.s("delete", lang), role: .destructive) {
                     if let r = confirmDelete { store.deleteReel(r) }
                     confirmDelete = nil
                 }
+                Button(L.s("cancel", lang), role: .cancel) {}
             }
         }
     }
@@ -247,10 +248,11 @@ struct ReelPlayerSheet: View {
                     .disabled(rebuilding)
                 }
             }
-            .confirmationDialog(L.s("reel_delete", lang), isPresented: $confirmDelete) {
+            .alert(L.s("reel_delete", lang), isPresented: $confirmDelete) {
                 Button(L.s("delete", lang), role: .destructive) {
                     store.deleteReel(shown); dismiss()
                 }
+                Button(L.s("cancel", lang), role: .cancel) {}
             }
             .alert(message ?? "", isPresented: Binding(
                 get: { message != nil }, set: { if !$0 { message = nil } })) {

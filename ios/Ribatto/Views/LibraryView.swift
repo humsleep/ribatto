@@ -21,6 +21,7 @@ struct MovieFile: Transferable {
 struct LibraryView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var pass: ProPass
+    @EnvironmentObject var ads: AdsManager
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -46,12 +47,7 @@ struct LibraryView: View {
     @State private var placeFilter: String?
     @State private var showDebug = false
 
-    enum ImportSource { case photos, files, record, sample }
-
-    /// The bundled demo match, when the build carries one. The empty library is
-    /// the first thing a new user — and the App Review tester — sees, usually
-    /// on a phone with no match video on it.
-    static var sampleURL: URL? { Bundle.main.url(forResource: "sample_match", withExtension: "mp4") }
+    enum ImportSource { case photos, files, record }
 
     /// Text match on the sport and the date shown on the card, plus the
     /// sport chip — enough to find "that badminton match last week".
@@ -131,6 +127,11 @@ struct LibraryView: View {
                             }
                             if importing { ProgressView().padding() }
                             recoveredCard
+                            // Once for all imports, not per card: the user waits here.
+                            if !pass.isPro, ads.showing, store.sessions.contains(where: {
+                                store.progress[$0.id]?.tierOpen == true }) {
+                                PassLine { showPro = true }
+                            }
                             if searchable { sportFilterBar }
                             if visibleSessions.isEmpty {
                                 Text(L.s("no_match", lang))
@@ -183,7 +184,7 @@ struct LibraryView: View {
                         if selecting {
                             deleteBar
                                 .padding(.horizontal)
-                                .padding(.bottom, 8)
+                                .padding(.bottom, ads.bannerLoaded && ads.showing ? 20 : 8)
                         }
                     }
                 }
@@ -278,10 +279,12 @@ struct LibraryView: View {
                 get: { importError != nil }, set: { if !$0 { importError = nil } })) {
                 Button("OK", role: .cancel) { importError = nil }
             }
-            .confirmationDialog(
+            // An alert, not a confirmation dialog: iOS 26 floats the dialog as a
+            // popover anchored to this whole screen.
+            .alert(
                 String(format: L.s(selection.count == 1 ? "delete_one_session"
                                         : "delete_n_sessions", lang), selection.count),
-                isPresented: $confirmDelete, titleVisibility: .visible) {
+                isPresented: $confirmDelete) {
                 Button(L.s("delete", lang), role: .destructive) {
                     for id in selection {
                         if let s = store.sessions.first(where: { $0.id == id }) {
@@ -291,6 +294,7 @@ struct LibraryView: View {
                     selection.removeAll()
                     selecting = false
                 }
+                Button(L.s("cancel", lang), role: .cancel) {}
             } message: {
                 Text(L.s("delete_sessions_note", lang))
             }
@@ -348,17 +352,6 @@ struct LibraryView: View {
                         .font(.subheadline.bold())
                 }
                 .rcSecondary()
-                if Self.sampleURL != nil {
-                    Button {
-                        begin(.sample)
-                    } label: {
-                        Label(L.s("try_sample", lang), systemImage: "play.circle")
-                            .font(.subheadline.bold())
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.tint)
-                    .padding(.top, 2)
-                }
             }
             .padding(.top, 8)
         }
@@ -483,7 +476,6 @@ struct LibraryView: View {
         case .record:
             guard VideoRecorder.isAvailable else { cameraAlert = true; return }
             recording = true
-        case .sample: importSample()
         }
     }
 
@@ -512,22 +504,6 @@ struct LibraryView: View {
             importing = false
             if failed > 0 { importError = L.s("import_failed", lang) }
             await store.processQueued(ids)
-        }
-    }
-
-    private func importSample() {
-        guard let sample = Self.sampleURL else { return }
-        importing = true
-        Task {
-            let dest = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString + ".mp4")
-            var id: UUID?
-            if (try? FileManager.default.copyItem(at: sample, to: dest)) != nil {
-                id = await store.importVideo(from: dest, name: L.s("sample_name", lang), detect: false)
-            }
-            importing = false
-            guard let id else { importError = L.s("import_failed", lang); return }
-            await store.processQueued([id])
         }
     }
 

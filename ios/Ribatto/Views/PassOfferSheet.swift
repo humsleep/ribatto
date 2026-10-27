@@ -11,6 +11,9 @@ struct PassOfferRequest: Identifiable {
     /// The title names what the user was reaching for — "follow the rally to
     /// fill the frame" for smart crop — rather than a generic pitch.
     var titleKey = "offer_title"
+    /// The line under the title; nil is the standard pitch. The pass-ended
+    /// offer says here that declining remakes the clips at 720p.
+    var messageKey: String? = nil
     /// The "not now" button. It names what happens instead — "Later · save
     /// free" when the user was saving — so declining is never a dead end.
     var declineKey = "offer_later"
@@ -38,6 +41,14 @@ enum PassOfferGate {
     /// string drifted with the formatter's locale and calendar.
     private static var today: Double {
         Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
+    }
+
+    /// Every unasked offer sheet checks this, then calls `recordShown`, then
+    /// opens with `passive: true`. A non-modal line is neither capped nor
+    /// counted. Without a loaded ad an offer is a button that spins.
+    static func allowsPassive(pass: ProPass, ads: AdsManager) -> Bool {
+        !pass.isPro && ads.showing && ads.rewardedReady && allowsPassive
+            && Date().timeIntervalSince(ads.lastInterstitialAt) > 60
     }
 
     static var allowsPassive: Bool {
@@ -127,13 +138,14 @@ struct PassOfferSheet: View {
         // bar cost the half sheet the space its title needed.
         ScrollView {
             VStack(spacing: 12) {
-                comparison
+                // The pair is a 9:16 crop: nothing to compare on a landscape match.
+                if portrait { comparison }
                 VStack(spacing: 4) {
                     Text(L.s(request.titleKey, lang))
                         .font(.title3.bold())
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(L.s("offer_sub", lang))
+                    Text(L.s(request.messageKey ?? "offer_sub", lang))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -161,14 +173,21 @@ struct PassOfferSheet: View {
             if request.passive { PassOfferGate.record(.granted) }
             dismiss()
         }
-        // A swipe away is a "not now" for the passive offer's counter.
+        // A swipe away is a "not now": for the passive counter, and it drops
+        // the owed interstitial just as "later" does.
         .onDisappear {
-            if outcome == nil && request.passive { PassOfferGate.record(.declined) }
+            guard outcome == nil else { return }
+            ads.declinePassOffer()
+            if request.passive { PassOfferGate.record(.declined) }
         }
-        .task { await loadFrames() }
+        .task { if portrait { await loadFrames() } }
     }
 
     // MARK: Frames
+
+    private var portrait: Bool {
+        OutputFrame(request.session.effectiveOrientation).isPortrait
+    }
 
     @ViewBuilder private var comparison: some View {
         let layout = typeSize.isAccessibilitySize
@@ -391,4 +410,37 @@ struct PassToast: ViewModifier {
 
 extension View {
     func passToast(_ text: Binding<String?>) -> some View { modifier(PassToast(text: text)) }
+}
+
+/// The quiet, tappable pass line: under a finished reel, and on an import's
+/// progress while its tier is still open. One line, never a card — an offer
+/// that loud reads as the price of the result.
+struct PassLine: View {
+    @AppStorage("rc_lang") private var lang = "en"
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            (Text(Image(systemName: "sparkles")) + Text("  ")
+             + Text(L.s("reel_pass_line", lang))
+             + Text("  ") + Text(Image(systemName: "chevron.right")).font(.caption2))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+extension ProcessingStage {
+    /// Still before the render, where a pass opened now changes the clips.
+    var tierOpen: Bool {
+        switch self {
+        case .queued, .audio, .detect: true
+        default: false
+        }
+    }
 }
