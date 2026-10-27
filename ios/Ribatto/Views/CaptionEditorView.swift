@@ -18,6 +18,9 @@ struct CaptionEditorView: View {
     private let onApply: ((CaptionSettings) -> Void)?
     @State private var draft: CaptionSettings
     @State private var dragging = false
+    /// Where Instagram's own buttons and text sit over a 9:16 reel. Preview
+    /// only, never burned in.
+    @AppStorage("rc_safe_zone") private var safeZone = true
 
     private let accent = Theme.accent
 
@@ -46,6 +49,11 @@ struct CaptionEditorView: View {
                     Text(L.s("drag_hint", lang))
                         .font(.caption).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
+                    if previewFrame == .vertical {
+                        Toggle(L.s("safe_zone", lang), isOn: $safeZone)
+                            .font(.subheadline)
+                            .tint(Theme.accent)
+                    }
                     textField
                     autoText
                     lookPicker
@@ -84,6 +92,9 @@ struct CaptionEditorView: View {
             let h = w / frame.aspectRatio
             ZStack(alignment: .topLeading) {
                 poster.frame(width: w, height: h).clipped()
+                if frame == .vertical && safeZone {
+                    SafeZoneGuide().frame(width: w, height: h).allowsHitTesting(false)
+                }
 
                 if draft.isVisible {
                     captionText(scaledTo: h)
@@ -419,5 +430,31 @@ extension CaptionFont {
             return .custom(bundledName, fixedSize: size)
         }
         return .system(size: size, weight: .heavy, design: design).width(width)
+    }
+}
+
+/// Roughly where Instagram Reels draws over a 9:16 video: the header on top,
+/// the caption, name and audio line at the bottom, and the like / comment /
+/// share column on the right. Approximate — the app moves them between
+/// versions — so it is shaded, not a hard boundary.
+private struct SafeZoneGuide: View {
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            let shade = Color.black.opacity(0.4)
+            ZStack(alignment: .topLeading) {
+                shade.frame(width: w, height: h * 0.12)
+                shade.frame(width: w, height: h * 0.22).offset(y: h * 0.78)
+                shade.frame(width: w * 0.15, height: h * 0.30)
+                    .offset(x: w * 0.85, y: h * 0.48)
+            }
+            .overlay(alignment: .topLeading) {
+                Path { p in
+                    p.addRect(CGRect(x: 0, y: h * 0.12, width: w * 0.85, height: h * 0.66))
+                }
+                .stroke(.white.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            }
+        }
+        .accessibilityHidden(true)
     }
 }

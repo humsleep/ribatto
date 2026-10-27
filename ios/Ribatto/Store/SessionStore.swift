@@ -747,7 +747,7 @@ final class SessionStore: ObservableObject {
                     clipTargets: $0.renderedClipTargets ?? [:],
                     targetPlayer: $0.renderedTargetPlayer,
                     rallies: $0.segments ?? [], lang: nil, cleared: true,
-                    look: $0.renderedLook)
+                    look: $0.renderedLook, edit: $0.renderedEdit)
             }
             $0.renderedOrientation = nil
         }
@@ -804,6 +804,9 @@ final class SessionStore: ObservableObject {
     }
     func setSmartCrop(_ s: Session, _ on: Bool) {
         mutate(s.id) { $0.smartCrop = on }
+    }
+    func setEdit(_ s: Session, _ edit: ClipEdit) {
+        mutate(s.id) { $0.edit = edit }
     }
 
     /// Starring is a library affordance, not an export setting: it must never
@@ -1108,7 +1111,9 @@ final class SessionStore: ObservableObject {
                 smartCrop: true,
                 clipURL: dir.appendingPathComponent("\(base).mp4"),
                 thumbURL: dir.appendingPathComponent("\(base).jpg"),
-                targetPlayer: updated.target(forClip: clip.index))
+                targetPlayer: updated.target(forClip: clip.index),
+                edit: updated.renderedEdit ?? ClipEdit(),
+                speed: segments[clip.index].speed ?? 1)
             // Only this clip was re-cut, so only this clip's record moves —
             // leaving the rest of `renderedClipTargets` alone keeps the
             // "settings changed" hint honest about the clips still stale.
@@ -1345,6 +1350,7 @@ final class SessionStore: ObservableObject {
         let orient = s.effectiveOrientation
         let pro = isPro
         let caption = s.caption
+        let edit = s.effectiveEdit
         let useSmartCrop = isPro && s.effectiveSmartCrop
         let target = useSmartCrop ? s.targetPlayer : nil
         // A new detection's rallies don't line up with the old per-clip picks.
@@ -1353,7 +1359,7 @@ final class SessionStore: ObservableObject {
         let stamp = RenderStamp(orientation: orient, pro: pro, smartCrop: useSmartCrop,
                                 caption: caption, clipTargets: perClip,
                                 targetPlayer: target, rallies: segments, lang: lang,
-                                look: RenderStamp.currentLook)
+                                look: RenderStamp.currentLook, edit: edit)
         // A first render that stopped part-way, with nothing changed since:
         // keep its clips and make only the missing ones. Redoing all of them
         // used to take as long as the first try and meet the same failure.
@@ -1414,7 +1420,8 @@ final class SessionStore: ObservableObject {
                             // portrait clip kept a 16:9 still, and the card had to
                             // stretch to hold it.
                             thumbURL: cdir.appendingPathComponent("\(base).jpg"),
-                            targetPlayer: useSmartCrop ? (perClip[String(i)] ?? target) : nil)
+                            targetPlayer: useSmartCrop ? (perClip[String(i)] ?? target) : nil,
+                            edit: edit, speed: seg.speed ?? 1)
                         #if DEBUG
                         DebugLog.write("clip \(i + 1) done state=\(UIApplication.shared.applicationState.rawValue)")
                         #endif
@@ -1464,6 +1471,7 @@ final class SessionStore: ObservableObject {
                 $0.renderedTargetPlayer = target
                 $0.renderedClipTargets = perClip
                 $0.renderedLook = RenderStamp.currentLook
+                $0.renderedEdit = edit
                 $0.ranksStale = nil
                 $0.partialRender = nil
             }
@@ -1521,7 +1529,7 @@ final class SessionStore: ObservableObject {
     /// often with the previous clip's re-render) or the re-render failed.
     /// TrimSheet used to close on both as though the trim had taken.
     @discardableResult
-    func trimClip(_ clip: ClipInfo, start: Double, end: Double) async -> Bool {
+    func trimClip(_ clip: ClipInfo, start: Double, end: Double, speed: Double? = nil) async -> Bool {
         guard let session = sessions.first(where: { $0.id == clip.sessionID }),
               var segments = session.segments,
               clip.index < segments.count,
@@ -1530,6 +1538,7 @@ final class SessionStore: ObservableObject {
         segments[clip.index].start = max(0, start)
         segments[clip.index].end = min(session.duration, end)
         segments[clip.index].trimmed = true
+        if let speed { segments[clip.index].speed = speed == 1 ? nil : speed }
         let segment = segments[clip.index]
         mutate(session.id) {
             $0.segments = segments
@@ -1583,7 +1592,10 @@ final class SessionStore: ObservableObject {
                 // The session's own look, not the newest: one re-cut clip must
                 // not be framed differently from the rest of the match.
                 liteZoom: RenderStamp.zooms(session.renderedOrientation != nil
-                                            ? session.renderedLook : partial?.look))
+                                            ? session.renderedLook : partial?.look),
+                edit: (session.renderedOrientation != nil ? session.renderedEdit : partial?.edit)
+                    ?? ClipEdit(),
+                speed: segment.speed ?? 1)
             syncPartialStamp(session.id)
             objectWillChange.send()
             return true
@@ -1661,6 +1673,7 @@ final class SessionStore: ObservableObject {
                 s.renderedTargetPlayer = stamp.targetPlayer
                 s.renderedClipTargets = stamp.smartCrop ? (s.clipTargets ?? [:]) : [:]
                 s.renderedLook = stamp.look
+                s.renderedEdit = stamp.edit
                 s.partialRender = nil
             }
         }
@@ -1752,6 +1765,30 @@ final class SessionStore: ObservableObject {
 
     var reelsDir: URL { root.appendingPathComponent("reels", isDirectory: true) }
 
+    /// Songs picked for reels, copied in so a reel can be rebuilt with the
+    /// same one later. Each in a folder of its own so the file keeps its name.
+    var musicDir: URL { root.appendingPathComponent("music", isDirectory: true) }
+    func musicURL(_ name: String) -> URL? {
+        let url = musicDir.appendingPathComponent(name)
+        return fm.fileExists(atPath: url.path) ? url : nil
+    }
+
+    /// Copies a song the user picked in Files. Returns its stored name.
+    func importMusic(from url: URL) -> String? {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let name = UUID().uuidString.prefix(8).lowercased() + "/" + url.lastPathComponent
+        let dest = musicDir.appendingPathComponent(name)
+        do {
+            try fm.createDirectory(at: dest.deletingLastPathComponent(),
+                                   withIntermediateDirectories: true)
+            try fm.copyItem(at: url, to: dest)
+            return name
+        } catch {
+            return nil
+        }
+    }
+
     /// Finished reels, newest first.
     ///
     /// They used to be written under a name made from the settings, so building
@@ -1805,6 +1842,8 @@ final class SessionStore: ObservableObject {
                    caption: CaptionSettings? = nil,
                    hook: Bool = false,
                    replay: Bool = false,
+                   music: String? = nil,
+                   gameVolume: Double = 0.4,
                    createdAt: Date? = nil) async -> (url: URL, plan: ReelPlan)? {
         // The order is the caller's. ReelSheet seeds it by timeline and lets
         // the user drag rows around; sorting here again silently undid that
@@ -1859,7 +1898,8 @@ final class SessionStore: ObservableObject {
                                   targetPlayer: useSmartCrop
                                       ? pair.session.target(forClip: pair.clip.index) : nil,
                                   sessionID: sid,
-                                  hookTitle: hook ? hookTitle(for: pair) : nil))
+                                  hookTitle: hook ? hookTitle(for: pair) : nil,
+                                  edit: pair.session.effectiveEdit))
         }
         guard !items.isEmpty else {
             progress[key] = .failed(missingMessage(key))
@@ -1889,7 +1929,7 @@ final class SessionStore: ObservableObject {
                                        hook: hook, replay: replay)
             try? JSONEncoder().encode(placeholder)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
-            let plan = try await ReelBuilder.build(
+            var plan = try await ReelBuilder.build(
                 items: items, target: target, frame: frame, pace: pace,
                 pro: pro, hook: hook, replay: replay, to: out,
                 reload: { [weak self] sid in
@@ -1904,6 +1944,17 @@ final class SessionStore: ObservableObject {
                 }) { [weak self] done, total in
                     for sid in involved { self?.progress[sid] = .reel(done: done, total: total) }
                 }
+            // Never fatal: a reel without its song beats no reel.
+            var musicUsed: String?
+            if let music {
+                do {
+                    guard let file = musicURL(music) else { throw CocoaError(.fileNoSuchFile) }
+                    try await ReelBuilder.addMusic(to: out, music: file, game: Float(gameVolume))
+                    musicUsed = music
+                } catch {
+                    plan.musicFailed = true
+                }
+            }
             // Poster and sidecar, so the Reels tab can show it without opening
             // every file.
             try? ClipExporter.writeThumbnail(
@@ -1918,7 +1969,8 @@ final class SessionStore: ObservableObject {
                                 // What the file holds: a replay asked for but
                                 // skipped (slow footage, a failure) is off, so
                                 // the toggle and a rebuild match the video.
-                                hook: hook, replay: replay && plan.replayed)
+                                hook: hook, replay: replay && plan.replayed,
+                                music: musicUsed, gameVolume: musicUsed == nil ? nil : gameVolume)
             try? JSONEncoder().encode(info)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
             objectWillChange.send()
@@ -2065,6 +2117,8 @@ final class SessionStore: ObservableObject {
                               caption: caption,
                               hook: reel.hook ?? false,
                               replay: reel.replay ?? false,
+                              music: reel.music,
+                              gameVolume: reel.gameVolume ?? 0.4,
                               createdAt: reel.createdAt)
         else { return nil }
         deleteReel(reel)

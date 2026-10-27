@@ -25,6 +25,7 @@ struct TrimSheet: View {
     @State private var working = false
     @State private var message: String?
     @State private var splitAt: Double
+    @State private var speed: Double
     /// Just the reachable window of the original, for the thumbnail strip.
     @State private var windowAsset: AVAsset?
     /// The original could not be opened (deleted from Photos). Without this
@@ -44,6 +45,7 @@ struct TrimSheet: View {
         _start = State(initialValue: clip.segment.start)
         _end = State(initialValue: clip.segment.end)
         _splitAt = State(initialValue: (clip.segment.start + clip.segment.end) / 2)
+        _speed = State(initialValue: clip.segment.speed ?? 1)
     }
 
     private var session: Session? { store.sessions.first { $0.id == clip.sessionID } }
@@ -57,6 +59,7 @@ struct TrimSheet: View {
     }
     private var changed: Bool {
         abs(start - clip.segment.start) > 0.05 || abs(end - clip.segment.end) > 0.05
+            || speed != (clip.segment.speed ?? 1)
     }
     /// The strikes the detector heard, in source seconds. Rallies detected
     /// before these were kept have none, and a trim can leave one outside the
@@ -115,9 +118,26 @@ struct TrimSheet: View {
                         HStack {
                             Text(L.s("length", lang)).font(.caption).foregroundStyle(.secondary)
                             Spacer()
-                            Text(fmtDur(end - start))
+                            // What the clip will run for, at its speed.
+                            Text(fmtDur((end - start) / speed))
                                 .font(.subheadline.monospacedDigit().bold())
-                                .foregroundStyle(Theme.accent)
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(L.s("speed_title", lang)).font(.caption).foregroundStyle(.secondary)
+                            Picker(L.s("speed_title", lang), selection: $speed) {
+                                Text("0.5×").tag(0.5)
+                                Text("1×").tag(1.0)
+                                Text("1.5×").tag(1.5)
+                                Text("2×").tag(2.0)
+                            }
+                            .pickerStyle(.segmented)
+                            .disabled(working)
+                            if speed < 1 {
+                                Text(L.s("speed_hint", lang))
+                                    .font(.caption).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
 
                         if !hits.isEmpty {
@@ -189,7 +209,8 @@ struct TrimSheet: View {
                             }
                             Task {
                                 working = true
-                                let ok = await store.trimClip(clip, start: start, end: end)
+                                let ok = await store.trimClip(clip, start: start, end: end,
+                                                              speed: speed)
                                 working = false
                                 if ok { dismiss() } else { message = L.s("render_failed", lang) }
                             }

@@ -711,6 +711,10 @@ struct SessionDetailView: View {
 
             section("sec_crop") {
                 settingRows([(L.s("aspect", lang), AnyView(aspectPicker(session)))])
+                // The bands above and below a wide frame in a free vertical clip.
+                if OutputFrame(session.effectiveOrientation).isPortrait {
+                    settingRows([(L.s("backdrop_title", lang), AnyView(backdropPicker(session)))])
+                }
 
                 // The crop controls stay visible on a wide session — hiding
                 // them made tracking look like it didn't exist — with one line
@@ -756,6 +760,10 @@ struct SessionDetailView: View {
             Divider()
 
             section("sec_export") {
+                settingRows([
+                    (L.s("filter_title", lang), AnyView(filterPicker(session))),
+                    (L.s("sound_title", lang), AnyView(soundPicker(session))),
+                ])
                 // free users still see what the export would look like on Pro
                 HStack(spacing: 6) {
                     Text(L.s("export_quality", lang))
@@ -903,6 +911,46 @@ struct SessionDetailView: View {
             Text(L.s("loose", lang)).tag(Sensitivity.high)
         }
         .pickerStyle(.segmented)
+    }
+
+    /// One field of the session's look and sound, written back whole.
+    private func editBinding<T>(_ session: Session,
+                                _ key: WritableKeyPath<ClipEdit, T>) -> Binding<T> {
+        Binding(get: { session.effectiveEdit[keyPath: key] },
+                set: { v in
+                    var edit = session.effectiveEdit
+                    edit[keyPath: key] = v
+                    store.setEdit(session, edit)
+                })
+    }
+
+    private func filterPicker(_ session: Session) -> some View {
+        Picker(L.s("filter_title", lang), selection: editBinding(session, \.filter)) {
+            ForEach(ClipFilter.allCases) { f in
+                Text(L.s("filter_" + f.rawValue, lang)).tag(f)
+            }
+        }
+        .pickerStyle(.menu)
+        .tint(Theme.accent)
+    }
+
+    private func soundPicker(_ session: Session) -> some View {
+        Picker("", selection: editBinding(session, \.volume)) {
+            Text(L.s("sound_full", lang)).tag(1.0)
+            Text(L.s("sound_low", lang)).tag(0.4)
+            Text(L.s("sound_off", lang)).tag(0.0)
+        }
+        .pickerStyle(.segmented)
+        .dynamicTypeSize(...DynamicTypeSize.large)
+    }
+
+    private func backdropPicker(_ session: Session) -> some View {
+        Picker("", selection: editBinding(session, \.backdrop)) {
+            Text(L.s("backdrop_blur", lang)).tag(Backdrop.blur)
+            Text(L.s("backdrop_black", lang)).tag(Backdrop.black)
+        }
+        .pickerStyle(.segmented)
+        .dynamicTypeSize(...DynamicTypeSize.large)
     }
 
     private func aspectPicker(_ session: Session) -> some View {
@@ -1572,7 +1620,7 @@ struct SessionDetailView: View {
     /// numbers), per-clip players.
     private func hasEdits(_ session: Session) -> Bool {
         let segs = session.segments ?? []
-        return segs.contains { $0.isFavourite || $0.trimmed == true }
+        return segs.contains { $0.isFavourite || $0.trimmed == true || $0.speed != nil }
             || (segs.compactMap(\.number).max() ?? 0) > segs.count
             || !(session.clipTargets ?? [:]).isEmpty
     }

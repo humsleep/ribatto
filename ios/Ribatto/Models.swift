@@ -189,6 +189,43 @@ struct RallySegment: Codable, Equatable {
     /// Starred by the user, for the one clip out of forty worth finding again.
     var favourite: Bool? = nil
     var isFavourite: Bool { favourite ?? false }
+
+    /// Playback speed of this clip, set in the trim sheet. nil = 1×. Clips
+    /// only: a reel keeps its own timing.
+    var speed: Double? = nil
+}
+
+// MARK: - Look and sound
+
+/// Colour grade burned into a match's clips.
+enum ClipFilter: String, Codable, CaseIterable, Identifiable {
+    case original, vivid, warm, cool, mono
+    var id: String { rawValue }
+}
+
+/// What fills the bands above and below a wide frame in a free vertical clip.
+enum Backdrop: String, Codable, CaseIterable, Identifiable {
+    case blur, black
+    var id: String { rawValue }
+}
+
+/// A match's look and sound, applied to every clip. The defaults are what
+/// clips were before this existed, so nil and `ClipEdit()` mean the same.
+struct ClipEdit: Codable, Equatable {
+    var filter: ClipFilter = .original
+    var backdrop: Backdrop = .blur
+    /// Match sound: 1 as recorded, 0 silent.
+    var volume: Double = 1
+
+    init() {}
+
+    // Field by field, so a key added later does not fail an older file.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        filter = (try? c.decodeIfPresent(ClipFilter.self, forKey: .filter)) ?? .original
+        backdrop = (try? c.decodeIfPresent(Backdrop.self, forKey: .backdrop)) ?? .blur
+        volume = (try? c.decodeIfPresent(Double.self, forKey: .volume)) ?? 1
+    }
 }
 
 
@@ -369,6 +406,11 @@ struct Session: Identifiable, Codable, Equatable {
     /// free mild zoom existed. A single-clip re-render matches it, so a trim
     /// in an old session does not drop one zoomed clip among unzoomed ones.
     var renderedLook: Int? = nil
+    /// Colour, vertical background and sound for the clips, and what the last
+    /// render used. Free for everyone.
+    var edit: ClipEdit? = nil
+    var renderedEdit: ClipEdit? = nil
+    var effectiveEdit: ClipEdit { edit ?? ClipEdit() }
     /// The burned-in caption carries `{rank}` and a delete has since changed
     /// the ranking, so the clips say "Best #3" about a rally that is now #2.
     /// Shown as an ordinary pending change; the next render clears it.
@@ -447,6 +489,7 @@ struct Session: Identifiable, Codable, Equatable {
         return renderedOrientation != effectiveOrientation
             || ranksStale == true
             || (renderedCaption ?? CaptionSettings()) != (caption ?? CaptionSettings())
+            || (renderedEdit ?? ClipEdit()) != effectiveEdit
             // Compared against what the last render was ALLOWED to do. A free
             // render can never satisfy a Pro flag, so comparing the raw setting
             // left every free session permanently claiming unapplied changes
@@ -493,11 +536,13 @@ struct Session: Identifiable, Codable, Equatable {
         let segs = segments ?? []
         return stamp.orientation == effectiveOrientation
             && (stamp.caption ?? CaptionSettings()) == (caption ?? CaptionSettings())
+            && (stamp.edit ?? ClipEdit()) == effectiveEdit
             && (!stamp.pro || (stamp.smartCrop == effectiveSmartCrop
                                && (!stamp.smartCrop || stamp.targetPlayer == targetPlayer)))
             && stamp.rallies.count == segs.count
             && zip(stamp.rallies, segs).allSatisfy {
                 abs($0.start - $1.start) < 1e-6 && abs($0.end - $1.end) < 1e-6
+                    && ($0.speed ?? 1) == ($1.speed ?? 1)
             }
     }
 
@@ -509,7 +554,8 @@ struct Session: Identifiable, Codable, Equatable {
              caption, renderedCaption,
              smartCrop, renderedSmartCrop, detectionFoundNothing,
              targetPlayer, renderedTargetPlayer,
-             clipTargets, renderedClipTargets, partialRender, renderedLook, ranksStale
+             clipTargets, renderedClipTargets, partialRender, renderedLook, ranksStale,
+             edit, renderedEdit
     }
 }
 
@@ -536,6 +582,8 @@ struct RenderStamp: Codable, Equatable {
     /// rather than finished with clips of a different look.
     var look: Int? = nil
     static let currentLook = 2
+    /// Colour, background and sound. nil on stamps from before; same as default.
+    var edit: ClipEdit? = nil
 
     /// Whether a render with this look zooms the free frame.
     static func zooms(_ look: Int?) -> Bool { (look ?? 1) >= 2 }
@@ -547,11 +595,13 @@ struct RenderStamp: Codable, Equatable {
     func matches(_ other: RenderStamp) -> Bool {
         orientation == other.orientation && pro == other.pro && look == other.look
             && smartCrop == other.smartCrop && caption == other.caption
+            && (edit ?? ClipEdit()) == (other.edit ?? ClipEdit())
             && targetPlayer == other.targetPlayer
             && (lang == nil || other.lang == nil || lang == other.lang)
             && rallies.count == other.rallies.count
             && zip(rallies, other.rallies).allSatisfy {
                 abs($0.start - $1.start) < 1e-6 && abs($0.end - $1.end) < 1e-6
+                    && ($0.speed ?? 1) == ($1.speed ?? 1)
             }
     }
 }
@@ -601,6 +651,10 @@ struct ReelInfo: Codable, Identifiable, Equatable {
     /// nil on reels made before either existed: rebuilt without them.
     var hook: Bool? = nil
     var replay: Bool? = nil
+    /// Background music: a file name in the music folder, and how loud the
+    /// match sound stays under it. nil = no music.
+    var music: String? = nil
+    var gameVolume: Double? = nil
 
     // Filled in when listed; never written to the sidecar.
     var url: URL = URL(fileURLWithPath: "/")
@@ -613,7 +667,7 @@ struct ReelInfo: Codable, Identifiable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case id, createdAt, target, frame, pace, preset, rallies, duration, place
-        case sources, caption, hook, replay
+        case sources, caption, hook, replay, music, gameVolume
     }
 }
 

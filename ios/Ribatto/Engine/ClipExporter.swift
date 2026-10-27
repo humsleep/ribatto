@@ -222,7 +222,9 @@ enum ClipExporter {
                        thumbURL: URL?,
                        targetPlayer: TargetPlayer? = nil,
                        hook: ReelHook? = nil,
-                       liteZoom: Bool = true) async throws {
+                       liteZoom: Bool = true,
+                       edit: ClipEdit = ClipEdit(),
+                       speed: Double = 1) async throws {
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
             throw NSError(domain: "Ribatto", code: 10,
                           userInfo: [NSLocalizedDescriptionKey: "No video track"])
@@ -404,8 +406,9 @@ enum ClipExporter {
             // a feed full of loud posts it just disappears. Lift the whole clip
             // by one measured gain — a static gain keeps the impact sounds the
             // detector keys on intact, where a compressor would flatten them.
+            // The user's sound level rides on top of the measured lift.
             let gain = await loudnessGain(asset: asset, track: atrack,
-                                          from: start, to: start + dur)
+                                          from: start, to: start + dur) * Float(edit.volume)
             if gain != 1 {
                 ap.setVolume(gain, at: .zero)
             }
@@ -431,7 +434,14 @@ enum ClipExporter {
         var compose: Compose?
         if blurFill {
             let size = out
-            compose = { image in ClipExporter.blurFilled(image, out: size) }
+            compose = edit.backdrop == .black
+                ? { image in ClipExporter.blackFilled(image, out: size) }
+                : { image in ClipExporter.blurFilled(image, out: size) }
+        }
+        // Graded after the fill, under the watermark and caption.
+        if edit.filter != .original {
+            let filled = compose, filter = edit.filter
+            compose = { image in ClipExporter.graded(filled?(image) ?? image, filter) }
         }
         // A reel's opening title, over the first seconds only.
         var timed: Timed?
@@ -482,12 +492,87 @@ enum ClipExporter {
                 throw error
             }
         }
-        try? FileManager.default.removeItem(at: clipURL)
-        try FileManager.default.moveItem(at: staging, to: clipURL)
+        if speed != 1 {
+            let timed = staging.deletingLastPathComponent()
+                .appendingPathComponent("speed_" + clipURL.lastPathComponent)
+            defer { try? FileManager.default.removeItem(at: staging) }
+            try await retime(staging, speed: speed, out: out, fps: Float(fps), pro: pro, to: timed)
+            try? FileManager.default.removeItem(at: clipURL)
+            try FileManager.default.moveItem(at: timed, to: clipURL)
+        } else {
+            try? FileManager.default.removeItem(at: clipURL)
+            try FileManager.default.moveItem(at: staging, to: clipURL)
+        }
 
         if let thumbURL {
             try? writeThumbnail(of: clipURL, at: min(1.0, dur / 2), to: thumbURL)
         }
+    }
+
+    // MARK: - Speed
+
+    /// Plays a finished clip at `speed`. A second pass over the encoded file, so
+    /// the framing, caption and hook above all stay in source time. Pitch is
+    /// kept (spectral stretch); a slowed 30 fps clip repeats frames.
+    private static func retime(_ url: URL, speed: Double, out: CGSize, fps: Float,
+                               pro: Bool, to dest: URL) async throws {
+        let asset = AVURLAsset(url: url)
+        let duration = try await asset.load(.duration)
+        let range = CMTimeRange(start: .zero, duration: duration)
+        let comp = AVMutableComposition()
+        for type in [AVMediaType.video, .audio] {
+            for track in try await asset.loadTracks(withMediaType: type) {
+                let t = comp.addMutableTrack(withMediaType: type,
+                                             preferredTrackID: kCMPersistentTrackID_Invalid)
+                try t?.insertTimeRange(range, of: track, at: .zero)
+            }
+        }
+        let scaled = CMTimeMultiplyByFloat64(duration, multiplier: 1 / speed)
+        comp.scaleTimeRange(range, toDuration: scaled)
+        let video = try await AVMutableVideoComposition.videoComposition(withPropertiesOf: comp)
+        video.renderSize = out
+        try? FileManager.default.removeItem(at: dest)
+        try await encode(asset: comp, composition: video, audioMix: nil,
+                         timeRange: CMTimeRange(start: .zero, duration: scaled),
+                         out: out, fps: fps, pro: pro, overlay: nil, to: dest)
+    }
+
+    // MARK: - Look
+
+    /// The colour presets. Matrix tints rather than white-balance filters: the
+    /// same numbers give the same look on every source.
+    static func graded(_ image: CIImage, _ filter: ClipFilter) -> CIImage {
+        func tint(r: CGFloat, b: CGFloat) -> CIImage {
+            image.applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: r, y: 0, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: b, w: 0),
+            ])
+        }
+        switch filter {
+        case .original:
+            return image
+        case .vivid:
+            return image.applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: 1.3, kCIInputContrastKey: 1.08])
+        case .warm:
+            return tint(r: 1.07, b: 0.9)
+                .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 1.1])
+        case .cool:
+            return tint(r: 0.93, b: 1.08)
+        case .mono:
+            return image.applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: 0, kCIInputContrastKey: 1.12])
+        }
+    }
+
+    /// `blurFilled`'s layout over plain black.
+    static func blackFilled(_ frame: CIImage, out: CGSize) -> CIImage {
+        let fit = frame.extent
+        let centred = frame.transformed(by: CGAffineTransform(
+            translationX: -fit.minX + (out.width - fit.width) / 2,
+            y: -fit.minY + (out.height - fit.height) / 2))
+        return centred.composited(over: CIImage(color: .black)
+            .cropped(to: CGRect(origin: .zero, size: out)))
     }
 
     // MARK: - Blur fill
@@ -941,6 +1026,8 @@ enum ClipExporter {
                 AVLinearPCMIsNonInterleaved: false,
             ])
             out.audioMix = audioMix
+            // Pitch kept when a retimed clip stretches the audio.
+            out.audioTimePitchAlgorithm = .spectral
             let input = AVAssetWriterInput(mediaType: .audio, outputSettings: [
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVEncoderBitRateKey: NSNumber(value: 128_000),
@@ -1461,9 +1548,10 @@ enum ClipExporter {
     ///   export that stops making progress never calls back on its own, and
     ///   this path had no watchdog — the render spun with no way out.
     static func export(session: AVAssetExportSession, to url: URL,
+                       fileType: AVFileType = .mp4,
                        limit: Double = 600) async throws {
         session.outputURL = url
-        session.outputFileType = .mp4
+        session.outputFileType = fileType
         nonisolated(unsafe) let watched = session
         let watchdog = Task {
             try await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
