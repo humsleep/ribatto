@@ -1,7 +1,6 @@
 import AVKit
 import StoreKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// The clips a reel is being built from. Wrapped in a type so it can drive a
 /// `.sheet(item:)` — an array of tuples can't.
@@ -88,11 +87,6 @@ struct ReelSheet: View {
     @State private var done: (url: URL, plan: ReelPlan)?
     @State private var player: AVPlayer?
     @State private var message: String?
-    /// The song under the reel (a name in `SessionStore.musicDir`, empty for
-    /// none) and the match sound left under it. Kept for the next reel.
-    @AppStorage("rc_reel_music") private var music = ""
-    @AppStorage("rc_reel_game_volume") private var gameVolume = 0.4
-    @State private var pickingMusic = false
     @State private var savedToPhotos = false
     @State private var showPass = false
     /// Whether the reel on screen was made on a PASS. A free one is what the
@@ -132,12 +126,7 @@ struct ReelSheet: View {
     private var currentRecipe: String {
         chosen.map(\.id).joined(separator: ",") + "|" + pace.rawValue + "|"
             + frame.rawValue + "|" + String(captionOn) + "|" + String(hookOn)
-            + "|" + String(replayOn) + "|" + (musicChosen ?? "") + "|" + String(gameVolume)
-    }
-
-    /// The picked song, if its file is still there.
-    private var musicChosen: String? {
-        music.isEmpty || store.musicURL(music) == nil ? nil : music
+            + "|" + String(replayOn)
     }
     private var changed: Bool { builtWith != currentRecipe }
 
@@ -378,10 +367,6 @@ struct ReelSheet: View {
                     Label(L.s("reel_trimmed", lang), systemImage: "scissors")
                         .font(.caption).foregroundStyle(Theme.warning)
                 }
-                if done.plan.musicFailed {
-                    Label(L.s("music_failed", lang), systemImage: "music.note")
-                        .font(.caption).foregroundStyle(Theme.warning)
-                }
                 if done.plan.dropped > 0 {
                     Label(String(format: L.s(done.plan.dropped == 1 ? "reel_dropped_one_fmt" : "reel_dropped_fmt", lang),
                                  done.plan.dropped),
@@ -512,7 +497,6 @@ struct ReelSheet: View {
             .tint(Theme.accent)
             .padding(14)
             .rcCard()
-            musicCard
             // Only once something differs from the reel on screen; after a
             // failure there is no reel, so it is always offered.
             if changed || done == nil {
@@ -753,8 +737,7 @@ struct ReelSheet: View {
                                               frame: frame, pace: pace,
                                               preset: nil,
                                               caption: captionOn ? nil : CaptionSettings(),
-                                              hook: hookOn, replay: replayOn,
-                                              music: musicChosen, gameVolume: gameVolume)
+                                              hook: hookOn, replay: replayOn)
         else {
             failure = pairs.first(where: { store.sourceMissing($0.session) })
                 .map { L.s(store.sourceProblemKey($0.session), lang) }
@@ -791,67 +774,6 @@ struct ReelSheet: View {
         // the sheet is closed. Not for a reel made on a PASS, even if the
         // pass ran out while it was being made.
         if !onPass { ads.markInterstitialDue() }
-    }
-
-    // MARK: - Music
-
-    /// The song under the reel and how much of the match stays audible.
-    private var musicCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ViewThatFits(in: .horizontal) {
-                HStack {
-                    Text(L.s("music_title", lang)).font(.subheadline)
-                    Spacer(minLength: 12)
-                    musicMenu
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L.s("music_title", lang)).font(.subheadline)
-                    musicMenu
-                }
-            }
-            if musicChosen != nil {
-                Text(L.s("music_game", lang)).font(.caption).foregroundStyle(.secondary)
-                Picker(L.s("music_game", lang), selection: $gameVolume) {
-                    Text(L.s("sound_off", lang)).tag(0.0)
-                    Text(L.s("sound_low", lang)).tag(0.4)
-                    Text(L.s("sound_full", lang)).tag(1.0)
-                }
-                .pickerStyle(.segmented)
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                Text(L.s("music_note", lang))
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(14)
-        .rcCard()
-        .fileImporter(isPresented: $pickingMusic, allowedContentTypes: [.audio]) { result in
-            guard case .success(let url) = result else { return }
-            if let name = store.importMusic(from: url) {
-                music = name
-            } else {
-                message = L.s("music_import_failed", lang)
-            }
-        }
-    }
-
-    private var musicMenu: some View {
-        Menu {
-            Button { pickingMusic = true } label: {
-                Label(L.s("music_pick", lang), systemImage: "folder")
-            }
-            if musicChosen != nil {
-                Button(role: .destructive) { music = "" } label: {
-                    Label(L.s("music_none", lang), systemImage: "xmark")
-                }
-            }
-        } label: {
-            Label(musicChosen.map { (($0 as NSString).lastPathComponent as NSString)
-                                        .deletingPathExtension } ?? L.s("music_none", lang),
-                  systemImage: "music.note")
-                .font(.subheadline)
-                .lineLimit(1)
-        }
     }
 
     // MARK: - Pass offer

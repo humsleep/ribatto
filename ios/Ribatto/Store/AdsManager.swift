@@ -151,6 +151,24 @@ final class AdsManager: NSObject, ObservableObject {
     private var pendingSince: Date?
     private static let pendingLifetime: TimeInterval = 600
 
+    /// A new player's first day owes no interstitials: their first reel used
+    /// to end in a full-screen ad. Read in `init`, at launch and before
+    /// onboarding can finish, so an install from before this rule (already
+    /// onboarded) counts as old and keeps its ads.
+    private static let firstSeen: Date = {
+        let d = UserDefaults.standard, key = "rc_first_seen"
+        if let seen = d.object(forKey: key) as? Date { return seen }
+        let seen = d.bool(forKey: "rc_onboarded") ? Date.distantPast : Date()
+        d.set(seen, forKey: key)
+        return seen
+    }()
+    private static let graceDay: TimeInterval = 24 * 3600
+
+    override init() {
+        _ = Self.firstSeen
+        super.init()
+    }
+
     /// Whether the build carries a usable AdMob app id. The SDK throws at
     /// `start` when GADApplicationIdentifier is missing or malformed; checking
     /// first turns a forgotten Release setting into "no ads" rather than a
@@ -416,7 +434,7 @@ final class AdsManager: NSObject, ObservableObject {
     /// Records that a result has earned an interstitial without showing one.
     /// Free tier only: a pass that is running has no ads to owe.
     func markInterstitialDue() {
-        guard showing else { return }
+        guard showing, Date().timeIntervalSince(Self.firstSeen) > Self.graceDay else { return }
         pendingSince = Date()
         // Loaded now so it is ready by the time the user closes the result.
         loadInterstitial()

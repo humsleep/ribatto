@@ -220,7 +220,9 @@ struct ProBadge: View {
 
     var body: some View {
         Text(L.s("pro", lang).uppercased())
-            .font(.system(size: 10, weight: .black))
+            // 11pt and up with the text size, capped: 10pt Black closed up パス and 通行证.
+            .font(.caption2.weight(.heavy))
+            .dynamicTypeSize(...DynamicTypeSize.xLarge)
             .tracking(0.5)
             .fixedSize()
             .padding(.horizontal, 6).padding(.vertical, 2)

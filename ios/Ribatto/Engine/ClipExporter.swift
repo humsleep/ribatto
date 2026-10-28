@@ -1371,16 +1371,25 @@ enum ClipExporter {
         let edge = c.color.isLight
             ? CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.95)
             : CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.95)
+        // Anton and Bebas are Latin only. A caption they cannot set whole takes
+        // the condensed system face, as the hook does, instead of a heavy Latin
+        // word beside a thin fallback Korean one.
+        let font: CaptionFont = {
+            guard c.font == .anton || c.font == .bebas else { return c.font }
+            let set = CTFontCopyCharacterSet(resolveFont(c.font, size: 12)) as CharacterSet
+            return c.text.unicodeScalars.allSatisfy { set.contains($0) || $0.properties.isWhitespace }
+                ? c.font : .condensed
+        }()
         func render(_ fontSize: CGFloat) -> CGImage? {
             switch c.style {
             case .plain:
-                return textImage(c.text, font: c.font, fontSize: fontSize, color: fill, bar: nil)
+                return textImage(c.text, font: font, fontSize: fontSize, color: fill, bar: nil)
             case .bar:
-                return textImage(c.text, font: c.font, fontSize: fontSize, color: fill, bar: bar)
+                return textImage(c.text, font: font, fontSize: fontSize, color: fill, bar: bar)
             case .accent:
-                return textImage(c.text, font: c.font, fontSize: fontSize, color: onFill, bar: fill)
+                return textImage(c.text, font: font, fontSize: fontSize, color: onFill, bar: fill)
             case .outline:
-                return textImage(c.text, font: c.font, fontSize: fontSize, color: fill,
+                return textImage(c.text, font: font, fontSize: fontSize, color: fill,
                                  bar: nil, edge: edge)
             }
         }
@@ -1479,12 +1488,17 @@ enum ClipExporter {
                               clearOf occupied: CGRect? = nil) -> CIImage {
         let w = CGFloat(image.width), h = CGFloat(image.height)
         let margin = size.height * 0.042
-        let x = size.width - w - margin
-        var y = margin
-        // Bottom-right unless something is already there. CoreImage counts y
-        // from the bottom, so lifting the mark above the caption means moving
-        // to the caption's top edge plus a gap.
-        if let occupied, occupied.maxX > x, occupied.minY < y + h {
+        // Vertical: Instagram, TikTok and Shorts draw their caption, name and
+        // buttons over the bottom fifth and down the right edge, which hid the
+        // mark. There it sits on the left, a quarter of the way up.
+        let portrait = size.height > size.width
+        let x = portrait ? margin : size.width - w - margin
+        var y = portrait ? size.height * 0.24 : margin
+        // Unless something is already there. CoreImage counts y from the
+        // bottom, so lifting the mark above the caption means moving to the
+        // caption's top edge plus a gap.
+        if let occupied, occupied.maxX > x, occupied.minX < x + w,
+           occupied.minY < y + h, occupied.maxY > y {
             let lifted = occupied.maxY + margin * 0.4
             y = min(lifted, max(margin, size.height - h - margin))
         }
@@ -1548,10 +1562,9 @@ enum ClipExporter {
     ///   export that stops making progress never calls back on its own, and
     ///   this path had no watchdog — the render spun with no way out.
     static func export(session: AVAssetExportSession, to url: URL,
-                       fileType: AVFileType = .mp4,
                        limit: Double = 600) async throws {
         session.outputURL = url
-        session.outputFileType = fileType
+        session.outputFileType = .mp4
         nonisolated(unsafe) let watched = session
         let watchdog = Task {
             try await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))

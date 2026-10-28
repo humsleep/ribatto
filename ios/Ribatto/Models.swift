@@ -296,7 +296,8 @@ enum CaptionColor: String, Codable, CaseIterable, Identifiable {
     /// Bright enough that anything drawn on top of it has to be dark.
     var isLight: Bool {
         let c = rgb
-        return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b > 0.6
+        // 0.5, not 0.6: rose sat at 0.55 and got white text at 2.7:1.
+        return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b > 0.5
     }
 }
 
@@ -651,10 +652,6 @@ struct ReelInfo: Codable, Identifiable, Equatable {
     /// nil on reels made before either existed: rebuilt without them.
     var hook: Bool? = nil
     var replay: Bool? = nil
-    /// Background music: a file name in the music folder, and how loud the
-    /// match sound stays under it. nil = no music.
-    var music: String? = nil
-    var gameVolume: Double? = nil
 
     // Filled in when listed; never written to the sidecar.
     var url: URL = URL(fileURLWithPath: "/")
@@ -667,7 +664,7 @@ struct ReelInfo: Codable, Identifiable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case id, createdAt, target, frame, pace, preset, rallies, duration, place
-        case sources, caption, hook, replay, music, gameVolume
+        case sources, caption, hook, replay
     }
 }
 

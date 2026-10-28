@@ -28,7 +28,15 @@ struct CaptionEditorView: View {
         self.session = session
         self.previewFrame = OutputFrame(session.effectiveOrientation)
         self.onApply = nil
-        _draft = State(initialValue: session.caption ?? CaptionSettings())
+        _draft = State(initialValue: session.caption ?? Self.fresh(for: OutputFrame(session.effectiveOrientation)))
+    }
+
+    /// A new caption. Vertical ones start above the band Instagram and
+    /// TikTok cover with their own caption and buttons.
+    static func fresh(for frame: OutputFrame) -> CaptionSettings {
+        var c = CaptionSettings()
+        if frame.isPortrait { c.y = 0.70 }
+        return c
     }
 
     init(session: Session,
@@ -38,7 +46,7 @@ struct CaptionEditorView: View {
         self.session = session
         self.previewFrame = frame
         self.onApply = onApply
-        _draft = State(initialValue: caption ?? session.caption ?? CaptionSettings())
+        _draft = State(initialValue: caption ?? session.caption ?? Self.fresh(for: frame))
     }
 
     var body: some View {
@@ -323,7 +331,7 @@ struct CaptionEditorView: View {
                 .padding(.horizontal, 2)
             }
             Text(L.s("auto_text_d", lang))
-                .font(.caption2).foregroundStyle(.tertiary)
+                .font(.caption2).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -389,7 +397,8 @@ struct CaptionEditorView: View {
                 ForEach(Self.presets, id: \.key) { preset in
                     Button {
                         draft.x = preset.x
-                        draft.y = preset.y
+                        // "Bottom" on a vertical frame is the lowest spot Instagram leaves clear.
+                        draft.y = preset.key == "pos_bottom" && previewFrame.isPortrait ? 0.70 : preset.y
                         draft.enabled = true
                     } label: {
                         Text(L.s(preset.key, lang))

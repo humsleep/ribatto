@@ -11,6 +11,7 @@ struct RibattoApp: App {
     @StateObject private var ads = AdsManager()
     @AppStorage("rc_lang") private var lang = "en"
     @AppStorage("rc_onboarded") private var onboarded = false
+    @State private var tab = 0
     @Environment(\.scenePhase) private var scenePhase
     /// The title card on top of everything for a moment after launch. The
     /// app underneath loads at the same time, so it costs no startup time.
@@ -31,26 +32,29 @@ struct RibattoApp: App {
                     // last 63pt of every list and sliced the pinned selection
                     // bars in half (2026-09-23). Each tab root adds the slot
                     // inside its own stack instead.
-                    TabView {
+                    TabView(selection: $tab) {
                         LibraryView()
                             .tabItem {
                                 Label(L.s("library", lang), systemImage: "rectangle.stack")
                             }
+                            .tag(0)
                         // Three tabs. An "All Clips" tab repeated what each
                         // match already shows, filtered six ways, and was the
                         // tab testers opened once and never again (removed
                         // 2026-10-11). The reels the user built sit between
                         // the matches and the numbers: they are what the app
                         // is for.
-                        ReelsView()
+                        ReelsView(openLibrary: { tab = 0 })
                             .tabItem {
                                 Label(L.s("reels", lang),
                                       systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
                             }
-                        StatsView()
+                            .tag(1)
+                        StatsView(openLibrary: { tab = 0 })
                             .tabItem {
                                 Label(L.s("season", lang), systemImage: "chart.bar.fill")
                             }
+                            .tag(2)
                     }
                 } else {
                     OnboardingView(done: $onboarded)

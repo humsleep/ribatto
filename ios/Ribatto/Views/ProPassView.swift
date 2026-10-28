@@ -82,7 +82,7 @@ struct ProPassView: View {
             // rather than a brochure.
             Text(L.s("paywall_free_ads", lang))
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
         }
     }
 

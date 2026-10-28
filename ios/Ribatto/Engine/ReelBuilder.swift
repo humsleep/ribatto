@@ -182,8 +182,6 @@ struct ReelPlan: Equatable {
     var duration: Double = 0
     /// The slow winning-shot replay made it in.
     var replayed = false
-    /// Music was asked for and could not be added; the reel went out without it.
-    var musicFailed = false
 }
 
 enum ReelBuilder {
@@ -464,96 +462,5 @@ extension RallySegment {
         cut.start = max(start, first - ReelPace.leadIn)
         cut.end = min(end, last + ReelPace.tailOut)
         return cut.end - cut.start > 1 ? cut : self
-    }
-}
-
-// MARK: - Music
-
-extension ReelBuilder {
-    /// Seconds the music fades out over at the end of the reel.
-    static let musicFade = 1.5
-
-    /// Lays `music` under a finished reel, looped to its length and faded out,
-    /// with the match sound kept at `game`. The picture is copied, not
-    /// re-encoded: the sound is mixed into a file of its own and the two are
-    /// joined. On failure the reel is left as it was.
-    static func addMusic(to reel: URL, music: URL, game: Float) async throws {
-        func fail(_ text: String) -> NSError {
-            NSError(domain: "Ribatto", code: 51, userInfo: [NSLocalizedDescriptionKey: text])
-        }
-        let video = AVURLAsset(url: reel)
-        let song = AVURLAsset(url: music)
-        let length = try await video.load(.duration)
-        let songLength = try await song.load(.duration)
-        guard let songTrack = try await song.loadTracks(withMediaType: .audio).first,
-              songLength.seconds > 0.5, length.seconds > 0 else { throw fail("No usable music") }
-        let dir = reel.deletingLastPathComponent()
-        let mixURL = dir.appendingPathComponent("mix_" + reel.deletingPathExtension().lastPathComponent + ".m4a")
-        let joinedURL = dir.appendingPathComponent("music_" + reel.lastPathComponent)
-        try? FileManager.default.removeItem(at: mixURL)
-        try? FileManager.default.removeItem(at: joinedURL)
-        defer {
-            try? FileManager.default.removeItem(at: mixURL)
-            try? FileManager.default.removeItem(at: joinedURL)
-        }
-        let whole = CMTimeRange(start: .zero, duration: length)
-
-        // 1) Sound only: the reel's own track under the song.
-        let sound = AVMutableComposition()
-        var params: [AVMutableAudioMixInputParameters] = []
-        if let own = try await video.loadTracks(withMediaType: .audio).first,
-           let t = sound.addMutableTrack(withMediaType: .audio,
-                                         preferredTrackID: kCMPersistentTrackID_Invalid) {
-            try t.insertTimeRange(whole, of: own, at: .zero)
-            let p = AVMutableAudioMixInputParameters(track: t)
-            p.setVolume(game, at: .zero)
-            params.append(p)
-        }
-        guard let m = sound.addMutableTrack(withMediaType: .audio,
-                                            preferredTrackID: kCMPersistentTrackID_Invalid)
-        else { throw fail("No music track") }
-        var cursor = CMTime.zero
-        while cursor < length {
-            let piece = CMTimeMinimum(songLength, length - cursor)
-            try m.insertTimeRange(CMTimeRange(start: .zero, duration: piece), of: songTrack, at: cursor)
-            cursor = cursor + piece
-        }
-        let p = AVMutableAudioMixInputParameters(track: m)
-        let fade = CMTime(seconds: min(musicFade, length.seconds / 3), preferredTimescale: 600)
-        p.setVolume(1, at: .zero)
-        p.setVolumeRamp(fromStartVolume: 1, toEndVolume: 0,
-                        timeRange: CMTimeRange(start: length - fade, duration: fade))
-        params.append(p)
-        let mix = AVMutableAudioMix()
-        mix.inputParameters = params
-        guard let soundExport = AVAssetExportSession(asset: sound,
-                                                     presetName: AVAssetExportPresetAppleM4A)
-        else { throw fail("Cannot mix") }
-        soundExport.audioMix = mix
-        soundExport.timeRange = whole
-        try await ClipExporter.export(session: soundExport, to: mixURL, fileType: .m4a)
-
-        // 2) The reel's picture with that sound, copied as is.
-        let mixed = AVURLAsset(url: mixURL)
-        let joined = AVMutableComposition()
-        guard let v = try await video.loadTracks(withMediaType: .video).first,
-              let a = try await mixed.loadTracks(withMediaType: .audio).first,
-              let vt = joined.addMutableTrack(withMediaType: .video,
-                                              preferredTrackID: kCMPersistentTrackID_Invalid),
-              let at = joined.addMutableTrack(withMediaType: .audio,
-                                              preferredTrackID: kCMPersistentTrackID_Invalid)
-        else { throw fail("Cannot join") }
-        try vt.insertTimeRange(whole, of: v, at: .zero)
-        vt.preferredTransform = try await v.load(.preferredTransform)
-        let mixedLength = try await mixed.load(.duration)
-        try at.insertTimeRange(CMTimeRange(start: .zero, duration: CMTimeMinimum(mixedLength, length)),
-                               of: a, at: .zero)
-        guard let join = AVAssetExportSession(asset: joined,
-                                              presetName: AVAssetExportPresetPassthrough)
-        else { throw fail("Cannot join") }
-        join.shouldOptimizeForNetworkUse = true
-        try await ClipExporter.export(session: join, to: joinedURL)
-        try? FileManager.default.removeItem(at: reel)
-        try FileManager.default.moveItem(at: joinedURL, to: reel)
     }
 }

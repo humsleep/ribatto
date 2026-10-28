@@ -9,6 +9,8 @@ import SwiftUI
 struct ReelsView: View {
     @EnvironmentObject var store: SessionStore
     @AppStorage("rc_lang") private var lang = "en"
+    /// The empty state's way out: reels are made from a match.
+    var openLibrary: () -> Void = {}
 
     @State private var playing: ReelInfo?
     @State private var confirmDelete: ReelInfo?
@@ -34,6 +36,12 @@ struct ReelsView: View {
                             Text(L.s("reels_empty", lang))
                                 .font(.subheadline).foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
+                            Button(action: openLibrary) {
+                                Label(L.s(store.sessions.isEmpty ? "import_video" : "library", lang),
+                                      systemImage: store.sessions.isEmpty ? "plus" : "rectangle.stack")
+                            }
+                            .rcPrimary()
+                            .padding(.top, 6)
                         }
                         .padding(32)
                     }

@@ -1765,30 +1765,6 @@ final class SessionStore: ObservableObject {
 
     var reelsDir: URL { root.appendingPathComponent("reels", isDirectory: true) }
 
-    /// Songs picked for reels, copied in so a reel can be rebuilt with the
-    /// same one later. Each in a folder of its own so the file keeps its name.
-    var musicDir: URL { root.appendingPathComponent("music", isDirectory: true) }
-    func musicURL(_ name: String) -> URL? {
-        let url = musicDir.appendingPathComponent(name)
-        return fm.fileExists(atPath: url.path) ? url : nil
-    }
-
-    /// Copies a song the user picked in Files. Returns its stored name.
-    func importMusic(from url: URL) -> String? {
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        let name = UUID().uuidString.prefix(8).lowercased() + "/" + url.lastPathComponent
-        let dest = musicDir.appendingPathComponent(name)
-        do {
-            try fm.createDirectory(at: dest.deletingLastPathComponent(),
-                                   withIntermediateDirectories: true)
-            try fm.copyItem(at: url, to: dest)
-            return name
-        } catch {
-            return nil
-        }
-    }
-
     /// Finished reels, newest first.
     ///
     /// They used to be written under a name made from the settings, so building
@@ -1842,8 +1818,6 @@ final class SessionStore: ObservableObject {
                    caption: CaptionSettings? = nil,
                    hook: Bool = false,
                    replay: Bool = false,
-                   music: String? = nil,
-                   gameVolume: Double = 0.4,
                    createdAt: Date? = nil) async -> (url: URL, plan: ReelPlan)? {
         // The order is the caller's. ReelSheet seeds it by timeline and lets
         // the user drag rows around; sorting here again silently undid that
@@ -1929,7 +1903,7 @@ final class SessionStore: ObservableObject {
                                        hook: hook, replay: replay)
             try? JSONEncoder().encode(placeholder)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
-            var plan = try await ReelBuilder.build(
+            let plan = try await ReelBuilder.build(
                 items: items, target: target, frame: frame, pace: pace,
                 pro: pro, hook: hook, replay: replay, to: out,
                 reload: { [weak self] sid in
@@ -1944,17 +1918,6 @@ final class SessionStore: ObservableObject {
                 }) { [weak self] done, total in
                     for sid in involved { self?.progress[sid] = .reel(done: done, total: total) }
                 }
-            // Never fatal: a reel without its song beats no reel.
-            var musicUsed: String?
-            if let music {
-                do {
-                    guard let file = musicURL(music) else { throw CocoaError(.fileNoSuchFile) }
-                    try await ReelBuilder.addMusic(to: out, music: file, game: Float(gameVolume))
-                    musicUsed = music
-                } catch {
-                    plan.musicFailed = true
-                }
-            }
             // Poster and sidecar, so the Reels tab can show it without opening
             // every file.
             try? ClipExporter.writeThumbnail(
@@ -1969,8 +1932,7 @@ final class SessionStore: ObservableObject {
                                 // What the file holds: a replay asked for but
                                 // skipped (slow footage, a failure) is off, so
                                 // the toggle and a rebuild match the video.
-                                hook: hook, replay: replay && plan.replayed,
-                                music: musicUsed, gameVolume: musicUsed == nil ? nil : gameVolume)
+                                hook: hook, replay: replay && plan.replayed)
             try? JSONEncoder().encode(info)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
             objectWillChange.send()
@@ -2117,8 +2079,6 @@ final class SessionStore: ObservableObject {
                               caption: caption,
                               hook: reel.hook ?? false,
                               replay: reel.replay ?? false,
-                              music: reel.music,
-                              gameVolume: reel.gameVolume ?? 0.4,
                               createdAt: reel.createdAt)
         else { return nil }
         deleteReel(reel)

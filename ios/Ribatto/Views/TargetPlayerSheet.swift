@@ -84,7 +84,7 @@ struct TargetPlayerSheet: View {
                 // Said at the moment of choosing, where the expectation is set:
                 // tracking a person in court-side footage is not a guarantee.
                 Text(L.s("target_lose_note", lang))
-                    .font(.caption).foregroundStyle(.tertiary)
+                    .font(.caption).foregroundStyle(.secondary)
             }
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)

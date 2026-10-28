@@ -161,7 +161,7 @@ struct TrimSheet: View {
                                            end - store.minClipSeconds),
                                preview: splitAt)
                         Text(L.s("split_hint", lang))
-                            .font(.caption2).foregroundStyle(.tertiary)
+                            .font(.caption2).foregroundStyle(.secondary)
                         Button {
                             working = true
                             Task {
@@ -293,7 +293,7 @@ struct TrimSheet: View {
 
         if !hits.isEmpty {
             Text(L.s("trim_ticks_hint", lang))
-                .font(.caption2).foregroundStyle(.tertiary)
+                .font(.caption2).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 // A hint about a decoration; unbounded it takes a line per word
                 // and pushes the buttons off the screen.

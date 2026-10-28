@@ -724,7 +724,7 @@ struct StageLabel: View {
     var body: some View {
         HStack(spacing: 6) {
             if case .failed = stage {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.danger)
             } else {
                 ProgressView().controlSize(.mini)
             }

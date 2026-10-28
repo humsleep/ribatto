@@ -43,6 +43,8 @@ private struct LongestRally: Hashable {
 struct StatsView: View {
     @EnvironmentObject var store: SessionStore
     @AppStorage("rc_lang") private var lang = "en"
+    /// The empty state's way out: the season fills from imported matches.
+    var openLibrary: () -> Void = {}
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var shareURL: URL?
     @State private var building = false
@@ -63,6 +65,11 @@ struct StatsView: View {
                             Text(L.s("stats_empty", lang))
                                 .font(.subheadline).foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
+                            Button(action: openLibrary) {
+                                Label(L.s("import_video", lang), systemImage: "plus")
+                            }
+                            .rcPrimary()
+                            .padding(.top, 6)
                         }
                         .padding(32)
                     }
@@ -279,7 +286,7 @@ struct StatsView: View {
             // accessibility sizes it drew well outside the 22pt frame and over
             // the label beside it. It is decorative, so it is capped rather
             // than given the width it asks for.
-            Image(systemName: icon).foregroundStyle(.tint)
+            Image(systemName: icon).foregroundStyle(.secondary)
                 .dynamicTypeSize(...DynamicTypeSize.large)
                 .frame(width: 22)
             if stacked {
@@ -338,7 +345,8 @@ private struct ShareCard: View {
     var poster: UIImage? = nil
 
     private let accent = Theme.accent
-    private let lime = Color(red: 0.84, green: 0.93, blue: 0.42)
+    /// The app's own volt: the card is the image people post.
+    private let lime = Theme.accent
     private var dim: Color { .white.opacity(0.55) }
     /// Letter-spacing looks right on Latin but breaks Korean/Japanese words.
     private var isLatin: Bool { lang == "en" }
@@ -468,7 +476,8 @@ private struct ShareCard: View {
                     .font(.system(size: 27, weight: .bold, design: .rounded))
             }
             Spacer()
-            Text("ribatto.app")
+            // The name, not a web address the app does not own.
+            Text("Ribatto")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.30))
         }
@@ -503,9 +512,9 @@ private struct ShareCard: View {
             if trend != 0 {
                 Text(String(format: "%@%.1f", trend > 0 ? "+" : "", trend))
                     .font(.system(size: 20, weight: .heavy))
-                    .foregroundStyle(trend > 0 ? accent : .orange)
+                    .foregroundStyle(trend > 0 ? accent : Theme.warning)
                     .padding(.horizontal, 12).padding(.vertical, 5)
-                    .background((trend > 0 ? accent : .orange).opacity(0.15),
+                    .background((trend > 0 ? accent : Theme.warning).opacity(0.15),
                                 in: Capsule())
             }
             Text(value)

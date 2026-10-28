@@ -98,9 +98,10 @@ struct ClipCard: View {
                                 .padding(6)
                             Spacer()
                             if clip.segment.isFavourite {
+                                // White: a status mark, not a control.
                                 Image(systemName: "star.fill")
                                     .font(.caption2)
-                                    .foregroundStyle(Theme.accent)
+                                    .foregroundStyle(.white)
                                     .padding(.horizontal, 6).padding(.vertical, 4)
                                     .background(.black.opacity(0.65),
                                                 in: RoundedRectangle(cornerRadius: 6))

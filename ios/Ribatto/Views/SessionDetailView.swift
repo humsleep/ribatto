@@ -564,7 +564,7 @@ struct SessionDetailView: View {
                 .multilineTextAlignment(.center)
             if detectedNothing {
                 Text(L.s("no_rallies_hint", lang))
-                    .font(.caption).foregroundStyle(.tertiary)
+                    .font(.caption).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 Button {
@@ -693,7 +693,7 @@ struct SessionDetailView: View {
                 Spacer()
             }
             .font(.caption)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.secondary)
         }
     }
 
