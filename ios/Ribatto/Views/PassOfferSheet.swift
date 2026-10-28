@@ -437,9 +437,11 @@ struct PassLine: View {
 
 extension ProcessingStage {
     /// Still before the render, where a pass opened now changes the clips.
+    /// Not `.detect`: it can end inside a 30-second ad, and the render then
+    /// starts free.
     var tierOpen: Bool {
         switch self {
-        case .queued, .audio, .detect: true
+        case .queued, .audio: true
         default: false
         }
     }

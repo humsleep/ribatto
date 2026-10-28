@@ -14,8 +14,12 @@ import Foundation
 // The hero frame uses a rendered 9:16 clip instead of a UI screen: what the app
 // produces sells it better than what the app looks like.
 
+// Usage: swift Tools/make_screenshots.swift <shots-dir> <out-dir> [locale]
+// The locale (en ko ja es pt de fr it zh-Hans, default en) picks the copy.
+// Captures are read from <shots-dir>; frames go to <out-dir>.
 let shots = URL(fileURLWithPath: CommandLine.arguments[1])
 let outDir = URL(fileURLWithPath: CommandLine.arguments[2])
+let locale = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "en"
 try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
 
 let W: CGFloat = 1320, H: CGFloat = 2868
@@ -25,16 +29,25 @@ func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) -> NSColor 
 }
 let volt = rgb(200, 246, 62)
 let ground = rgb(10, 11, 15)
-let dim = rgb(150, 156, 168)
+// Lifted from 150/156/168: that read 3.3:1 on the glow.
+let dim = rgb(180, 186, 198)
 
 // The bundled display face, so the store frames and the burned-in overlays are
-// visibly the same product.
+// visibly the same product. Anton is Latin only: Korean, Japanese and Chinese
+// headlines take the system's heaviest compressed face instead of a fallback.
 for name in ["Anton-Regular", "BebasNeue-Regular"] {
     let u = URL(fileURLWithPath: "Ribatto/Fonts/\(name).ttf")
     CTFontManagerRegisterFontsForURL(u as CFURL, .process, nil)
 }
+let cjk = ["ko", "ja", "zh-Hans"].contains(locale)
 func display(_ size: CGFloat) -> NSFont {
-    NSFont(name: "Anton", size: size) ?? .systemFont(ofSize: size, weight: .black)
+    if cjk {
+        let base = NSFont.systemFont(ofSize: size * 0.82, weight: .black)
+        let d = base.fontDescriptor.addingAttributes([.traits: [NSFontDescriptor.TraitKey.width: -0.3,
+                                                                 NSFontDescriptor.TraitKey.weight: NSFont.Weight.black]])
+        return NSFont(descriptor: d, size: size * 0.82) ?? base
+    }
+    return NSFont(name: "Anton", size: size) ?? .systemFont(ofSize: size, weight: .black)
 }
 func body(_ size: CGFloat, _ weight: NSFont.Weight = .medium) -> NSFont {
     .systemFont(ofSize: size, weight: weight)
@@ -47,28 +60,61 @@ struct Frame {
     let full: Bool            // true = image fills the frame (the hero clip)
 }
 
-let frames: [Frame] = [
-    Frame(file: "hero.jpg",
-          headline: ["ONE TAP,", "MATCH TO REEL"],
-          sub: "Every rally found and cut vertical for Reels, Shorts and TikTok.",
-          full: true),
-    Frame(file: "s1_library.png",
-          headline: ["SKIP THE", "DEAD TIME"],
-          sub: "A 30-minute match becomes the rallies worth watching.",
-          full: false),
-    Frame(file: "s2_session.png",
-          headline: ["FOUND BY", "SOUND"],
-          sub: "It listens for the strike. Your best rally plays the moment detection ends.",
-          full: false),
-    Frame(file: "s3_reel.png",
-          headline: ["BEST RALLIES,", "ONE REEL"],
-          sub: "One tap makes a 30-second reel, best rally first. Post it.",
-          full: false),
-    Frame(file: "s4_season.png",
-          headline: ["YOUR SEASON,", "COUNTED"],
-          sub: "Every rally, every court. Your video never leaves your iPhone.",
-          full: false),
+// [headline line 1, line 2, sub] per frame, per locale. Platform names stay
+// out of the copy (guideline 2.3.7 risk); the app's own words for rally and
+// season are used so the frames match the UI.
+let copy: [String: [[String]]] = [
+    "en": [["ONE TAP,", "MATCH TO REEL", "Every rally found and cut vertical, ready to post."],
+           ["SKIP THE", "DEAD TIME", "A 30-minute match becomes the rallies worth watching."],
+           ["FOUND BY", "SOUND", "It listens for the strike. Your best rally plays the moment detection ends."],
+           ["BEST RALLIES,", "ONE REEL", "One tap makes a 30-second reel, best rally first. Post it."],
+           ["YOUR SEASON,", "COUNTED", "Every rally, every court. Your video never leaves your iPhone."]],
+    "ko": [["탭 한 번에", "경기가 릴스로", "랠리를 모두 찾아 세로로 잘라 두었어요. 바로 올리세요."],
+           ["쉬는 시간은", "건너뛰기", "30분 경기가 볼 만한 랠리만 남습니다."],
+           ["소리로", "랠리를 찾다", "타구음을 듣고 찾아냅니다. 감지가 끝나면 베스트 랠리부터 재생돼요."],
+           ["베스트 랠리를", "릴스 하나로", "탭 한 번에 30초 릴스, 베스트 랠리부터. 바로 올리세요."],
+           ["나의 시즌을", "기록으로", "모든 랠리, 모든 코트. 영상은 iPhone 밖으로 나가지 않습니다."]],
+    "ja": [["ワンタップで", "試合がリールに", "ラリーをすべて見つけて縦型にカット。すぐ投稿できます。"],
+           ["休憩は", "スキップ", "30分の試合が、見る価値のあるラリーだけに。"],
+           ["音で", "ラリーを検出", "打球音を聞き分けます。検出が終わるとベストラリーから再生。"],
+           ["ベストラリーを", "1本のリールに", "ワンタップで30秒のリール、ベストラリーから。そのまま投稿。"],
+           ["シーズンを", "記録に", "すべてのラリー、すべてのコート。動画はiPhoneの外に出ません。"]],
+    "es": [["UN TOQUE,", "DEL PARTIDO AL REEL", "Encuentra cada punto y lo recorta en vertical, listo para publicar."],
+           ["SIN TIEMPOS", "MUERTOS", "Un partido de 30 minutos se queda en los puntos que vale la pena ver."],
+           ["LO ENCUENTRA", "POR EL SONIDO", "Escucha cada golpe. Tu mejor punto se reproduce en cuanto termina la detección."],
+           ["TUS MEJORES PUNTOS,", "UN REEL", "Un toque crea un reel de 30 segundos, con el mejor punto primero. Publícalo."],
+           ["TU TEMPORADA,", "EN NÚMEROS", "Cada punto, cada pista. Tu vídeo nunca sale de tu iPhone."]],
+    "pt": [["UM TOQUE,", "DA PARTIDA AO REEL", "Encontra cada ponto e corta na vertical, pronto para postar."],
+           ["SEM TEMPO", "MORTO", "Uma partida de 30 minutos vira só os pontos que valem a pena."],
+           ["ACHADO", "PELO SOM", "Ele ouve cada batida. Seu melhor ponto toca assim que a detecção termina."],
+           ["SEUS MELHORES PONTOS,", "UM REEL", "Um toque cria um reel de 30 segundos, o melhor ponto primeiro. Poste."],
+           ["SUA TEMPORADA,", "EM NÚMEROS", "Cada ponto, cada quadra. Seu vídeo nunca sai do seu iPhone."]],
+    "de": [["EIN TIPPEN,", "VOM MATCH ZUM REEL", "Jeder Ballwechsel gefunden und hochkant geschnitten – bereit zum Posten."],
+           ["OHNE", "LEERLAUF", "Aus 30 Minuten Match werden die Ballwechsel, die sich lohnen."],
+           ["AM KLANG", "ERKANNT", "Es hört jeden Schlag. Dein bester Ballwechsel läuft, sobald die Erkennung fertig ist."],
+           ["DIE BESTEN BALLWECHSEL,", "EIN REEL", "Ein Tippen macht ein 30-Sekunden-Reel, der beste Ballwechsel zuerst. Posten."],
+           ["DEINE SAISON,", "GEZÄHLT", "Jeder Ballwechsel, jeder Platz. Dein Video verlässt nie dein iPhone."]],
+    "fr": [["UN TOUCHER,", "DU MATCH AU REEL", "Chaque échange trouvé et recadré à la verticale, prêt à publier."],
+           ["FINI LES", "TEMPS MORTS", "Un match de 30 minutes devient les échanges qui valent le coup."],
+           ["TROUVÉ", "AU SON", "Il écoute chaque frappe. Votre meilleur échange démarre dès la fin de la détection."],
+           ["VOS MEILLEURS ÉCHANGES,", "UN REEL", "Un toucher crée un reel de 30 secondes, meilleur échange en premier. Publiez-le."],
+           ["VOTRE SAISON,", "EN CHIFFRES", "Chaque échange, chaque court. Votre vidéo ne quitte jamais votre iPhone."]],
+    "it": [["UN TOCCO,", "DALLA PARTITA AL REEL", "Ogni scambio trovato e tagliato in verticale, pronto da pubblicare."],
+           ["NIENTE", "TEMPI MORTI", "Una partita di 30 minuti diventa solo gli scambi che vale la pena vedere."],
+           ["TROVATO", "DAL SUONO", "Ascolta ogni colpo. Il tuo scambio migliore parte appena finisce il rilevamento."],
+           ["I TUOI MIGLIORI SCAMBI,", "UN REEL", "Un tocco crea un reel di 30 secondi, lo scambio migliore per primo. Pubblicalo."],
+           ["LA TUA STAGIONE,", "IN NUMERI", "Ogni scambio, ogni campo. Il tuo video non lascia mai il tuo iPhone."]],
+    "zh-Hans": [["轻点一下", "比赛变竖版视频", "找出每一个回合，裁成竖屏，随时发布。"],
+                ["跳过", "无聊时间", "30 分钟的比赛，只留下值得看的回合。"],
+                ["听声音", "找回合", "它能听出每一次击球。检测一结束，最佳回合就开始播放。"],
+                ["最佳回合", "一条竖版视频", "轻点一下生成 30 秒竖版视频，最佳回合打头。直接发布。"],
+                ["你的赛季", "尽在记录", "每个回合，每块球场。你的视频从不离开你的 iPhone。"]],
 ]
+let files = ["hero.jpg", "s1_library.png", "s2_session.png", "s3_reel.png", "s4_season.png"]
+let frames: [Frame] = files.enumerated().map { i, f in
+    let c = (copy[locale] ?? copy["en"]!)[i]
+    return Frame(file: f, headline: [c[0], c[1]], sub: c[2], full: i == 0)
+}
 
 func draw(_ f: Frame, index: Int) {
     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(W), pixelsHigh: Int(H),
@@ -97,13 +143,20 @@ func draw(_ f: Frame, index: Int) {
 
     // Headline. Sized to dominate: in search results this frame is a thumbnail
     // and the words are the only thing that survives the shrink.
+    // One size for both lines, shrunk until the longest fits: "DALLA PARTITA
+    // AL REEL" is half again as wide as "MATCH TO REEL".
+    var size: CGFloat = 150
+    let maxLine = W - margin * 2
+    while size > 80, f.headline.contains(where: {
+        NSAttributedString(string: $0, attributes: [.font: display(size), .kern: 1.5]).size().width > maxLine
+    }) { size -= 4 }
     for line in f.headline {
-        let font = display(150)
+        let font = display(size)
         let at: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white,
                                                  .kern: 1.5]
         let s = NSAttributedString(string: line, attributes: at)
         s.draw(at: CGPoint(x: margin, y: y - font.ascender))
-        y -= 152
+        y -= size + 2
     }
 
     // sub-line, wrapped

@@ -35,7 +35,7 @@ struct CaptionEditorView: View {
     /// TikTok cover with their own caption and buttons.
     static func fresh(for frame: OutputFrame) -> CaptionSettings {
         var c = CaptionSettings()
-        if frame.isPortrait { c.y = 0.70 }
+        if frame == .vertical { c.y = 0.70 }
         return c
     }
 
@@ -398,7 +398,7 @@ struct CaptionEditorView: View {
                     Button {
                         draft.x = preset.x
                         // "Bottom" on a vertical frame is the lowest spot Instagram leaves clear.
-                        draft.y = preset.key == "pos_bottom" && previewFrame.isPortrait ? 0.70 : preset.y
+                        draft.y = preset.key == "pos_bottom" && previewFrame == .vertical ? 0.70 : preset.y
                         draft.enabled = true
                     } label: {
                         Text(L.s(preset.key, lang))

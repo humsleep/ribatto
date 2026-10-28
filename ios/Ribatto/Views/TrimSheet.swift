@@ -169,10 +169,12 @@ struct TrimSheet: View {
                                 // `splitRally` reads the stored segment, so a split
                                 // taken while a trim was pending cut at a point
                                 // outside the range the user could see.
-                                if start != clip.segment.start || end != clip.segment.end {
+                                if start != clip.segment.start || end != clip.segment.end
+                                    || speed != (clip.segment.speed ?? 1) {
                                     // A trim that did not take must not be
                                     // followed by a split of the untrimmed rally.
-                                    guard await store.trimClip(clip, start: start, end: end) else {
+                                    guard await store.trimClip(clip, start: start, end: end,
+                                                               speed: speed) else {
                                         working = false
                                         message = L.s(store.isBusy(clip.sessionID)
                                                       ? "busy_wait" : "render_failed", lang)

@@ -94,6 +94,11 @@ struct RibattoApp: App {
                 if CommandLine.arguments.contains("-diagRender") {
                     await store.runDiagnostics()
                 }
+                // Screenshot data: videos dropped into Documents/seed are
+                // imported as matches named after their files and detected.
+                if CommandLine.arguments.contains("-seedDemo") {
+                    await store.seedDemo()
+                }
                 #endif
             }
             .onChange(of: lang) { _, l in

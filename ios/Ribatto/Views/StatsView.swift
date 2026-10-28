@@ -66,7 +66,7 @@ struct StatsView: View {
                                 .font(.subheadline).foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
                             Button(action: openLibrary) {
-                                Label(L.s("import_video", lang), systemImage: "plus")
+                                Label(L.s("library", lang), systemImage: "rectangle.stack")
                             }
                             .rcPrimary()
                             .padding(.top, 6)
@@ -580,40 +580,44 @@ extension StatsView {
 
         var tempoSum = 0.0, tempoCount = 0
 
+        // From the detected rallies, not the clip files: "free up clip files"
+        // keeps the record, and a match it emptied used to drop out of the season.
         for session in store.sessions {
-            let clips = store.clips(of: session)
-            guard !clips.isEmpty else { continue }
-            for t in clips.compactMap(\.segment.tempo) {
+            let segs = session.segments ?? []
+            guard !segs.isEmpty else { continue }
+            for t in segs.compactMap(\.tempo) {
                 tempoSum += t; tempoCount += 1
             }
             s.matches += 1
-            s.rallies += clips.count
-            let secs = clips.reduce(0) { $0 + $1.duration }
-            let hits = clips.reduce(0) { $0 + $1.segment.hits }
+            s.rallies += segs.count
+            let secs = segs.reduce(0) { $0 + $1.duration }
+            let hits = segs.reduce(0) { $0 + $1.hits }
             s.totalSeconds += secs
             s.shots += hits
 
             // A 60 s+ block is usually several points the detector joined;
             // as a "personal record" it was a number the user never played.
-            if let longest = clips.filter({ !$0.segment.looksMerged })
-                .max(by: { $0.duration < $1.duration }),
-               longest.duration > (s.longest?.seconds ?? 0) {
-                s.longest = (longest.duration, session.playedAt, session.id, longest.number)
+            if let i = segs.indices.filter({ !segs[$0].looksMerged })
+                .max(by: { segs[$0].duration < segs[$1].duration }),
+               segs[i].duration > (s.longest?.seconds ?? 0) {
+                // The clip's own number, as ClipInfo gives it, so the record
+                // still opens that rally.
+                s.longest = (segs[i].duration, session.playedAt, session.id, segs[i].number ?? i + 1)
             }
-            if clips.count > (s.busiest?.rallies ?? 0) {
-                s.busiest = (clips.count, session.playedAt)
+            if segs.count > (s.busiest?.rallies ?? 0) {
+                s.busiest = (segs.count, session.playedAt)
             }
 
             if cal.isDate(session.playedAt, equalTo: now, toGranularity: .month) {
                 s.monthMatches += 1
-                s.monthRallies += clips.count
+                s.monthRallies += segs.count
                 s.monthSeconds += secs
                 monthShots += hits
-                monthRallyCount += clips.count
+                monthRallyCount += segs.count
             } else if let prev = cal.date(byAdding: .month, value: -1, to: now),
                       cal.isDate(session.playedAt, equalTo: prev, toGranularity: .month) {
                 prevShots += hits
-                prevRallyCount += clips.count
+                prevRallyCount += segs.count
             }
         }
         // last six months of activity, zero-filled so the chart keeps its shape
@@ -623,7 +627,7 @@ extension StatsView {
         var tally: [Date: (rallies: Int, matches: Int)] = [:]
         for session in store.sessions {
             let key = cal.startOfMonth(for: session.playedAt)
-            let clips = store.clips(of: session).count
+            let clips = session.segments?.count ?? 0
             guard clips > 0 else { continue }
             let cur = tally[key] ?? (0, 0)
             tally[key] = (cur.rallies + clips, cur.matches + 1)
@@ -637,7 +641,7 @@ extension StatsView {
         var byPlace: [String: (visits: Int, rallies: Int)] = [:]
         for session in store.sessions {
             guard let place = session.placeName else { continue }
-            let clips = store.clips(of: session).count
+            let clips = session.segments?.count ?? 0
             guard clips > 0 else { continue }
             let current = byPlace[place] ?? (0, 0)
             byPlace[place] = (current.visits + 1, current.rallies + clips)

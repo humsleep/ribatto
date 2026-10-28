@@ -249,8 +249,9 @@ struct LibraryView: View {
                 guard case .success(let urls) = result, !urls.isEmpty else { return }
                 importFiles(urls)
             }
-            .confirmationDialog(L.s("ask_sport_title", lang), isPresented: $askSport,
-                                titleVisibility: .visible) {
+            // An alert, not a confirmation dialog: iOS 26 floats the dialog as a
+            // popover, and its slower dismissal could swallow the picker.
+            .alert(L.s("ask_sport_title", lang), isPresented: $askSport) {
                 ForEach(Sport.allCases) { sp in
                     Button("\(sp.emoji) \(L.s(sp.rawValue, lang))") {
                         store.lastSport = sp
@@ -470,9 +471,15 @@ struct LibraryView: View {
     }
 
     private func launch(_ source: ImportSource) {
+        // Reset first: a presentation that failed can leave the flag true, and
+        // true → true never presents again.
         switch source {
-        case .photos: showPhotoPicker = true
-        case .files: showFileImporter = true
+        case .photos:
+            showPhotoPicker = false
+            Task { @MainActor in showPhotoPicker = true }
+        case .files:
+            showFileImporter = false
+            Task { @MainActor in showFileImporter = true }
         case .record:
             guard VideoRecorder.isAvailable else { cameraAlert = true; return }
             recording = true

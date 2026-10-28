@@ -37,8 +37,8 @@ struct ReelsView: View {
                                 .font(.subheadline).foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
                             Button(action: openLibrary) {
-                                Label(L.s(store.sessions.isEmpty ? "import_video" : "library", lang),
-                                      systemImage: store.sessions.isEmpty ? "plus" : "rectangle.stack")
+                                // It switches tabs; it does not import.
+                                Label(L.s("library", lang), systemImage: "rectangle.stack")
                             }
                             .rcPrimary()
                             .padding(.top, 6)

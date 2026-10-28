@@ -599,6 +599,25 @@ final class SessionStore: ObservableObject {
     private var detectQueue: [UUID] = []
     private var queueRunning = false
 
+    #if DEBUG
+    /// Imports every video in Documents/seed (simulator screenshots: the
+    /// Photos picker cannot be driven from a script).
+    func seedDemo() async {
+        let seed = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("seed", isDirectory: true)
+        let files = ((try? fm.contentsOfDirectory(at: seed, includingPropertiesForKeys: nil)) ?? [])
+            .filter { ["mp4", "mov"].contains($0.pathExtension.lowercased()) }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        if lastSport == nil { lastSport = .tennis }
+        var ids: [UUID] = []
+        for file in files {
+            if let id = await importVideo(from: file, name: file.deletingPathExtension().lastPathComponent,
+                                          detect: false) { ids.append(id) }
+        }
+        await processQueued(ids)
+    }
+    #endif
+
     /// Puts an in-app recording into the Photos library and returns its
     /// identifier, so the session can reference it like any imported video.
     ///
@@ -976,6 +995,9 @@ final class SessionStore: ObservableObject {
         // is not something the app can know, and losing it read as a bug.
         first.favourite = seg.favourite
         second.favourite = seg.favourite
+        // Both halves play at the speed the rally was set to.
+        first.speed = seg.speed
+        second.speed = seg.speed
         // The first half keeps the rally's number; the second is new.
         first.number = seg.number
         second.number = segments.nextNumber
@@ -1090,44 +1112,25 @@ final class SessionStore: ObservableObject {
             targets[key] = target                     // nil removes the override
             $0.clipTargets = targets
         }
+        // A first render that stopped part-way has no `rendered*` record yet;
+        // its stamp says whether it crops. Before, the pick was only saved
+        // there, and the resume skipped the clip because its file existed.
         guard let updated = sessions.first(where: { $0.id == clip.sessionID }),
-              updated.renderedSmartCrop == true else { return true }
-
-        progress[session.id] = .render(done: clip.index, total: segments.count)
-        defer { clearProgressUnlessFailed(session.id) }
-        guard let source = await loadAsset(updated) else {
-            progress[session.id] = .failed(missingMessage(session.id))
-            return false
+              (updated.renderedSmartCrop
+               ?? (updated.renderedOrientation == nil ? updated.partialRender?.smartCrop : nil))
+                == true else { return true }
+        // The clip is made with the match's own settings, finished or not.
+        guard await rerenderClip(updated, segments: segments, index: clip.index) else { return false }
+        // Only this clip was re-cut, so only this clip's record moves —
+        // leaving the rest of `renderedClipTargets` alone keeps the
+        // "settings changed" hint honest about the clips still stale.
+        mutate(session.id) {
+            var rendered = $0.renderedClipTargets ?? [:]
+            rendered[key] = updated.clipTargets?[key]
+            $0.renderedClipTargets = rendered
         }
-        let base = String(format: "clip_%02d", clip.index + 1)
-        let dir = clipsDir(updated)
-        do {
-            try await ClipExporter.export(
-                source: source, segment: segments[clip.index],
-                orientation: updated.renderedOrientation ?? updated.effectiveOrientation,
-                pro: updated.renderedPro ?? isPro,
-                caption: CaptionText.resolve(updated.renderedCaption, session: updated,
-                                             segments: segments, index: clip.index, lang: lang),
-                smartCrop: true,
-                clipURL: dir.appendingPathComponent("\(base).mp4"),
-                thumbURL: dir.appendingPathComponent("\(base).jpg"),
-                targetPlayer: updated.target(forClip: clip.index),
-                edit: updated.renderedEdit ?? ClipEdit(),
-                speed: segments[clip.index].speed ?? 1)
-            // Only this clip was re-cut, so only this clip's record moves —
-            // leaving the rest of `renderedClipTargets` alone keeps the
-            // "settings changed" hint honest about the clips still stale.
-            mutate(session.id) {
-                var rendered = $0.renderedClipTargets ?? [:]
-                rendered[key] = updated.clipTargets?[key]
-                $0.renderedClipTargets = rendered
-            }
-            objectWillChange.send()
-            return true
-        } catch {
-            progress[session.id] = .failed(failureText(error))
-            return false
-        }
+        objectWillChange.send()
+        return true
     }
 
     /// Applies whatever the user changed: re-detect if the detection inputs
@@ -1350,7 +1353,7 @@ final class SessionStore: ObservableObject {
         let orient = s.effectiveOrientation
         let pro = isPro
         let caption = s.caption
-        let edit = s.effectiveEdit
+        let edit = s.renderEdit
         let useSmartCrop = isPro && s.effectiveSmartCrop
         let target = useSmartCrop ? s.targetPlayer : nil
         // A new detection's rallies don't line up with the old per-clip picks.
@@ -1818,6 +1821,7 @@ final class SessionStore: ObservableObject {
                    caption: CaptionSettings? = nil,
                    hook: Bool = false,
                    replay: Bool = false,
+                   edits: [UUID: ClipEdit] = [:],
                    createdAt: Date? = nil) async -> (url: URL, plan: ReelPlan)? {
         // The order is the caller's. ReelSheet seeds it by timeline and lets
         // the user drag rows around; sorting here again silently undid that
@@ -1873,7 +1877,7 @@ final class SessionStore: ObservableObject {
                                       ? pair.session.target(forClip: pair.clip.index) : nil,
                                   sessionID: sid,
                                   hookTitle: hook ? hookTitle(for: pair) : nil,
-                                  edit: pair.session.effectiveEdit))
+                                  edit: edits[sid] ?? pair.session.effectiveEdit))
         }
         guard !items.isEmpty else {
             progress[key] = .failed(missingMessage(key))
@@ -1932,7 +1936,10 @@ final class SessionStore: ObservableObject {
                                 // What the file holds: a replay asked for but
                                 // skipped (slow footage, a failure) is off, so
                                 // the toggle and a rebuild match the video.
-                                hook: hook, replay: replay && plan.replayed)
+                                hook: hook, replay: replay && plan.replayed,
+                                edits: Dictionary(items.compactMap { i in
+                                    i.sessionID.map { ($0.uuidString, i.edit) } },
+                                                  uniquingKeysWith: { a, _ in a }))
             try? JSONEncoder().encode(info)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
             objectWillChange.send()
@@ -2079,6 +2086,9 @@ final class SessionStore: ObservableObject {
                               caption: caption,
                               hook: reel.hook ?? false,
                               replay: reel.replay ?? false,
+                              edits: Dictionary((reel.edits ?? [:]).compactMap { k, v in
+                                  UUID(uuidString: k).map { ($0, v) } },
+                                                uniquingKeysWith: { a, _ in a }),
                               createdAt: reel.createdAt)
         else { return nil }
         deleteReel(reel)

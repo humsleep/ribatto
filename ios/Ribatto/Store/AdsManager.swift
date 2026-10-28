@@ -133,6 +133,9 @@ final class AdsManager: NSObject, ObservableObject {
     /// is true as soon as the check returns.
     private var consentAllows = false
     private var interstitial: InterstitialAd?
+    /// Loaded ads expire after about an hour: one held through a pass or the
+    /// first-day grace failed to present and cost that impression.
+    private var interstitialAt = Date.distantPast
     private var loadingInterstitial = false
     /// The rewarded ad: the highest-paying format AdMob has, and the one
     /// the user has to sit through to the end. In exchange it opens every
@@ -474,6 +477,9 @@ final class AdsManager: NSObject, ObservableObject {
         // processing). Presenting then is an impression nobody saw — the
         // invalid traffic that gets an AdMob account suspended.
         guard UIApplication.shared.applicationState == .active else { return }
+        if interstitial != nil, Date().timeIntervalSince(interstitialAt) > 55 * 60 {
+            interstitial = nil
+        }
         guard let ad = interstitial else { loadInterstitial(); return }
         guard Date().timeIntervalSince(lastInterstitial) >= Self.interstitialInterval
         else { return }
@@ -494,6 +500,7 @@ final class AdsManager: NSObject, ObservableObject {
                 let ad = try await InterstitialAd.load(with: Unit.interstitial, request: Request())
                 ad.fullScreenContentDelegate = self
                 interstitial = ad
+                interstitialAt = Date()
             } catch {
                 // No retry loop: the next render calls `showInterstitialIfDue`,
                 // which finds nothing loaded and reloads via the next call.

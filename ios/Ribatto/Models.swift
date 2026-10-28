@@ -412,6 +412,14 @@ struct Session: Identifiable, Codable, Equatable {
     var edit: ClipEdit? = nil
     var renderedEdit: ClipEdit? = nil
     var effectiveEdit: ClipEdit { edit ?? ClipEdit() }
+    /// What a render actually uses: the background only exists on a vertical
+    /// frame, so on a wide one switching it changes no pixel and must not ask
+    /// for a re-render of every clip.
+    var renderEdit: ClipEdit {
+        var e = effectiveEdit
+        if !OutputFrame(effectiveOrientation).isPortrait { e.backdrop = .blur }
+        return e
+    }
     /// The burned-in caption carries `{rank}` and a delete has since changed
     /// the ranking, so the clips say "Best #3" about a rally that is now #2.
     /// Shown as an ordinary pending change; the next render clears it.
@@ -490,7 +498,7 @@ struct Session: Identifiable, Codable, Equatable {
         return renderedOrientation != effectiveOrientation
             || ranksStale == true
             || (renderedCaption ?? CaptionSettings()) != (caption ?? CaptionSettings())
-            || (renderedEdit ?? ClipEdit()) != effectiveEdit
+            || (renderedEdit ?? ClipEdit()) != renderEdit
             // Compared against what the last render was ALLOWED to do. A free
             // render can never satisfy a Pro flag, so comparing the raw setting
             // left every free session permanently claiming unapplied changes
@@ -537,7 +545,7 @@ struct Session: Identifiable, Codable, Equatable {
         let segs = segments ?? []
         return stamp.orientation == effectiveOrientation
             && (stamp.caption ?? CaptionSettings()) == (caption ?? CaptionSettings())
-            && (stamp.edit ?? ClipEdit()) == effectiveEdit
+            && (stamp.edit ?? ClipEdit()) == renderEdit
             && (!stamp.pro || (stamp.smartCrop == effectiveSmartCrop
                                && (!stamp.smartCrop || stamp.targetPlayer == targetPlayer)))
             && stamp.rallies.count == segs.count
@@ -652,6 +660,10 @@ struct ReelInfo: Codable, Identifiable, Equatable {
     /// nil on reels made before either existed: rebuilt without them.
     var hook: Bool? = nil
     var replay: Bool? = nil
+    /// Each session's colour, background and sound as built, by session id,
+    /// so a caption-only rebuild does not pick up a later change. nil on reels
+    /// from before: rebuilt with the sessions' current settings.
+    var edits: [String: ClipEdit]? = nil
 
     // Filled in when listed; never written to the sidecar.
     var url: URL = URL(fileURLWithPath: "/")
@@ -664,7 +676,7 @@ struct ReelInfo: Codable, Identifiable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case id, createdAt, target, frame, pace, preset, rallies, duration, place
-        case sources, caption, hook, replay
+        case sources, caption, hook, replay, edits
     }
 }
 

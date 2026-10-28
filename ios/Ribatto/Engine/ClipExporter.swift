@@ -495,7 +495,10 @@ enum ClipExporter {
         if speed != 1 {
             let timed = staging.deletingLastPathComponent()
                 .appendingPathComponent("speed_" + clipURL.lastPathComponent)
-            defer { try? FileManager.default.removeItem(at: staging) }
+            defer {
+                try? FileManager.default.removeItem(at: staging)
+                try? FileManager.default.removeItem(at: timed)
+            }
             try await retime(staging, speed: speed, out: out, fps: Float(fps), pro: pro, to: timed)
             try? FileManager.default.removeItem(at: clipURL)
             try FileManager.default.moveItem(at: timed, to: clipURL)
