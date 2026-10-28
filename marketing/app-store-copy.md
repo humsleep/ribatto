@@ -60,8 +60,11 @@ Ribatto is free to use and supported by ads. Watch one short ad and a one-hour p
 Free: unlimited imports, 720p, watermark.
 ```
 
-**What's New (1.1.0)**
+**What's New (1.1.1)**
 ```
+- New free editing: colour presets, per-clip speed (0.5× slow motion to 2×), match sound full / low / off, and a black or blurred background for vertical clips.
+- The caption editor shows an Instagram safe-area guide.
+- On vertical clips, the watermark and new captions now stay clear of Instagram's and TikTok's buttons and captions.
 - See what a PASS adds (original quality, no watermark) while your match is analysed and before you rebuild clips. Not interested? Everything carries on for free.
 - Delete confirmations for clips, matches and reels now appear centred.
 - Fixes for Undo, the PASS and ads.
@@ -126,8 +129,11 @@ Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 
 무료: 가져오기 무제한, 720p, 워터마크.
 ```
 
-**새로운 기능 (1.1.0)**
+**새로운 기능 (1.1.1)**
 ```
+- 무료 편집 기능이 생겼어요: 색감 프리셋, 클립별 속도(0.5× 슬로모션~2×), 경기 소리(원래대로/작게/끄기), 세로 클립의 검정·블러 배경.
+- 자막 편집 화면에 인스타그램 안전 영역 가이드가 보여요.
+- 세로 클립의 워터마크와 새 자막이 인스타그램·틱톡의 버튼과 설명 글에 가리지 않는 자리에 놓여요.
 - 경기 영상을 분석하는 동안과 클립을 다시 만들기 전에, 패스로 무엇이 좋아지는지(원본 화질·워터마크 없음) 바로 알려 드려요. 원하지 않으면 무료로 그대로 진행됩니다.
 - 클립·경기·릴스 삭제 확인 창이 화면 가운데에 깔끔하게 뜹니다.
 - 되돌리기, 패스, 광고 관련 안정성을 개선했어요.
@@ -192,8 +198,11 @@ Ribattoは広告で運営される無料アプリです。短い広告を1本見
 無料: 取り込み無制限、720p、ウォーターマークあり。
 ```
 
-**What's New (1.1.0)**
+**What's New (1.1.1)**
 ```
+- 無料の編集機能を追加:カラープリセット、クリップごとの速度(0.5×スローモーション〜2×)、試合音(そのまま/小さく/オフ)、縦型クリップの黒・ぼかし背景。
+- キャプション編集画面にInstagramのセーフエリアガイドを表示します。
+- 縦型クリップのウォーターマークと新しいキャプションが、InstagramやTikTokのボタン・説明文に重ならない位置に置かれます。
 - 試合を解析している間とクリップを作り直す前に、パスで何が良くなるか(元画質・ウォーターマークなし)をお知らせします。不要ならそのまま無料で進みます。
 - クリップ・試合・リールの削除確認が画面中央に表示されるようになりました。
 - 取り消す、パス、広告まわりの安定性を改善しました。
@@ -258,8 +267,11 @@ Ribatto es gratis y se financia con anuncios. Mira un anuncio corto y un pase de
 Gratis: importaciones ilimitadas, 720p, marca de agua.
 ```
 
-**What's New (1.1.0)**
+**What's New (1.1.1)**
 ```
+- Nueva edición gratuita: ajustes de color, velocidad por clip (cámara lenta 0,5× a 2×), sonido del partido completo / bajo / apagado y fondo negro o difuminado para clips verticales.
+- El editor de subtítulos muestra una guía de zona segura de Instagram.
+- En los clips verticales, la marca de agua y los nuevos subtítulos ya no quedan bajo los botones y textos de Instagram y TikTok.
 - Mientras se analiza tu partido y antes de rehacer los clips, verás qué añade un PASE (calidad original, sin marca de agua). ¿No te interesa? Todo sigue gratis.
 - Las confirmaciones para borrar clips, partidos y reels ahora aparecen centradas.
 - Correcciones en Deshacer, el PASE y los anuncios.
@@ -324,8 +336,11 @@ O Ribatto é grátis e mantido por anúncios. Assista a um anúncio curto e um p
 Grátis: importações ilimitadas, 720p, marca d'água.
 ```
 
-**What's New (1.1.0)**
+**What's New (1.1.1)**
 ```
+- Nova edição grátis: predefinições de cor, velocidade por clipe (câmera lenta 0,5× a 2×), som da partida normal / baixo / desligado e fundo preto ou desfocado para clipes verticais.
+- O editor de legendas mostra um guia da área segura do Instagram.
+- Nos clipes verticais, a marca d'água e as novas legendas ficam longe dos botões e textos do Instagram e do TikTok.
 - Enquanto sua partida é analisada e antes de refazer os clipes, veja o que um PASSE acrescenta (qualidade original, sem marca d'água). Não quer? Tudo continua grátis.
 - As confirmações para apagar clipes, partidas e reels agora aparecem centralizadas.
 - Correções em Desfazer, no PASSE e nos anúncios.
@@ -390,8 +405,11 @@ Ribatto ist kostenlos und finanziert sich über Werbung. Sieh dir eine kurze Anz
 Kostenlos: unbegrenzt importieren, 720p, Wasserzeichen.
 ```
 
-**What's New (1.1.0)**
+**What's New (1.1.1)**
 ```
+- Neue kostenlose Bearbeitung: Farbvorlagen, Tempo pro Clip (Zeitlupe 0,5× bis 2×), Spielton voll / leise / aus und schwarzer oder unscharfer Hintergrund für Hochformat-Clips.
+- Der Untertitel-Editor zeigt eine Hilfslinie für den sicheren Bereich von Instagram.
+- In Hochformat-Clips liegen Wasserzeichen und neue Untertitel jetzt nicht mehr unter den Buttons und Texten von Instagram und TikTok.
 - Während dein Match ausgewertet wird und bevor du Clips neu erstellst, siehst du, was ein PASS bringt (Originalqualität, kein Wasserzeichen). Kein Interesse? Alles läuft kostenlos weiter.
 - Löschbestätigungen für Clips, Matches und Reels erscheinen jetzt mittig.
 - Fehlerbehebungen bei Rückgängig, dem PASS und der Werbung.
@@ -456,8 +474,11 @@ Ribatto est gratuit et financé par la publicité. Regardez une courte publicit�
 Gratuit : imports illimités, 720p, filigrane.
 ```
 
-**What's New (1.1.0)**
+**What's New (1.1.1)**
 ```
+- Nouvelle édition gratuite : préréglages de couleur, vitesse par clip (ralenti 0,5× à 2×), son du match normal / faible / coupé et fond noir ou flou pour les clips verticaux.
+- L'éditeur de légendes affiche un repère de zone sûre Instagram.
+- Sur les clips verticaux, le filigrane et les nouvelles légendes ne passent plus sous les boutons et textes d'Instagram et de TikTok.
 - Pendant l'analyse de votre match et avant de refaire vos clips, découvrez ce qu'apporte un PASS (qualité d'origine, sans filigrane). Pas intéressé ? Tout continue gratuitement.
 - Les confirmations de suppression des clips, matchs et reels s'affichent maintenant au centre.
 - Corrections pour Annuler, le PASS et les publicités.
@@ -522,8 +543,11 @@ Ribatto è gratis e si sostiene con la pubblicità. Guarda un annuncio breve e u
 Gratis: importazioni illimitate, 720p, filigrana.
 ```
 
-**What's New (1.1.0)**
+**What's New (1.1.1)**
 ```
+- Nuove modifiche gratuite: preset colore, velocità per clip (rallentatore 0,5× fino a 2×), audio della partita pieno / basso / spento e sfondo nero o sfocato per le clip verticali.
+- L'editor delle didascalie mostra una guida dell'area sicura di Instagram.
+- Nelle clip verticali, filigrana e nuove didascalie non finiscono più sotto i pulsanti e i testi di Instagram e TikTok.
 - Mentre la partita viene analizzata e prima di rifare le clip, vedi cosa aggiunge un PASS (qualità originale, senza filigrana). Non ti interessa? Tutto continua gratis.
 - Le conferme di eliminazione di clip, partite e reel ora compaiono al centro.
 - Correzioni per Annulla, il PASS e gli annunci.
@@ -588,8 +612,11 @@ Ribatto 免费使用，由广告支持。看完一段短广告，一小时通行
 免费版：导入次数不限，720p，带水印。
 ```
 
-**What's New (1.1.0)**
+**What's New (1.1.1)**
 ```
+- 新增免费编辑：色彩预设、单个片段变速（0.5× 慢动作至 2×）、比赛声音（原声/调低/关闭），竖屏片段可用黑色或模糊背景。
+- 字幕编辑器会显示 Instagram 安全区参考线。
+- 竖屏片段的水印和新字幕会避开 Instagram 和 TikTok 的按钮与文案。
 - 在分析比赛视频时以及重新生成片段前，会告诉你通行证能带来什么（原画质、无水印）。不需要？一切照常免费进行。
 - 删除片段、比赛和短片的确认窗口现在显示在屏幕中央。
 - 修复了撤销、通行证和广告相关的问题。
