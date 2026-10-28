@@ -62,6 +62,7 @@ Free: unlimited imports, 720p, watermark.
 
 **What's New (1.1.1)**
 ```
+- A fresh new look and app icon: cleaner screens, bigger match highlights, and an Edit button right on every clip.
 - New free editing: colour presets, per-clip speed (0.5× slow motion to 2×), match sound full / low / off, and a black or blurred background for vertical clips.
 - The caption editor shows an Instagram safe-area guide.
 - On vertical clips, the watermark and new captions now stay clear of Instagram's and TikTok's buttons and captions.
@@ -131,6 +132,7 @@ Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 
 
 **새로운 기능 (1.1.1)**
 ```
+- 새 디자인과 새 앱 아이콘: 더 깔끔한 화면, 크게 보이는 베스트 랠리, 모든 클립에 바로 보이는 '편집' 버튼.
 - 무료 편집 기능이 생겼어요: 색감 프리셋, 클립별 속도(0.5× 슬로모션~2×), 경기 소리(원래대로/작게/끄기), 세로 클립의 검정·블러 배경.
 - 자막 편집 화면에 인스타그램 안전 영역 가이드가 보여요.
 - 세로 클립의 워터마크와 새 자막이 인스타그램·틱톡의 버튼과 설명 글에 가리지 않는 자리에 놓여요.
@@ -200,6 +202,7 @@ Ribattoは広告で運営される無料アプリです。短い広告を1本見
 
 **What's New (1.1.1)**
 ```
+- 新しいデザインとアプリアイコン：すっきりした画面、大きく見えるベストラリー、すべてのクリップに「編集」ボタン。
 - 無料の編集機能を追加:カラープリセット、クリップごとの速度(0.5×スローモーション〜2×)、試合音(そのまま/小さく/オフ)、縦型クリップの黒・ぼかし背景。
 - キャプション編集画面にInstagramのセーフエリアガイドを表示します。
 - 縦型クリップのウォーターマークと新しいキャプションが、InstagramやTikTokのボタン・説明文に重ならない位置に置かれます。
@@ -269,6 +272,7 @@ Gratis: importaciones ilimitadas, 720p, marca de agua.
 
 **What's New (1.1.1)**
 ```
+- Nuevo diseño e icono: pantallas más limpias, el mejor punto más grande y un botón Editar en cada clip.
 - Nueva edición gratuita: ajustes de color, velocidad por clip (cámara lenta 0,5× a 2×), sonido del partido completo / bajo / apagado y fondo negro o difuminado para clips verticales.
 - El editor de subtítulos muestra una guía de zona segura de Instagram.
 - En los clips verticales, la marca de agua y los nuevos subtítulos ya no quedan bajo los botones y textos de Instagram y TikTok.
@@ -338,6 +342,7 @@ Grátis: importações ilimitadas, 720p, marca d'água.
 
 **What's New (1.1.1)**
 ```
+- Novo visual e novo ícone: telas mais limpas, o melhor ponto em destaque e um botão Editar em cada clipe.
 - Nova edição grátis: predefinições de cor, velocidade por clipe (câmera lenta 0,5× a 2×), som da partida normal / baixo / desligado e fundo preto ou desfocado para clipes verticais.
 - O editor de legendas mostra um guia da área segura do Instagram.
 - Nos clipes verticais, a marca d'água e as novas legendas ficam longe dos botões e textos do Instagram e do TikTok.
@@ -407,6 +412,7 @@ Kostenlos: unbegrenzt importieren, 720p, Wasserzeichen.
 
 **What's New (1.1.1)**
 ```
+- Neues Design und neues App-Symbol: aufgeräumtere Bildschirme, der beste Ballwechsel groß im Blick und ein Bearbeiten-Knopf an jedem Clip.
 - Neue kostenlose Bearbeitung: Farbvorlagen, Tempo pro Clip (Zeitlupe 0,5× bis 2×), Spielton voll / leise / aus und schwarzer oder unscharfer Hintergrund für Hochformat-Clips.
 - Der Untertitel-Editor zeigt eine Hilfslinie für den sicheren Bereich von Instagram.
 - In Hochformat-Clips liegen Wasserzeichen und neue Untertitel jetzt nicht mehr unter den Buttons und Texten von Instagram und TikTok.
@@ -476,6 +482,7 @@ Gratuit : imports illimités, 720p, filigrane.
 
 **What's New (1.1.1)**
 ```
+- Nouveau design et nouvelle icône : des écrans plus clairs, le meilleur échange en grand et un bouton Modifier sur chaque clip.
 - Nouvelle édition gratuite : préréglages de couleur, vitesse par clip (ralenti 0,5× à 2×), son du match normal / faible / coupé et fond noir ou flou pour les clips verticaux.
 - L'éditeur de légendes affiche un repère de zone sûre Instagram.
 - Sur les clips verticaux, le filigrane et les nouvelles légendes ne passent plus sous les boutons et textes d'Instagram et de TikTok.
@@ -545,6 +552,7 @@ Gratis: importazioni illimitate, 720p, filigrana.
 
 **What's New (1.1.1)**
 ```
+- Nuovo design e nuova icona: schermate più pulite, lo scambio migliore in grande e un pulsante Modifica su ogni clip.
 - Nuove modifiche gratuite: preset colore, velocità per clip (rallentatore 0,5× fino a 2×), audio della partita pieno / basso / spento e sfondo nero o sfocato per le clip verticali.
 - L'editor delle didascalie mostra una guida dell'area sicura di Instagram.
 - Nelle clip verticali, filigrana e nuove didascalie non finiscono più sotto i pulsanti e i testi di Instagram e TikTok.
@@ -614,6 +622,7 @@ Ribatto 免费使用，由广告支持。看完一段短广告，一小时通行
 
 **What's New (1.1.1)**
 ```
+- 全新设计与应用图标：界面更简洁，最佳回合更醒目，每个片段都有“编辑”按钮。
 - 新增免费编辑：色彩预设、单个片段变速（0.5× 慢动作至 2×）、比赛声音（原声/调低/关闭），竖屏片段可用黑色或模糊背景。
 - 字幕编辑器会显示 Instagram 安全区参考线。
 - 竖屏片段的水印和新字幕会避开 Instagram 和 TikTok 的按钮与文案。

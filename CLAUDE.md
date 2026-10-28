@@ -145,7 +145,8 @@ ios/Ribatto/
   볼트를 바꾸면 영상에 굽는 `CaptionColor.volt`·AccentColor 에셋·스크린샷 도구 볼트도 같이 바꾼다.
 - 서체: UI는 전부 SF. 탭 제목 `.largeTitle.heavy.condensed`, 큰 숫자 `.heavy.compressed.monospacedDigit()`(숫자에만 compressed), 버튼 `.body.semibold` 최소 50·2줄.
 - 영상 위 글자는 흰색만, 아래 55% 스크림. 카드 반경 16, 히어로 22.
-- 앱 아이콘: `ios/Tools/make_icon.swift` → AppIcon icon-1024(알파 없음). 시작 화면 로고 AppLogo는 그 아이콘을 둥글게 자른 것이고 LaunchBackground는 #0B0C0A.
+- 앱 아이콘(2026-10-28 오너 제공): 볼트 공 + 소리 호 3개("타구음"). 원본 `marketing/icon/ribatto-icon-source.webp`, 브랜드 시트 `ribatto-brand-sheet.webp`.
+  1024 sRGB 불투명으로 변환해 AppIcon icon-1024에 넣는다(알파 없음 확인). `ios/Tools/make_icon.swift`는 이전 생성기라 더는 쓰지 않는다. 시작 화면 로고 AppLogo는 그 아이콘을 둥글게 자른 것이고 LaunchBackground는 아이콘 바탕과 같은 #091100.
 - 클립 플레이어: 왼쪽 X, 오른쪽 공유·⋯(즐겨찾기·다시 지정·삭제), 하단 '편집'·'릴스 만들기'. 릴스 결과와 릴스 탭 상세는 `ReelResultActions` 하나를 쓴다.
 - 라이브러리: '선택' 버튼 없음(카드 길게 누르기 → 선택·삭제). 영상 하나를 가져오면 그 세션으로 바로 간다(NavigationPath).
 

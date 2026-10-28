@@ -242,7 +242,7 @@ AdMob의 최신 공개 안내(Google "Prepare for Apple's App Store data disclos
 
 ## 6. 제출 전 최종 점검
 
-- [ ] `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` 확인 (현재 1.1.1 / 25)
+- [ ] `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` 확인 (현재 1.1.1 / 26)
 - [ ] Release 구성으로 Archive (`Product → Archive`) → Validate → Distribute
 - [ ] 실기기에서 최소 3개 이상의 실제 경기 영상으로 감지 품질 확인 ([DEVICE_TESTING.md](DEVICE_TESTING.md))
 - [ ] 번들 ID가 App Store Connect와 일치하는지
