@@ -117,8 +117,10 @@ ios/Ribatto/
                            앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=실제 ID, 2026-09-22 아카이브에서 확인)
                            단위 ID는 Unit(Debug만 테스트값)
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다
-  Views/                   (IntroView는 2026-10-28 삭제 — 시스템 시작 화면이 같은 로고를 그린다. 광고 시작은 `.task(id: onboarded)`에서
-                           앱이 .active가 될 때까지 기다린 뒤 — 인트로가 하던 "활성 전 ATT 요청 방지"를 이 대기가 맡는다)
+  Views/                   IntroView(2026-10-28 재작성, 약 1.6초·탭하면 건너뜀): 브랜드 바탕(#091100) 위에 마크(`AppMark`, 아이콘에서 뽑은 투명 공+호)가
+                           튀어나오고 → 공이 맞는 순간 rigid 햅틱과 소리 링 3개 → "RIBATTO" 워드마크 → 페이드. Reduce Motion이면 정지 화면+페이드.
+                           시작 화면(UILaunchScreen)은 색만 둔다 — 이미지는 시스템 스냅샷 캐시 때문에 비어 보였다.
+                           광고 시작은 `.task(id: onboarded && !showIntro)` + 앱 .active 대기 — 동의·ATT가 인트로 위에 뜨지 않게
                            OnboardingView: 1페이지(설명 + 종목 칩 + 시작하기)
                            SessionDetailView(위에서부터 전체 폭 히어로(베스트 랠리 무음 루프 + 큰 길이 숫자) → "30초 하이라이트 릴스"(유일한 주 버튼) → 요약(일반 텍스트) → 클립 격자.
                            설정은 ⋯ → 설정 시트에서만. 히어로는 완성 클립만 재생하고 없으면 포스터 — 렌더 중 원본(4K)을 같이 디코딩하면

@@ -12,6 +12,8 @@ struct RibattoApp: App {
     @AppStorage("rc_lang") private var lang = "en"
     @AppStorage("rc_onboarded") private var onboarded = false
     @State private var tab = 0
+    /// The opening card plays once per launch, over whatever comes next.
+    @State private var showIntro = true
     @Environment(\.scenePhase) private var scenePhase
 
     /// Before any view reads `rc_lang`: seeding it from a `.task` would let the
@@ -57,6 +59,12 @@ struct RibattoApp: App {
                     OnboardingView(done: $onboarded)
                 }
             }
+            .overlay {
+                if showIntro {
+                    IntroView { showIntro = false }
+                        .transition(.identity)
+                }
+            }
             .environmentObject(store)
             .environmentObject(pass)
             .environmentObject(ads)
@@ -67,8 +75,10 @@ struct RibattoApp: App {
             // never appears is a 2.1 rejection. The 1.6 s title card used to
             // buy this time; with it gone the root task runs at first layout,
             // before didBecomeActive.
-            .task(id: onboarded) {
-                guard onboarded else { return }
+            // And they wait for the intro: a consent form or tracking prompt
+            // landing on the title card reads as a broken launch.
+            .task(id: onboarded && !showIntro) {
+                guard onboarded, !showIntro else { return }
                 while UIApplication.shared.applicationState != .active {
                     try? await Task.sleep(for: .milliseconds(200))
                     if Task.isCancelled { return }
@@ -113,7 +123,7 @@ struct RibattoApp: App {
             // the foreground is when the network is most likely to be back,
             // so retry there rather than waiting for a relaunch.
             .onChange(of: scenePhase) { _, phase in
-                guard phase == .active, onboarded else { return }
+                guard phase == .active, onboarded, !showIntro else { return }
                 Task { await ads.retryIfNeverStarted() }
             }
             .onChange(of: pass.isPro) { _, pro in

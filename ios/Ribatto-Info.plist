@@ -30,8 +30,6 @@
 	<dict>
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
-		<key>UIImageName</key>
-		<string>AppLogo</string>
 	</dict>
 	<!-- iOS 26 continued processing (Store/BackgroundWork.swift): detection
 	     and rendering keep going after the user switches apps. Each run
