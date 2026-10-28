@@ -4,18 +4,24 @@ import Foundation
 // Generates the 1024x1024 App Store icon.
 //   swift Tools/make_icon.swift Ribatto/Assets.xcassets/AppIcon.appiconset/icon-1024.png
 //
-// The mark: a court-blue ground crossed by a white net, with the vertical clip
-// lifted out in front of it, play mark inside. That is the app in one picture —
-// the match behind, the clip it cuts in front.
+// The mark: a volt ball that has knocked out the top-right corner of a 9:16
+// crop frame and is flying on past it, its trail still inside the frame. The
+// corners are the one edit signifier that is not a play triangle — they say
+// "framed for a vertical reel" — and the ball says which sport. Ground is the
+// app's graphite, so icon, app and store art share one base.
 //
-// Why the net is drawn from its anatomy (tape, hanging cords, sag) rather than
-// as a 45° crosshatch: a crosshatch across the whole tile reads as wallpaper,
-// not as a net. The tape and the sag are what make it legible, and they survive
-// down to the 48px home-screen size where the cords themselves disappear.
+// Why the ball is outside the frame and the fourth corner is gone:
+// - a ball centred in four corners reads as a QR/scanner viewfinder, and a
+//   ground-coloured ring around it locked it inside the frame all the more;
+// - leaving that corner in, bitten by the ball, turned trail + corner into an
+//   "open externally" ↗ glyph. Three corners still read as the 9:16 frame.
+// The trail is solid round-capped lines, not tapered streaks — tapers vanish
+// below about 120px and the trail has to survive at 60.
 //
-// The file is written WITHOUT an alpha channel. App Store Connect rejects an
-// app icon that carries one, and every drawing step here needs alpha, so the
-// artwork is composited onto an opaque canvas before it is encoded.
+// Flat layers only (ground, corners, trail, ball), no baked shadow and no text,
+// so the same shapes can go into Icon Composer for the dark/tinted variants.
+// The file is written WITHOUT an alpha channel: App Store Connect rejects an
+// app icon that carries one, so the artwork is flattened onto an opaque canvas.
 
 let size: CGFloat = 1024
 let out = URL(fileURLWithPath: CommandLine.arguments[1])
@@ -23,146 +29,111 @@ let out = URL(fileURLWithPath: CommandLine.arguments[1])
 func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) -> CGColor {
     CGColor(srgbRed: r/255, green: g/255, blue: b/255, alpha: a)
 }
-let voltHi = rgb(226, 255, 132), volt = rgb(200, 246, 62), voltLo = rgb(150, 208, 30)
-let courtHi = rgb(38, 140, 158), courtLo = rgb(9, 58, 70)
+let volt = rgb(212, 255, 63), voltHi = rgb(232, 255, 140), voltLo = rgb(170, 220, 30)
+let groundTop = rgb(30, 34, 26), groundBot = rgb(11, 12, 10)
+let seam = rgb(11, 12, 10, 0.88)
 
-func context(alpha: Bool) -> (CGContext, NSBitmapImageRep) {
-    let rep = NSBitmapImageRep(
-        bitmapDataPlanes: nil, pixelsWide: Int(size), pixelsHigh: Int(size),
-        bitsPerSample: 8, samplesPerPixel: alpha ? 4 : 3, hasAlpha: alpha,
-        isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+func context(alpha: Bool) -> CGContext {
     let info = alpha ? CGImageAlphaInfo.premultipliedLast.rawValue
                      : CGImageAlphaInfo.noneSkipLast.rawValue
-    // A 3-sample rep is still 4 bytes per pixel here, so the skip-last layout
-    // matches its buffer while declaring no alpha.
-    let ctx = CGContext(data: nil, width: Int(size), height: Int(size),
-                        bitsPerComponent: 8, bytesPerRow: 0,
-                        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: info)!
-    return (ctx, rep)
+    return CGContext(data: nil, width: Int(size), height: Int(size),
+                     bitsPerComponent: 8, bytesPerRow: 0,
+                     space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: info)!
 }
-
 func gradient(_ colors: [CGColor], _ locations: [CGFloat]) -> CGGradient {
     CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
                colors: colors as CFArray, locations: locations)!
 }
 
-/// The court, lit from the top-left.
-func drawGround(_ ctx: CGContext) {
-    ctx.drawLinearGradient(gradient([courtHi, courtLo], [0, 1]),
-                           start: CGPoint(x: 0, y: size), end: CGPoint(x: size, y: 0),
-                           options: [])
-}
+let ctx = context(alpha: true)
 
-/// A net as one actually reads: a solid tape along the top, cords hanging from
-/// it, and the sag in the middle that tells you it is hanging at all.
-func drawNet(_ ctx: CGContext, rect: CGRect, tapeHeight: CGFloat, columns: Int) {
-    let sag = rect.height * 0.20
-    func bottom(_ t: CGFloat) -> CGFloat { rect.minY - sag * 4 * t * (1 - t) }
+// ground: graphite, lit from the top
+ctx.drawLinearGradient(gradient([groundTop, groundBot], [0, 1]),
+                       start: CGPoint(x: size * 0.5, y: size), end: CGPoint(x: size * 0.5, y: 0),
+                       options: [])
 
-    ctx.saveGState()
-    ctx.setStrokeColor(rgb(255, 255, 255, 0.62))
-    ctx.setLineWidth(size * 0.016)
-    ctx.setLineCap(.round)
-    for i in 0...columns {
-        let t = CGFloat(i) / CGFloat(columns)
-        let x = rect.minX + rect.width * t
-        ctx.move(to: CGPoint(x: x, y: rect.maxY))
-        ctx.addLine(to: CGPoint(x: x, y: bottom(t)))
-    }
+// geometry: the ball sits on the diagonal just past where the top-right corner
+// was, and the frame + ball group is centred on the tile
+let R = size * 0.145
+let frameH = size * 0.52, frameW = frameH * 9 / 16
+let reach = R * 0.55                                 // ball centre offset per axis
+let groupW = frameW + reach + R, groupH = frameH + reach + R
+let frame = CGRect(x: (size - groupW) / 2, y: (size - groupH) / 2, width: frameW, height: frameH)
+let corner = CGPoint(x: frame.maxX, y: frame.maxY)
+let ballC = CGPoint(x: corner.x + reach, y: corner.y + reach)
+
+// a faint volt glow behind the ball (light, not a shadow)
+ctx.drawRadialGradient(gradient([rgb(212, 255, 63, 0.20), rgb(212, 255, 63, 0)], [0, 1]),
+                       startCenter: ballC, startRadius: 0, endCenter: ballC, endRadius: R * 2.2,
+                       options: [])
+
+// trail: round-capped speed lines inside the frame, on the path the ball took,
+// kept clear of the ball — touching it, the main line makes a lollipop/racket.
+// Solid and thick so they still read at 60px; they fade by opacity, not taper
+ctx.saveGState()
+ctx.translateBy(x: corner.x, y: corner.y)
+ctx.rotate(by: -3 * .pi / 4)                         // +x runs from the missing corner into the frame
+ctx.setLineCap(.round)
+// (offset across, start, length, width — all × size; opacity)
+let trail: [(CGFloat, CGFloat, CGFloat, CGFloat, CGFloat)] = [
+    (0, 0.11, 0.17, 0.050, 0.85),
+    (0.056, 0.195, 0.08, 0.036, 0.50),
+    (-0.056, 0.195, 0.08, 0.036, 0.50),
+]
+for (dy, start, len, w, a) in trail {
+    ctx.setLineWidth(size * w)
+    ctx.setStrokeColor(rgb(212, 255, 63, a))
+    ctx.move(to: CGPoint(x: size * start, y: size * dy))
+    ctx.addLine(to: CGPoint(x: size * (start + len), y: size * dy))
     ctx.strokePath()
-    for row in 1...3 {
-        let f = CGFloat(row) / 4
-        ctx.move(to: CGPoint(x: rect.minX, y: rect.maxY - (rect.maxY - bottom(0)) * f))
-        for i in 1...columns {
-            let t = CGFloat(i) / CGFloat(columns)
-            ctx.addLine(to: CGPoint(x: rect.minX + rect.width * t,
-                                    y: rect.maxY - (rect.maxY - bottom(t)) * f))
-        }
-        ctx.strokePath()
-    }
-    ctx.setFillColor(rgb(255, 255, 255, 0.92))
-    ctx.addPath(CGPath(roundedRect: CGRect(x: rect.minX - size * 0.012, y: rect.maxY,
-                                           width: rect.width + size * 0.024,
-                                           height: tapeHeight),
-                       cornerWidth: tapeHeight / 2.4, cornerHeight: tapeHeight / 2.4,
-                       transform: nil))
-    ctx.fillPath()
-    ctx.restoreGState()
 }
-
-/// The play triangle, inflated by a round join so its corners are soft.
-func playPath(_ ctx: CGContext, centre c: CGPoint, halfHeight h: CGFloat,
-              radius r: CGFloat) -> CGPath {
-    let w = h * 1.66
-    let tri = CGMutablePath()
-    tri.move(to: CGPoint(x: c.x - w * 0.42, y: c.y + h))
-    tri.addLine(to: CGPoint(x: c.x + w * 0.58, y: c.y))
-    tri.addLine(to: CGPoint(x: c.x - w * 0.42, y: c.y - h))
-    tri.closeSubpath()
-
-    ctx.saveGState()
-    ctx.addPath(tri)
-    ctx.setLineWidth(r * 2)
-    ctx.setLineJoin(.round)
-    ctx.replacePathWithStrokedPath()
-    let stroked = ctx.path!.copy()!
-    ctx.restoreGState()
-
-    let path = CGMutablePath()
-    path.addPath(tri)
-    path.addPath(stroked)
-    return path
-}
-
-let (ctx, _) = context(alpha: true)
-drawGround(ctx)
-drawNet(ctx, rect: CGRect(x: size * 0.04, y: size * 0.30,
-                          width: size * 0.92, height: size * 0.30),
-        tapeHeight: size * 0.055, columns: 11)
-
-// the clip, standing in front of the net
-let cardHeight = size * 0.62
-let cardWidth = cardHeight * 0.68
-let card = CGRect(x: (size - cardWidth) / 2, y: (size - cardHeight) / 2,
-                  width: cardWidth, height: cardHeight)
-let corner = size * 0.072
-
-ctx.saveGState()
-ctx.setShadow(offset: CGSize(width: -size * 0.014, height: -size * 0.016),
-              blur: size * 0.06, color: rgb(0, 0, 0, 0.45))
-ctx.addPath(CGPath(roundedRect: card, cornerWidth: corner, cornerHeight: corner,
-                   transform: nil))
-ctx.setFillColor(volt)
-ctx.fillPath()
 ctx.restoreGState()
 
+// the three crop corners left standing (top-right is the one the ball took out)
+let arm = size * 0.082
 ctx.saveGState()
-ctx.addPath(CGPath(roundedRect: card, cornerWidth: corner, cornerHeight: corner,
-                   transform: nil))
+ctx.setStrokeColor(rgb(246, 248, 240))
+ctx.setLineWidth(size * 0.056)
+ctx.setLineCap(.round)
+ctx.setLineJoin(.round)
+let corners: [(CGPoint, CGFloat, CGFloat)] = [
+    (CGPoint(x: frame.minX, y: frame.maxY), 1, -1),
+    (CGPoint(x: frame.minX, y: frame.minY), 1, 1),
+    (CGPoint(x: frame.maxX, y: frame.minY), -1, 1),
+]
+for (p, dx, dy) in corners {
+    ctx.move(to: CGPoint(x: p.x, y: p.y + dy * arm))
+    ctx.addLine(to: p)
+    ctx.addLine(to: CGPoint(x: p.x + dx * arm, y: p.y))
+}
+ctx.strokePath()
+ctx.restoreGState()
+
+// the ball
+let ballRect = CGRect(x: ballC.x - R, y: ballC.y - R, width: R * 2, height: R * 2)
+ctx.saveGState()
+ctx.addEllipse(in: ballRect)
 ctx.clip()
-ctx.drawLinearGradient(gradient([voltHi, volt, voltLo], [0, 0.5, 1]),
-                       start: CGPoint(x: card.minX, y: card.maxY),
-                       end: CGPoint(x: card.maxX, y: card.minY), options: [])
-ctx.restoreGState()
-
-// punch the play mark out of the card, then put the court back behind it
-ctx.saveGState()
-ctx.setBlendMode(.destinationOut)
-ctx.addPath(playPath(ctx, centre: CGPoint(x: card.midX + cardWidth * 0.05, y: card.midY),
-                     halfHeight: cardWidth * 0.26, radius: size * 0.024))
-ctx.setFillColor(.black)
-ctx.fillPath()
-ctx.setBlendMode(.destinationOver)
-drawGround(ctx)
+ctx.drawRadialGradient(gradient([voltHi, volt, voltLo], [0, 0.55, 1]),
+                       startCenter: CGPoint(x: ballC.x - R * 0.35, y: ballC.y + R * 0.4),
+                       startRadius: 0, endCenter: ballC, endRadius: R * 1.05, options: [])
+// seams: two arcs bulging in from opposite sides, the whole pair tilted
+ctx.translateBy(x: ballC.x, y: ballC.y)
+ctx.rotate(by: -.pi / 5)
+ctx.setStrokeColor(seam)
+ctx.setLineWidth(size * 0.030)
+let off = R * 1.42, sr = R * 0.98
+ctx.addEllipse(in: CGRect(x: -off - sr, y: -sr, width: sr * 2, height: sr * 2))
+ctx.strokePath()
+ctx.addEllipse(in: CGRect(x: off - sr, y: -sr, width: sr * 2, height: sr * 2))
+ctx.strokePath()
 ctx.restoreGState()
 
 // flatten onto an opaque canvas: the App Store rejects an icon with alpha
-let (flat, flatRep) = context(alpha: false)
-flat.setFillColor(courtLo)
+let flat = context(alpha: false)
+flat.setFillColor(groundBot)
 flat.fill(CGRect(x: 0, y: 0, width: size, height: size))
 flat.draw(ctx.makeImage()!, in: CGRect(x: 0, y: 0, width: size, height: size))
-
-let final = NSBitmapImageRep(cgImage: flat.makeImage()!)
-try! final.representation(using: .png, properties: [:])!.write(to: out)
-_ = flatRep
+let rep = NSBitmapImageRep(cgImage: flat.makeImage()!)
+try! rep.representation(using: .png, properties: [:])!.write(to: out)
 print("wrote \(out.path)")

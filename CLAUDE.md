@@ -117,10 +117,11 @@ ios/Ribatto/
                            앱 ID는 빌드 설정 GAD_APPLICATION_ID(Debug=구글 테스트 ID, Release=실제 ID, 2026-09-22 아카이브에서 확인)
                            단위 ID는 Unit(Debug만 테스트값)
                            `configured`가 false면 SDK를 아예 시작하지 않는다 — Release에 ID를 안 넣으면 광고 없이 나가고 크래시는 없다
-  Views/                   IntroView(실행 때마다 1.6초 타이틀 카드, 영어 고정. 시스템 시작 화면이 같은 로고를 같은 자리에 그린다.
-                           광고 시작(동의·ATT)은 카드가 사라진 뒤 — 카드 위에 프롬프트가 겹치지 않게)
-                           SessionDetailView(위에서부터 히어로(베스트 랠리 무음 루프) → 한 줄 요약(탭하면 설정 시트) → "30초 하이라이트 릴스" → 클립 격자.
-                           설정은 ⋯ → 설정 시트. 히어로는 완성 클립만 재생하고 없으면 포스터 — 렌더 중 원본(4K)을 같이 디코딩하면
+  Views/                   (IntroView는 2026-10-28 삭제 — 시스템 시작 화면이 같은 로고를 그린다. 광고 시작은 `.task(id: onboarded)`에서
+                           앱이 .active가 될 때까지 기다린 뒤 — 인트로가 하던 "활성 전 ATT 요청 방지"를 이 대기가 맡는다)
+                           OnboardingView: 1페이지(설명 + 종목 칩 + 시작하기)
+                           SessionDetailView(위에서부터 전체 폭 히어로(베스트 랠리 무음 루프 + 큰 길이 숫자) → "30초 하이라이트 릴스"(유일한 주 버튼) → 요약(일반 텍스트) → 클립 격자.
+                           설정은 ⋯ → 설정 시트에서만. 히어로는 완성 클립만 재생하고 없으면 포스터 — 렌더 중 원본(4K)을 같이 디코딩하면
                            인코더와 메모리를 다툰다(-11819 계열). iCloud 원본도 끌어오지 않는다)
                            ReelSheet(열자마자 만들고 결과 화면에 착지: 인스타·저장·공유·편집. 버튼 경로는 30초 예산·랠리당 15초 상한·
                            최고 랠리 먼저·hook. 다시 만들기는 성공한 뒤에만 이 시트가 만든 이전 릴스를 지운다) · ClipViews
@@ -136,6 +137,17 @@ ios/Ribatto/
                            ReelsView: 완성된 릴스 보관함. 파일은 sessions/reels/ 에 id.mp4 + id.jpg + id.json(ReelInfo)
                            OrientationGate.swift: 세로 고정 + 재생 화면만 가로 허용
 ```
+
+## 디자인 시스템 (2026-10-28 리디자인, ios/REDESIGN_DIRECTIONS.md)
+
+- 색은 셋만: 브랜드 `accent` #D4FF3F(누르는 것·현재 선택만), 데이터 `court` #5CC8DE(파형·차트·구간, 누르지 않음), 상태 warning/danger.
+  바닥 #0B0C0A · 카드 #171915 · 높은 면 #23261F, 보조 글자 `Theme.secondaryText` #A6AC9D(.tertiary 대신).
+  볼트를 바꾸면 영상에 굽는 `CaptionColor.volt`·AccentColor 에셋·스크린샷 도구 볼트도 같이 바꾼다.
+- 서체: UI는 전부 SF. 탭 제목 `.largeTitle.heavy.condensed`, 큰 숫자 `.heavy.compressed.monospacedDigit()`(숫자에만 compressed), 버튼 `.body.semibold` 최소 50·2줄.
+- 영상 위 글자는 흰색만, 아래 55% 스크림. 카드 반경 16, 히어로 22.
+- 앱 아이콘: `ios/Tools/make_icon.swift` → AppIcon icon-1024(알파 없음). 시작 화면 로고 AppLogo는 그 아이콘을 둥글게 자른 것이고 LaunchBackground는 #0B0C0A.
+- 클립 플레이어: 왼쪽 X, 오른쪽 공유·⋯(즐겨찾기·다시 지정·삭제), 하단 '편집'·'릴스 만들기'. 릴스 결과와 릴스 탭 상세는 `ReelResultActions` 하나를 쓴다.
+- 라이브러리: '선택' 버튼 없음(카드 길게 누르기 → 선택·삭제). 영상 하나를 가져오면 그 세션으로 바로 간다(NavigationPath).
 
 ## 랠리 번호와 되돌리기 (2026-10-13)
 

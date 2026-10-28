@@ -32,9 +32,9 @@ struct ReelsView: View {
                         VStack(spacing: 10) {
                             Image(systemName: "rectangle.portrait.on.rectangle.portrait.angled")
                                 .font(.system(size: 40, weight: .light))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.secondaryText)
                             Text(L.s("reels_empty", lang))
-                                .font(.subheadline).foregroundStyle(.secondary)
+                                .font(.subheadline).foregroundStyle(Theme.secondaryText)
                                 .multilineTextAlignment(.center)
                             Button(action: openLibrary) {
                                 // It switches tabs; it does not import.
@@ -58,7 +58,7 @@ struct ReelsView: View {
                             Spacer()
                             Text(ByteCountFormatter.string(fromByteCount: bytes,
                                                            countStyle: .file))
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(Theme.secondaryText)
                         }
                         .padding(.horizontal)
 
@@ -100,7 +100,7 @@ struct ReelsView: View {
                         .overlay { thumb(reel) }
                         .clipped()
                     Text(fmtDur(reel.duration))
-                        .font(.caption2.bold())
+                        .font(.caption2.bold().monospacedDigit())
                         // Badges sit on a fixed-size thumbnail, as on the clip
                         // cards: scaled with the body text they cover the frame
                         // they are meant to annotate.
@@ -123,7 +123,7 @@ struct ReelsView: View {
                                 reel.rallies))
                         .font(.caption2.bold())
                     Text(reel.place ?? L.dateOnly(reel.createdAt, lang))
-                        .font(.caption2).foregroundStyle(.secondary)
+                        .font(.caption2).foregroundStyle(Theme.secondaryText)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -164,6 +164,8 @@ struct ReelPlayerSheet: View {
     @State private var editingCaption = false
     @State private var rebuilding = false
     @State private var message: String?
+    /// "Saved — in Instagram tap + → Reel" before the app switch.
+    @State private var toast: String?
 
     private var shown: ReelInfo { current ?? reel }
     /// The rallies this reel can be rebuilt from — recorded in its sidecar, or
@@ -184,56 +186,20 @@ struct ReelPlayerSheet: View {
                         .aspectRatio(OutputFrame(reel.frame).aspectRatio, contentMode: .fit)
                 }
                 Spacer(minLength: 0)
-                VStack(spacing: 10) {
-                    // A reel's caption is burned in, so changing it means
-                    // rendering the reel again — which is only possible for a
-                    // reel that recorded where its rallies came from.
-                    if let session = captionSession {
-                        Button {
-                            editingCaption = true
-                        } label: {
-                            Label(rebuilding ? L.s("reel_recaptioning", lang)
-                                             : L.s("edit_caption", lang),
-                                  systemImage: "textformat")
-                                .font(.subheadline.bold())
-                                .frame(maxWidth: .infinity, minHeight: 24)
-                        }
-                        .rcSecondary()
-                        .disabled(rebuilding)
-                        .sheet(isPresented: $editingCaption) {
-                            CaptionEditorView(session: session,
-                                              caption: shown.caption,
-                                              frame: OutputFrame(shown.frame)) { edited in
-                                recaption(edited)
-                            }
-                        }
-                    }
-                    Button {
-                        Task {
-                            saved = await store.saveToPhotos(shown.url)
-                            // A denied Photos permission used to leave the
-                            // button exactly as it was, with nothing to say why.
-                            if !saved { message = L.s("photos_denied", lang) }
-                        }
-                    } label: {
-                        Label(saved ? L.s("reel_saved", lang) : L.s("reel_save", lang),
-                              systemImage: saved ? "checkmark" : "square.and.arrow.down")
-                            .font(.subheadline.bold())
-                            .frame(maxWidth: .infinity, minHeight: 24)
-                    }
-                    .rcPrimary()
-                    .disabled(rebuilding)
-                    ShareLink(item: shown.url) {
-                        Label(L.s("share", lang), systemImage: "square.and.arrow.up")
-                            .font(.subheadline.bold())
-                            .frame(maxWidth: .infinity, minHeight: 24)
-                    }
-                    .rcSecondary()
-                    // The file being shared is the one the rebuild deletes on
-                    // success; handing it to another app mid-rebuild shares a
-                    // reel that is about to disappear.
-                    .disabled(rebuilding)
-                }
+                // A reel's caption is burned in, so editing means rendering
+                // the reel again — only possible for a reel that recorded
+                // where its rallies came from; otherwise there is no Edit.
+                ReelResultActions(url: shown.url, saved: saved,
+                                  // The file shared or saved is the one the
+                                  // rebuild deletes on success.
+                                  disabled: rebuilding,
+                                  onInstagram: postToInstagram,
+                                  onSave: { Task { await save() } },
+                                  edit: captionSession == nil ? nil
+                                      : .init(title: rebuilding ? L.s("reel_recaptioning", lang)
+                                                                : L.s("reel_edit", lang),
+                                              icon: "textformat",
+                                              action: { editingCaption = true }))
                 .padding(16)
             }
             .background(Theme.background.ignoresSafeArea())
@@ -266,6 +232,16 @@ struct ReelPlayerSheet: View {
                 get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK", role: .cancel) { message = nil }
             }
+            .sheet(isPresented: $editingCaption) {
+                if let session = captionSession {
+                    CaptionEditorView(session: session,
+                                      caption: shown.caption,
+                                      frame: OutputFrame(shown.frame)) { edited in
+                        recaption(edited)
+                    }
+                }
+            }
+            .passToast($toast)
             .onAppear { if player == nil { player = AVPlayer(url: shown.url) } }
         }
         .preferredColorScheme(.dark)
@@ -274,6 +250,29 @@ struct ReelPlayerSheet: View {
         // Reels tab has no progress row to tell the user why the old reel
         // vanished minutes later.
         .interactiveDismissDisabled(rebuilding)
+    }
+
+    /// True once the reel is in the camera roll.
+    private func save() async -> Bool {
+        saved = await store.saveToPhotos(shown.url)
+        // A denied Photos permission used to leave the button exactly as it
+        // was, with nothing to say why.
+        if !saved { message = L.s("photos_denied", lang) }
+        return saved
+    }
+
+    /// As on the result screen: Instagram picks from the camera roll, so the
+    /// reel is saved first, and where to find it is said before the switch.
+    private func postToInstagram() {
+        Task {
+            if !saved { guard await save() else { return } }
+            toast = L.s("ig_hint", lang)
+            try? await Task.sleep(for: .milliseconds(1500))
+            guard let url = URL(string: "instagram://app") else { return }
+            UIApplication.shared.open(url, options: [:]) { ok in
+                if !ok { message = String(format: L.s("app_missing_fmt", lang), "Instagram") }
+            }
+        }
     }
 
     /// Renders the reel again with a new caption and swaps the player over to

@@ -304,7 +304,7 @@ struct ReelSheet: View {
                 // Leaving the app is what stops a long build, so it is said
                 // in readable text, not a footnote.
                 Label(L.s("keep_awake", lang), systemImage: "iphone.gen3")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -367,8 +367,8 @@ struct ReelSheet: View {
                 Label(String(format: L.s(done.plan.used == 1 ? "reel_used_one_fmt" : "reel_used_fmt", lang),
                              done.plan.used, fmtDur(done.plan.duration)),
                       systemImage: "film")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(Theme.secondaryText)
                 if done.plan.trimmed {
                     Label(L.s("reel_trimmed", lang), systemImage: "scissors")
                         .font(.caption).foregroundStyle(Theme.warning)
@@ -383,62 +383,26 @@ struct ReelSheet: View {
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Posting is why the reel exists, so it leads. Instagram takes a
-            // video from the camera roll, so the button saves it first and then
-            // opens the app with it at the top of the picker.
             // Steps down while an edited, not yet rebuilt reel is pending:
             // two primaries on screen and the one that posts the OLD reel
             // looked like the next step.
-            if editing && changed {
-                instagramButton(done.url).rcSecondary()
-            } else {
-                instagramButton(done.url).rcPrimary()
-            }
-
-            // Side by side where they fit; stacked where "Save to Photos" and
-            // "Share" would otherwise break mid-word.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) { saveButton(done.url); shareButton(done.url) }
-                VStack(spacing: 10) { saveButton(done.url); shareButton(done.url) }
-            }
+            ReelResultActions(url: done.url, saved: savedToPhotos,
+                              primaryProminent: !(editing && changed),
+                              disabled: building,
+                              onInstagram: { run(.instagram, done.url) },
+                              onSave: { run(.save, done.url) },
+                              edit: .init(title: L.s(editing ? "done" : "reel_edit", lang),
+                                          icon: editing ? "chevron.up" : "slider.horizontal.3",
+                                          action: { withAnimation(.snappy) { editing.toggle() } }))
 
             if showsFirstReelCard { firstReelCard }
-
-            editButton
 
             // One offer at a time: the quiet line waits while the card is up.
             if !pass.isPro && ads.showing && !showsFirstReelCard { passLine }
         }
     }
 
-    private func instagramButton(_ url: URL) -> some View {
-        Button { run(.instagram, url) } label: {
-            Label(L.s("reel_post_ig", lang), systemImage: "camera.aperture")
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity)
-        }
-    }
-
-    private func saveButton(_ url: URL) -> some View {
-        Button { run(.save, url) } label: {
-            Label(savedToPhotos ? L.s("reel_saved", lang) : L.s("reel_save", lang),
-                  systemImage: savedToPhotos ? "checkmark" : "square.and.arrow.down")
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity)
-        }
-        .rcSecondary()
-    }
-
-    private func shareButton(_ url: URL) -> some View {
-        ShareLink(item: url) {
-            Label(L.s("share", lang), systemImage: "square.and.arrow.up")
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity)
-        }
-        .rcSecondary()
-    }
-
+    /// After a failure with no reel on screen, the one way back into the panel.
     private var editButton: some View {
         Button {
             withAnimation(.snappy) { editing.toggle() }
@@ -468,12 +432,12 @@ struct ReelSheet: View {
                 Text(String(format: L.s("reel_included_fmt", lang),
                             chosen.count, entries.count)
                      + " · " + fmtDur(cappedSeconds))
-                    .font(.headline)
+                    .font(.headline.monospacedDigit())
                     .foregroundStyle(chosen.isEmpty ? Theme.warning : .primary)
                 if overCap {
                     Label(L.s("reel_over_cap", lang) + " · " + fmtDur(totalSeconds),
                           systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(Theme.warning)
+                        .font(.caption.monospacedDigit()).foregroundStyle(Theme.warning)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -496,7 +460,7 @@ struct ReelSheet: View {
                         // Said up front: on 30 fps footage the switch is on
                         // and nothing appears.
                         Text(L.s("reel_replay_hint", lang))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(Theme.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -574,16 +538,16 @@ struct ReelSheet: View {
                         VStack(alignment: .leading, spacing: 1) {
                             Text("#\(entry.clip.number) · "
                                  + fmtDur(pace.estimatedLength(of: entry.clip.segment)))
-                                .font(.subheadline.weight(.medium))
+                                .font(.subheadline.weight(.medium).monospacedDigit())
                             HStack(spacing: 6) {
                                 Text(String(entry.clip.segment.hits) + " " + L.s("shots_n", lang))
-                                    .font(.caption2).foregroundStyle(.secondary)
+                                    .font(.caption2).foregroundStyle(Theme.secondaryText)
                                 if entry.id == bestID {
                                     Text(L.s("best_rally", lang))
                                         .font(.caption2.bold())
                                         .padding(.horizontal, 6).padding(.vertical, 1)
                                         .overlay(Capsule().strokeBorder(.secondary.opacity(0.6)))
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(Theme.secondaryText)
                                 }
                             }
                             .dynamicTypeSize(...DynamicTypeSize.accessibility2)
@@ -662,7 +626,7 @@ struct ReelSheet: View {
 
     private func labeledPicker<P: View>(_ title: String, @ViewBuilder _ picker: () -> P) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(title).font(.caption).foregroundStyle(Theme.secondaryText)
             picker().dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         }
     }
@@ -699,7 +663,7 @@ struct ReelSheet: View {
                 }
             }
             Text(L.s("pace_" + pace.rawValue + "_d", lang))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -721,7 +685,7 @@ struct ReelSheet: View {
             }
             .pickerStyle(.segmented)
             Text(L.s(frame == .vertical ? "frame_916_d" : "frame_45_d", lang))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -741,7 +705,7 @@ struct ReelSheet: View {
         let text = VStack(alignment: .leading, spacing: 1) {
             Text(title).font(.subheadline.bold())
             if !detail.isEmpty {
-                Text(detail).font(.caption2).foregroundStyle(.secondary)
+                Text(detail).font(.caption2).foregroundStyle(Theme.secondaryText)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -906,7 +870,7 @@ struct ReelSheet: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(L.s("card_title", lang)).font(.subheadline.bold())
                 Text(L.s("card_sub", lang))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Theme.secondaryText)
             }
             .fixedSize(horizontal: false, vertical: true)
             ViewThatFits(in: .horizontal) {
@@ -949,7 +913,7 @@ struct ReelSheet: View {
         Button(L.s("card_close", lang)) { firstCardDone = true }
             .font(.subheadline)
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.secondaryText)
             .padding(.horizontal, 8)
     }
 
@@ -990,6 +954,80 @@ struct ReelSheet: View {
         UIApplication.shared.open(url, options: [:]) { ok in
             if !ok { message = String(format: L.s("app_missing_fmt", lang), name) }
         }
+    }
+}
+
+/// What you do with a finished reel, the same on the result screen and in the
+/// Reels tab: one primary that saves and opens Instagram, then Save · Share ·
+/// Edit as equal icon buttons on one line. Behaviour stays with the caller.
+struct ReelResultActions: View {
+    struct Edit {
+        let title: String
+        let icon: String
+        let action: () -> Void
+    }
+
+    @AppStorage("rc_lang") private var lang = "en"
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let url: URL
+    var saved = false
+    var primaryProminent = true
+    var disabled = false
+    let onInstagram: () -> Void
+    let onSave: () -> Void
+    /// Nil hides the button: a screen with nothing to edit shows two.
+    var edit: Edit?
+
+    var body: some View {
+        VStack(spacing: 10) {
+            // Posting is why the reel exists, so it leads. Instagram takes a
+            // video from the camera roll, so the button saves it first.
+            if primaryProminent {
+                instagram.rcPrimary()
+            } else {
+                instagram.rcSecondary()
+            }
+            // Stacked at accessibility sizes: a third of the width is narrower
+            // than one word there.
+            if typeSize.isAccessibilitySize {
+                VStack(spacing: 10) { row }
+            } else {
+                HStack(spacing: 10) { row }
+            }
+        }
+        .disabled(disabled)
+    }
+
+    private var instagram: some View {
+        Button(action: onInstagram) {
+            Label(L.s("reel_post_ig", lang), systemImage: "camera.aperture")
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder private var row: some View {
+        Button(action: onSave) {
+            item(L.s("save", lang), saved ? "checkmark" : "square.and.arrow.down")
+        }
+        .rcSecondary()
+        .accessibilityValue(saved ? L.s("reel_saved", lang) : "")
+        ShareLink(item: url) { item(L.s("share", lang), "square.and.arrow.up") }
+            .rcSecondary()
+        if let edit {
+            Button(action: edit.action) { item(edit.title, edit.icon) }
+                .rcSecondary()
+        }
+    }
+
+    private func item(_ title: String, _ icon: String) -> some View {
+        VStack(spacing: 3) {
+            Image(systemName: icon)
+            // One line, shrunk rather than broken: "Compartilhar" and
+            // "Bearbeiten" are wider than a third of the screen at full size.
+            Text(title).lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .font(.subheadline.weight(.semibold))
+        .frame(maxWidth: .infinity)
     }
 }
 

@@ -165,8 +165,9 @@ struct SessionDetailView: View {
                         .allowsHitTesting(!selecting)
                         .accessibilityHidden(selecting)
                     }
-                    summaryLine(session)
+                    // Right under the hero: the one primary on this screen.
                     reelCTA(session, ranked: ranked, busy: busy)
+                    summaryLine(session)
                     clipHeader(clips)
                     clipGrid(clips)
                 } else if gap != nil {
@@ -665,7 +666,7 @@ struct SessionDetailView: View {
         }
         .padding(14)
         .background(Theme.surface,
-                    in: RoundedRectangle(cornerRadius: 14))
+                    in: RoundedRectangle(cornerRadius: 16))
     }
 
     @ViewBuilder
@@ -1166,7 +1167,7 @@ struct SessionDetailView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surface,
-                    in: RoundedRectangle(cornerRadius: 14))
+                    in: RoundedRectangle(cornerRadius: 16))
     }
 
     /// Clips missing although nothing changed: a first render the app was
@@ -1186,18 +1187,18 @@ struct SessionDetailView: View {
             Button { runApply(session) } label: {
                 Label(L.s(gap == .cleared ? "gap_remake" : "gap_continue", lang),
                       systemImage: "arrow.clockwise")
-                    .font(.subheadline.bold())
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, minHeight: 24)
+                    .frame(maxWidth: .infinity)
             }
-            .rcPrimary()
+            // Secondary: the 30-second reel below is the screen's one primary.
+            .rcSecondary()
             .disabled(store.sourceMissing(session))
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surface,
-                    in: RoundedRectangle(cornerRadius: 14))
+                    in: RoundedRectangle(cornerRadius: 16))
     }
 
     /// A failure with the way out next to it. It used to be a grey caption in
@@ -1241,7 +1242,7 @@ struct SessionDetailView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surface,
-                    in: RoundedRectangle(cornerRadius: 14))
+                    in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Pro
@@ -1275,7 +1276,7 @@ struct SessionDetailView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surface,
-                    in: RoundedRectangle(cornerRadius: 14))
+                    in: RoundedRectangle(cornerRadius: 16))
     }
 
     /// Every clip to Photos — Pro. Lives in the ⋯ menu; a full-width button
@@ -1319,7 +1320,7 @@ struct SessionDetailView: View {
         .disabled(busy)
         .padding(14)
         .background(Theme.surface,
-                    in: RoundedRectangle(cornerRadius: 14))
+                    in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func reelBtn(_ session: Session, _ n: Int) -> some View {
@@ -1408,8 +1409,9 @@ struct SessionDetailView: View {
 
     // MARK: - Overview
 
-    /// "5 rallies · 1:34 · Longest 0:42 · Riverside" — what this match came to,
-    /// and the way into its settings, where the place is also edited.
+    /// "5 rallies · 1:34 · Longest 0:42 · Riverside" — what this match came to.
+    /// Plain text: as a button it was a second, hidden way into settings next
+    /// to the reel button, and settings now open only from the ⋯ menu.
     private func summaryLine(_ session: Session) -> some View {
         // From the rallies, not the clip files: after "free up" there are no
         // files and the match still has every rally.
@@ -1424,20 +1426,11 @@ struct SessionDetailView: View {
                      fmtDur(total),
                      L.s("longest", lang) + " " + fmtDur(longest)]
         if let place = session.placeName, !place.isEmpty { parts.append(place) }
-        return Button { destination = .settings } label: {
-            // The chevron flows in the text, as in `editableRow`: as its own
-            // column it left the line a word wide at accessibility sizes.
-            (Text(parts.joined(separator: " · "))
-             + Text("  ")
-             + Text(Image(systemName: "chevron.right")).font(.caption2))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint(L.s("settings", lang))
+        return Text(parts.joined(separator: " · "))
+            .font(.subheadline)
+            .foregroundStyle(Theme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// The one-tap reel: about thirty seconds of the match's best, built the
@@ -1542,7 +1535,6 @@ struct SessionDetailView: View {
                     // 4.7" screen at accessibility sizes.
                     Label(L.s("reel_30s", lang),
                           systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
-                        .font(.subheadline.bold())
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity)
@@ -1685,7 +1677,7 @@ struct SessionDetailView: View {
                 .buttonStyle(.plain)
             }
             .padding(.leading, 16).padding(.trailing, 4).padding(.vertical, 2)
-            .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 14))
+            .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 16))
             .transition(.move(edge: .bottom).combined(with: .opacity))
             // Keyed on the rallies, so a second delete restarts the clock.
             .task(id: undo.rallies.map(\.start)) {
@@ -1762,59 +1754,36 @@ private struct HeroRally: View {
             + (clip.segment.looksMerged ? " · " + L.s("long_block", lang) : "")
     }
 
-    /// At accessibility sizes the type is what needs the room: a full-size
-    /// hero pushed the reel button and the first row of clips off the first
-    /// screen.
-    private var maxVideoHeight: CGFloat {
-        if typeSize.isAccessibilitySize { return frame.isPortrait ? 160 : 200 }
-        return frame.isPortrait ? 240 : .infinity
+    /// "★ Best · 12 shots" over the big length.
+    private var headline: String {
+        let shots: String = String(clip.segment.hits) + " " + L.s("shots_n", lang)
+        let long: String = clip.segment.looksMerged ? " · " + L.s("long_block", lang) : ""
+        return "★ " + L.s("best_rally", lang) + " · " + shots + long
+    }
+
+    /// The length as a number and its unit, so the number can be set big:
+    /// "42" + "s" under a minute, "1:42" with no unit above it.
+    private var length: (number: String, unit: String) {
+        clip.duration < 59.5 ? (String(Int(clip.duration.rounded())), L.s("sec", lang))
+                             : (fmtDur(clip.duration), "")
     }
 
     var body: some View {
         Button(action: onTap) {
-            Group {
-                if frame.isPortrait {
-                    // A 9:16 rally at full width is taller than the phone.
-                    // Capped, it leaves the width beside it, which is where
-                    // the caption goes instead of over a 135pt-wide picture —
-                    // until the caption is too big to fit beside it.
-                    let layout = typeSize.isAccessibilitySize
-                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
-                        : AnyLayout(HStackLayout(spacing: 14))
-                    layout {
-                        video.frame(height: maxVideoHeight)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label(L.s("best_rally", lang), systemImage: "star.fill")
-                                .font(.subheadline.bold())
-                            Text(stats)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(10)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
-                } else {
-                    video
-                        .frame(maxHeight: maxVideoHeight)
-                        .overlay(alignment: .bottomLeading) {
-                            Text("★ " + L.s("best_rally", lang) + " · " + stats)
-                                .font(.caption2.bold())
-                                .foregroundStyle(.white)
-                                // It sits on the picture; unbounded it would
-                                // cover the rally it describes.
-                                .dynamicTypeSize(...DynamicTypeSize.large)
-                                .lineLimit(1).minimumScaleFactor(0.7)
-                                .padding(.horizontal, 8).padding(.vertical, 4)
-                                .background(.black.opacity(0.65),
-                                            in: RoundedRectangle(cornerRadius: 6))
-                                .padding(8)
-                        }
+            video
+                // A 55% scrim under the type, never less (palette rule).
+                .overlay {
+                    LinearGradient(stops: [
+                        .init(color: .clear, location: 0.35),
+                        .init(color: Self.ink.opacity(0.55), location: 0.6),
+                        .init(color: Self.ink.opacity(0.7), location: 1),
+                    ], startPoint: .top, endPoint: .bottom)
+                    .allowsHitTesting(false)
                 }
-            }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
+                .overlay(alignment: .bottomLeading) { caption }
+                .clipShape(RoundedRectangle(cornerRadius: 22))
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(L.s("best_rally", lang) + ", " + stats)
@@ -1825,15 +1794,49 @@ private struct HeroRally: View {
         .onChange(of: scenePhase) { _, _ in sync() }
     }
 
+    /// #050506: pure black smears on OLED.
+    private static let ink = Color(red: 0.02, green: 0.02, blue: 0.024)
+
+    /// White only: on video, the secondary grey falls to 2.2:1.
+    private var caption: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(headline)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1).minimumScaleFactor(0.7)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(length.number)
+                    .font(.system(.largeTitle, weight: .heavy).width(.compressed).monospacedDigit())
+                if !length.unit.isEmpty {
+                    Text(length.unit).font(.subheadline.weight(.semibold))
+                }
+            }
+        }
+        .foregroundStyle(.white)
+        // It sits on the picture; unbounded it would cover the rally it describes.
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+        .padding(14)
+        .accessibilityHidden(true)
+    }
+
+    /// Full width. A 9:16 rally at its own ratio is taller than the phone, so
+    /// it is shown square and filled — the middle, where the play is. At
+    /// accessibility sizes the type needs the room: a full-size hero pushed
+    /// the reel button and the first row of clips off the first screen.
+    @ViewBuilder private var box: some View {
+        if typeSize.isAccessibilitySize {
+            Color.clear.frame(maxWidth: .infinity).frame(height: frame.isPortrait ? 160 : 200)
+        } else {
+            Color.clear.aspectRatio(frame.isPortrait ? 1 : frame.aspectRatio, contentMode: .fit)
+        }
+    }
+
     private var video: some View {
-        Color.clear
-            .aspectRatio(frame.aspectRatio, contentMode: .fit)
+        box
             .overlay { PosterImage(url: clip.thumbURL) }
             .overlay {
                 if let player {
-                    // Fill, not fit: before the clip exists this is the wide
-                    // original in a 9:16 card, and filling shows the middle —
-                    // close to the crop the clip will have.
+                    // Fill, not fit: the box is wider than a vertical clip, and
+                    // filling shows its middle.
                     PlayerLayerView(player: player, gravity: .resizeAspectFill)
                         // A UIKit view takes the touch for itself, and the
                         // card's tap never reached the button.
@@ -1850,7 +1853,7 @@ private struct HeroRally: View {
                         .foregroundStyle(.black, .white.opacity(0.9))
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipped()
     }
 
     private func start() async {

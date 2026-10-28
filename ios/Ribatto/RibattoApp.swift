@@ -13,9 +13,6 @@ struct RibattoApp: App {
     @AppStorage("rc_onboarded") private var onboarded = false
     @State private var tab = 0
     @Environment(\.scenePhase) private var scenePhase
-    /// The title card on top of everything for a moment after launch. The
-    /// app underneath loads at the same time, so it costs no startup time.
-    @State private var showIntro = true
 
     /// Before any view reads `rc_lang`: seeding it from a `.task` would let the
     /// first screen render in English and then switch, which is worse than
@@ -60,27 +57,22 @@ struct RibattoApp: App {
                     OnboardingView(done: $onboarded)
                 }
             }
-            .accessibilityHidden(showIntro)
-            .overlay {
-                if showIntro {
-                    IntroView {
-                        withAnimation(.easeOut(duration: 0.35)) { showIntro = false }
-                    }
-                    .transition(.opacity)
-                }
-            }
             .environmentObject(store)
             .environmentObject(pass)
             .environmentObject(ads)
             // Ads wait for onboarding: the tracking prompt on top of the
-            // welcome pages would be the first thing a new user sees.
-            // ...and for the title card: the consent form or the tracking
-            // prompt would otherwise land on it mid-animation. Waiting it out
-            // also puts the tracking request after launch has settled — one
-            // made before the scene is active is dropped without a prompt, and
-            // an ATT prompt that never appears is a 2.1 rejection.
-            .task(id: onboarded && !showIntro) {
-                guard onboarded, !showIntro else { return }
+            // welcome page would be the first thing a new user sees.
+            // They also wait for the app to be active. A tracking request made
+            // before that is dropped without a prompt, and an ATT prompt that
+            // never appears is a 2.1 rejection. The 1.6 s title card used to
+            // buy this time; with it gone the root task runs at first layout,
+            // before didBecomeActive.
+            .task(id: onboarded) {
+                guard onboarded else { return }
+                while UIApplication.shared.applicationState != .active {
+                    try? await Task.sleep(for: .milliseconds(200))
+                    if Task.isCancelled { return }
+                }
                 await ads.start(isPro: pass.isPro)
             }
             .task {
@@ -121,7 +113,7 @@ struct RibattoApp: App {
             // the foreground is when the network is most likely to be back,
             // so retry there rather than waiting for a relaunch.
             .onChange(of: scenePhase) { _, phase in
-                guard phase == .active, onboarded, !showIntro else { return }
+                guard phase == .active, onboarded else { return }
                 Task { await ads.retryIfNeverStarted() }
             }
             .onChange(of: pass.isPro) { _, pro in

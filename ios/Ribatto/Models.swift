@@ -285,7 +285,7 @@ enum CaptionColor: String, Codable, CaseIterable, Identifiable {
     var rgb: (r: Double, g: Double, b: Double) {
         switch self {
         case .white: return (1.000, 1.000, 1.000)
-        case .volt:  return (0.784, 0.965, 0.243)
+        case .volt:  return (0.831, 1.0, 0.247)
         case .sun:   return (1.000, 0.780, 0.200)
         case .sky:   return (0.350, 0.720, 1.000)
         case .rose:  return (1.000, 0.420, 0.520)

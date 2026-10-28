@@ -11,17 +11,27 @@ import SwiftUI
 /// has nothing left to mark the one button that matters, which is what the
 /// library, session and season screens had become.
 enum Theme {
-    static let accent      = Color(red: 0.784, green: 0.965, blue: 0.243)
-    /// Text and glyphs drawn on top of `accent`.
-    static let onAccent    = Color(red: 0.055, green: 0.086, blue: 0.020)
+    // 2026-10-28 redesign (ios/REDESIGN_DIRECTIONS.md): a warm graphite ground
+    // instead of the blue-black one, which fought the volt; a brighter volt;
+    // and a court cyan kept for data only. Three colour roles, no more:
+    // brand (accent), data (court), state (warning / danger).
+    /// #D4FF3F. The same volt is burned into clips (`CaptionColor.volt`).
+    static let accent      = Color(red: 0.831, green: 1.0, blue: 0.247)
+    /// #0D1500. Text and glyphs drawn on top of `accent` (16.2:1).
+    static let onAccent    = Color(red: 0.051, green: 0.082, blue: 0.0)
 
-    static let background  = Color(red: 0.039, green: 0.043, blue: 0.059)
-    static let surface     = Color(red: 0.086, green: 0.094, blue: 0.118)
-    static let surfaceHigh = Color(red: 0.129, green: 0.141, blue: 0.173)
-    static let hairline    = Color.white.opacity(0.08)
+    static let background  = Color(red: 0.043, green: 0.047, blue: 0.039)   // #0B0C0A
+    static let surface     = Color(red: 0.090, green: 0.098, blue: 0.082)   // #171915
+    static let surfaceHigh = Color(red: 0.137, green: 0.149, blue: 0.122)   // #23261F
+    static let hairline    = Color.white.opacity(0.09)
+    /// #A6AC9D. Dates, hints, units, section headers: 6.6:1 or better on every
+    /// surface, where `.tertiary` read 2.4:1.
+    static let secondaryText = Color(red: 0.651, green: 0.675, blue: 0.616)
+    /// #5CC8DE. Data only — waveforms, chart bars, ranges. Never on a button.
+    static let court       = Color(red: 0.361, green: 0.784, blue: 0.871)
 
-    static let warning     = Color(red: 1.0, green: 0.72, blue: 0.25)
-    static let danger      = Color(red: 1.0, green: 0.42, blue: 0.42)
+    static let warning     = Color(red: 1.0, green: 0.710, blue: 0.278)     // #FFB547
+    static let danger      = Color(red: 1.0, green: 0.420, blue: 0.369)     // #FF6B5E
 
     /// Card background used across the app.
     static func card(_ radius: CGFloat = 16) -> some ShapeStyle { surface }
@@ -140,14 +150,17 @@ struct TabHeader<Trailing: View>: View {
                 }
             }
         }
-        .padding(.horizontal, 20)
+        // 16, the list's own inset: at 20 the title started inside the cards' edge.
+        .padding(.horizontal, 16)
         .padding(.top, 6)
         .padding(.bottom, 8)
     }
 
     private var titleText: some View {
         Text(title)
-            .font(.largeTitle.bold())
+            // The app's typographic voice: heavy, condensed SF. Bebas has no
+            // Dynamic Type and no CJK, so it stays in burned-in video text.
+            .font(.largeTitle.weight(.heavy).width(.condensed))
             .lineLimit(1)
             .minimumScaleFactor(0.6)
     }
@@ -243,9 +256,12 @@ struct RCPrimaryButton: ButtonStyle {
     @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.subheadline.bold())
-            .padding(.horizontal, 16).padding(.vertical, 11)
-            .frame(minHeight: 44)
+            // Two lines before truncating: long German and Italian labels wrap.
+            .font(.body.weight(.semibold))
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .frame(minHeight: 50)
             .background(Theme.accent.opacity(enabled ? 1 : 0.3), in: Capsule())
             .foregroundStyle(Theme.onAccent)
             .opacity(configuration.isPressed ? 0.75 : 1)
@@ -261,9 +277,11 @@ struct RCSecondaryButton: ButtonStyle {
     var destructive = false
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.subheadline.bold())
-            .padding(.horizontal, 16).padding(.vertical, 11)
-            .frame(minHeight: 44)
+            .font(.body.weight(.semibold))
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .frame(minHeight: 50)
             .background(Theme.surfaceHigh, in: Capsule())
             .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
             .foregroundStyle(destructive ? Theme.danger : Color.primary)

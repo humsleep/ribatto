@@ -46,6 +46,10 @@ struct LibraryView: View {
     @State private var sportFilter: Sport?
     @State private var placeFilter: String?
     @State private var showDebug = false
+    /// Lets a single import land straight on its session screen.
+    @State private var path = NavigationPath()
+    /// Sessions some finished reel was built from, for the card's "Reels ✓".
+    @State private var reelSessions: Set<UUID> = []
 
     enum ImportSource { case photos, files, record }
 
@@ -73,12 +77,11 @@ struct LibraryView: View {
     private var searchable: Bool { store.sessions.count >= 8 }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(spacing: 0) {
-            // Two header controls, down from four. Select moved to a long
-            // press on a card (it is only for deleting several), the camera
-            // into the + menu beside the other ways in, and the globe's
-            // contents into Settings.
+            // Two header controls. Select and delete live on a long press on a
+            // card (deleting several is rare), the camera in the + menu beside
+            // the other ways in, and the globe's contents in Settings.
             TabHeader(title: L.s("my_sessions", lang)) {
                 if selecting {
                     // The way back out of a mode entered by long press.
@@ -88,15 +91,6 @@ struct LibraryView: View {
                     }
                     .font(.subheadline.bold())
                 } else {
-                    // Also on a long press, but visible here too: a mode only
-                    // a long press reaches is one most people never find.
-                    if !store.sessions.isEmpty {
-                        Button(L.s("select", lang)) {
-                            selection.removeAll()
-                            selecting = true
-                        }
-                        .font(.subheadline.bold())
-                    }
                     // A toolbar collapses a Label to its icon; in the content
                     // it would spell out "Import video" and push the title out.
                     importButton
@@ -135,7 +129,7 @@ struct LibraryView: View {
                             if searchable { sportFilterBar }
                             if visibleSessions.isEmpty {
                                 Text(L.s("no_match", lang))
-                                    .font(.subheadline).foregroundStyle(.secondary)
+                                    .font(.subheadline).foregroundStyle(Theme.secondaryText)
                                     .padding(.vertical, 40)
                             }
                             ForEach(visibleSessions) { session in
@@ -153,24 +147,28 @@ struct LibraryView: View {
                                     .buttonStyle(.plain)
                                 } else {
                                     NavigationLink(value: session.id) {
-                                        SessionCard(session: session)
+                                        SessionCard(session: session,
+                                                    hasReel: reelSessions.contains(session.id))
                                     }
                                     .buttonStyle(.plain)
                                     // Selecting is for deleting several matches
                                     // at once — rare enough to sit behind a long
                                     // press, which starts with this card picked.
+                                    // Deleting just this one is right there too.
                                     .contextMenu {
-                                        Button {
-                                            selection = [session.id]
-                                            selecting = true
-                                        } label: {
+                                        Button { select(session) } label: {
                                             Label(L.s("select", lang),
                                                   systemImage: "checkmark.circle")
                                         }
+                                        Button(role: .destructive) { askDelete(session) } label: {
+                                            Label(L.s("delete", lang), systemImage: "trash")
+                                        }
                                     }
                                     .accessibilityAction(named: Text(L.s("select", lang))) {
-                                        selection = [session.id]
-                                        selecting = true
+                                        select(session)
+                                    }
+                                    .accessibilityAction(named: Text(L.s("delete", lang))) {
+                                        askDelete(session)
                                     }
                                 }
                             }
@@ -195,6 +193,10 @@ struct LibraryView: View {
             .adBanner()
             .navigationDestination(for: UUID.self) { id in
                 SessionDetailView(sessionID: id)
+            }
+            // Again on every return: a reel made or deleted elsewhere changes the ticks.
+            .onAppear {
+                reelSessions = Set(store.reels().flatMap { $0.sources ?? [] }.map(\.sessionID))
             }
             .sheet(isPresented: $showPro) { ProPassView() }
 #if DEBUG
@@ -233,6 +235,7 @@ struct LibraryView: View {
                         }
                         importing = false
                         guard let id else { importError = L.s("import_failed", lang); return }
+                        path.append(id)
                         await store.processQueued([id])
                     }
                 }
@@ -295,7 +298,10 @@ struct LibraryView: View {
                     selection.removeAll()
                     selecting = false
                 }
-                Button(L.s("cancel", lang), role: .cancel) {}
+                // A delete from the menu borrowed the selection; give it back.
+                Button(L.s("cancel", lang), role: .cancel) {
+                    if !selecting { selection.removeAll() }
+                }
             } message: {
                 Text(L.s("delete_sessions_note", lang))
             }
@@ -326,9 +332,11 @@ struct LibraryView: View {
                         }
                         if let id { ids.append(id) } else { failed += 1 }
                     }
+                    let single = items.count == 1
                     pickerItems = []
                     importing = false
                     if failed > 0 { importError = L.s("import_failed", lang) }
+                    if single, let id = ids.first { path.append(id) }
                     await store.processQueued(ids)
                 }
             }
@@ -339,10 +347,10 @@ struct LibraryView: View {
         VStack(spacing: 12) {
             Image(systemName: "sportscourt")
                 .font(.system(size: 54, weight: .light))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
             Text(L.s("lib_empty_title", lang)).font(.title3.bold())
             Text(L.s("lib_empty_body", lang))
-                .font(.subheadline).foregroundStyle(.secondary)
+                .font(.subheadline).foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
             VStack(spacing: 10) {
                 Menu { importMenuItems } label: { bigImportLabel }
@@ -365,7 +373,7 @@ struct LibraryView: View {
             // as "Filte / r" on a 4.7" screen at accessibility sizes.
             let count = Text(String(format: L.s(visibleSessions.count == 1 ? "n_one_session"
                                                 : "n_sessions", lang), visibleSessions.count))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(Theme.secondaryText)
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(L.s("filter", lang), systemImage: "line.3.horizontal.decrease")
@@ -415,7 +423,7 @@ struct LibraryView: View {
     private var deleteBar: some View {
         HStack {
             Text(String(format: L.s("selected_fmt", lang), selection.count))
-                .font(.subheadline).foregroundStyle(.secondary)
+                .font(.subheadline).foregroundStyle(Theme.secondaryText)
             Spacer()
             Button(role: .destructive) { confirmDelete = true } label: {
                 Label(L.s("delete", lang), systemImage: "trash")
@@ -433,7 +441,7 @@ struct LibraryView: View {
             .font(.headline)
             .padding(.horizontal, 20).padding(.vertical, 12)
             .background(.tint, in: Capsule())
-            .foregroundStyle(.black)
+            .foregroundStyle(Theme.onAccent)
     }
 
     /// Every way a match gets in, in one menu: Photos, Files, or shooting
@@ -510,8 +518,19 @@ struct LibraryView: View {
             }
             importing = false
             if failed > 0 { importError = L.s("import_failed", lang) }
+            if urls.count == 1, let id = ids.first { path.append(id) }
             await store.processQueued(ids)
         }
+    }
+
+    private func select(_ session: Session) {
+        selection = [session.id]
+        selecting = true
+    }
+
+    private func askDelete(_ session: Session) {
+        selection = [session.id]
+        confirmDelete = true
     }
 
     /// Recordings a failed import set aside. Offered back once, as a card,
@@ -524,7 +543,7 @@ struct LibraryView: View {
                       systemImage: "exclamationmark.arrow.triangle.2.circlepath")
                     .font(.subheadline.bold())
                 Text(L.s("recovered_d", lang))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                 Button {
                     Task {
@@ -568,12 +587,14 @@ struct LibraryView: View {
                     .background(Theme.surfaceHigh, in: Capsule())
                     .foregroundStyle(.primary)
             } else {
+                // Outlined like ProBadge: a solid volt capsule is a primary button.
                 Label(L.s("pass_get", lang), systemImage: "play.rectangle.fill")
                     .font(.caption2.bold())
                     .fixedSize()
                     .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(.tint, in: Capsule())
-                    .foregroundStyle(Theme.onAccent)
+                    .background(Theme.accent.opacity(0.18), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1))
+                    .foregroundStyle(Theme.accent)
             }
         }
         // Plain gestures rather than a Button: a Button consumes the touch on
@@ -614,59 +635,62 @@ struct SessionCard: View {
     let session: Session
     /// nil = not in selection mode
     var selected: Bool? = nil
+    /// Some finished reel was built from this session.
+    var hasReel = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .bottomLeading) {
-                poster
-                    .frame(maxWidth: .infinity)
-                    .aspectRatio(16 / 8.5, contentMode: .fit)
-                    .clipped()
-                LinearGradient(colors: [.clear, .black.opacity(0.75)],
-                               startPoint: .center, endPoint: .bottom)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(L.dateTime(session.playedAt, lang))
-                        .font(.headline)
-                        .lineLimit(1).minimumScaleFactor(0.8)
-                    HStack(spacing: 6) {
-                        Text(fmtDur(session.duration))
-                        if let place = session.placeName {
-                            Text("·")
-                            Label(place, systemImage: "mappin")
-                                .labelStyle(.titleAndIcon)
-                                .lineLimit(1)
-                        } else {
-                            Text("· \(String(session.width))×\(String(session.height))")
-                        }
+        // A poster tile: everything sits on the frame, white over a scrim.
+        // The frame size is the floor; at large text the tile grows and the
+        // poster, drawn behind, fills whatever height the text needs.
+        ZStack(alignment: .bottomLeading) {
+            Color.clear.aspectRatio(16 / 8.5, contentMode: .fit)
+            // Bottom 55%, at least 55% black under the text: white on a bright
+            // court is unreadable otherwise.
+            LinearGradient(stops: [.init(color: .clear, location: 0.45),
+                                   .init(color: .black.opacity(0.55), location: 0.7),
+                                   .init(color: .black.opacity(0.8), location: 1)],
+                           startPoint: .top, endPoint: .bottom)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L.dateTime(session.playedAt, lang))
+                    .font(.headline)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                HStack(spacing: 6) {
+                    Text(fmtDur(session.duration))
+                    if let place = session.placeName {
+                        Text("·")
+                        Label(place, systemImage: "mappin")
+                            .labelStyle(.titleAndIcon)
+                            .lineLimit(1)
                     }
-                    .font(.caption).foregroundStyle(.secondary)
-                    .lineLimit(1)
                 }
-                .padding(12)
-                sportTag
+                .lineLimit(1)
+                metaLine
+                    .fontWeight(.semibold)
+                    .lineLimit(2)
             }
-            HStack {
-                aspectBadge
-                statusView
-                Spacer()
-                Image(systemName: "chevron.right").foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 12)
+            .font(.footnote.monospacedDigit())
+            .foregroundStyle(.white)
+            .padding(12)
         }
-        .background(Theme.surface)
+        .frame(maxWidth: .infinity)
+        .background { poster }
+        .overlay(alignment: .topTrailing) { sportTag }
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        // The poster overflows its frame (scaledToFill); taps and the
+        // long-press lift stop at the tile.
+        .contentShape([.interaction, .contextMenuPreview], RoundedRectangle(cornerRadius: 16))
         .overlay(alignment: .topLeading) {
             if let selected {
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(selected ? Color.black : Color.white,
-                                     selected ? Color.accentColor : Color.white.opacity(0.7))
+                    .foregroundStyle(selected ? Theme.onAccent : Color.white,
+                                     selected ? Theme.accent : Color.white.opacity(0.7))
                     .padding(10)
             }
         }
         .overlay(RoundedRectangle(cornerRadius: 16)
-            .strokeBorder(.tint, lineWidth: selected == true ? 3 : 0))
+            .strokeBorder(Theme.accent, lineWidth: selected == true ? 3 : 0))
         .opacity(selected == false ? 0.55 : 1)
     }
 
@@ -678,64 +702,58 @@ struct SessionCard: View {
                 Theme.surfaceHigh
                 Image(systemName: "sportscourt")
                     .font(.largeTitle)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
         }
     }
 
     private var sportTag: some View {
-        VStack {
-            HStack {
-                Spacer()
-                Text("\(session.sport.emoji) \(L.s(session.sport.rawValue, lang))")
-                    .font(.caption.bold())
-                    .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .padding(8)
-            }
-            Spacer()
-        }
+        Text("\(session.sport.emoji) \(L.s(session.sport.rawValue, lang))")
+            .font(.caption.bold())
+            .padding(.horizontal, 9).padding(.vertical, 5)
+            .background(.ultraThinMaterial, in: Capsule())
+            .padding(8)
     }
 
-    private var aspectBadge: some View {
-        Text(OutputFrame(session.effectiveOrientation).label)
-            .font(.caption2.bold())
-            .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(Theme.surfaceHigh, in: Capsule())
-            .foregroundStyle(.secondary)
-    }
-
-    @ViewBuilder private var statusView: some View {
+    @ViewBuilder private var metaLine: some View {
         if let stage = store.progress[session.id] {
-            StageLabel(stage: stage)
+            StageLabel(stage: stage, color: .white)
         } else if let segs = session.segments {
-            // Rallies survive "free up clip files"; the clips do not. Counting
-            // segments and calling them clips left the card promising 13 clips
-            // for a session whose files had been cleared.
-            let unit = store.hasClipFiles(session)
-                ? L.s(segs.count == 1 ? "clip_one" : "clips", lang)
-                : L.s("rallies", lang)
-            Text("\(String(segs.count)) \(unit)")
-                .font(.caption.bold()).foregroundStyle(.secondary)
+            Text(meta(segs))
         } else {
             Text(L.s("not_detected", lang))
-                .font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    /// "9 rallies · Longest 0:42 · Reels ✓". Rallies rather than clips: they
+    /// survive "free up clip files", the clips do not.
+    private func meta(_ segs: [RallySegment]) -> String {
+        var parts = [String(format: L.s(segs.count == 1 ? "rallies_one" : "rallies_n", lang),
+                            segs.count)]
+        // A minute-plus span is several rallies stuck together, not a long one.
+        let real = segs.filter { !$0.looksMerged }
+        if let longest = (real.isEmpty ? segs : real).map(\.duration).max() {
+            parts.append(L.s("longest", lang) + " " + fmtDur(longest))
+        }
+        if hasReel { parts.append(L.s("reels", lang) + " ✓") }
+        return parts.joined(separator: " · ")
     }
 }
 
 struct StageLabel: View {
     @AppStorage("rc_lang") private var lang = "en"
     let stage: ProcessingStage
+    /// White on a poster: secondaryText fails contrast over video.
+    var color: Color = Theme.secondaryText
 
     var body: some View {
         HStack(spacing: 6) {
             if case .failed = stage {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.danger)
             } else {
-                ProgressView().controlSize(.mini)
+                ProgressView().controlSize(.mini).tint(color)
             }
-            Text(text).font(.caption).foregroundStyle(.secondary)
+            Text(text).font(.caption.monospacedDigit()).foregroundStyle(color)
         }
     }
 

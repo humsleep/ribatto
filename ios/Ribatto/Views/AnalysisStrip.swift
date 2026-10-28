@@ -90,7 +90,7 @@ struct EtaText: View {
                           : String(format: L.s("eta_min_fmt", lang),
                                    Int((seconds / 60).rounded(.up))))
             .font(.caption.monospacedDigit())
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.secondaryText)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -159,7 +159,7 @@ struct AnalysisStrip: View {
                         .bold().monospacedDigit()
                      + Text(tappable ? "  ·  " + L.s("strip_legend", lang) : ""))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Text(String(format: L.s("rallies_found_fmt", lang), shown))
@@ -177,19 +177,19 @@ struct AnalysisStrip: View {
                 })
                 .onPreferenceChange(StripWidth.self) { width = $0 }
             if !compact && tappable && shown > 0 {
-                // What the green ranges are, and that they can be pressed.
-                (Text(Image(systemName: "square.fill")).foregroundColor(Theme.accent.opacity(0.6))
+                // What the ranges are, and that they can be pressed.
+                (Text(Image(systemName: "square.fill")).foregroundColor(Theme.court.opacity(0.6))
                  + Text(" " + L.s("strip_legend", lang)))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if !compact && rallies.prefix(shown).contains(where: \.looksMerged) {
                 (Text(Image(systemName: "square.split.diagonal.fill"))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Theme.secondaryText)
                  + Text(" " + L.s("strip_long_legend", lang)))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -231,11 +231,11 @@ struct AnalysisStrip: View {
             let rect = CGRect(x: CGFloat(i) * step, y: mid - h / 2,
                               width: max(1, step * 0.6), height: h)
             ctx.fill(Path(roundedRect: rect, cornerRadius: 0.5),
-                     with: .color(.white.opacity(0.55)))
+                     with: .color(Theme.court.opacity(0.55)))
         }
-        // Accent only where a marker can be pressed; a staged re-detect's
-        // rallies are shown but cannot open anything yet.
-        let marker: Color = tappable ? Theme.accent.opacity(0.4) : .white.opacity(0.22)
+        // Court, the data colour; a staged re-detect's rallies are shown in
+        // grey because they cannot open anything yet.
+        let marker: Color = tappable ? Theme.court.opacity(0.4) : .white.opacity(0.22)
         for seg in rallies.prefix(shown) {
             let x0 = CGFloat(seg.start / item.duration) * size.width
             let x1 = CGFloat(seg.end / item.duration) * size.width

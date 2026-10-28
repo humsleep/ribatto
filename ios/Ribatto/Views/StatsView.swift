@@ -61,9 +61,9 @@ struct StatsView: View {
                         VStack(spacing: 10) {
                             Image(systemName: "chart.bar")
                                 .font(.system(size: 40, weight: .light))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.secondaryText)
                             Text(L.s("stats_empty", lang))
-                                .font(.subheadline).foregroundStyle(.secondary)
+                                .font(.subheadline).foregroundStyle(Theme.secondaryText)
                                 .multilineTextAlignment(.center)
                             Button(action: openLibrary) {
                                 Label(L.s("library", lang), systemImage: "rectangle.stack")
@@ -91,7 +91,7 @@ struct StatsView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 card {
-                    Text(L.s("this_month", lang)).font(.caption).foregroundStyle(.secondary)
+                    sectionHeader(L.s("this_month", lang))
                     HStack(spacing: 22) {
                         big(String(s.monthMatches), L.s("matches", lang))
                         big(String(s.monthRallies), L.s("rallies", lang))
@@ -100,13 +100,13 @@ struct StatsView: View {
                 }
 
                 card {
-                    Text(L.s("activity", lang)).font(.caption).foregroundStyle(.secondary)
+                    sectionHeader(L.s("activity", lang))
                     activityChart(s)
                 }
 
                 if let l = s.longest {
                     card {
-                        Text(L.s("records", lang)).font(.caption).foregroundStyle(.secondary)
+                        sectionHeader(L.s("records", lang))
                         // A record you can watch: it opens the match and
                         // plays that rally.
                         NavigationLink(value: LongestRally(session: l.session,
@@ -117,7 +117,7 @@ struct StatsView: View {
                                        L.dateOnly(l.date, lang))
                                 Image(systemName: "chevron.right")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(Theme.secondaryText)
                                     .dynamicTypeSize(...DynamicTypeSize.large)
                             }
                             .contentShape(Rectangle())
@@ -142,11 +142,11 @@ struct StatsView: View {
 
                 if !s.places.isEmpty {
                     card {
-                        Text(L.s("courts", lang)).font(.caption).foregroundStyle(.secondary)
+                        sectionHeader(L.s("courts", lang))
                         ForEach(s.places.prefix(6), id: \.name) { place in
                             statRow(icon: "mappin.and.ellipse", name: place.name) {
                                 Text(String(format: L.s(place.visits == 1 ? "visits_one" : "visits_fmt", lang), place.visits))
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(Theme.secondaryText)
                                     .lineLimit(1)
                             }
                         }
@@ -154,7 +154,7 @@ struct StatsView: View {
                 }
 
                 card {
-                    Text(L.s("all_time", lang)).font(.caption).foregroundStyle(.secondary)
+                    sectionHeader(L.s("all_time", lang))
                     HStack(spacing: 22) {
                         big(String(s.matches), L.s("matches", lang))
                         big(String(s.rallies), L.s("rallies", lang))
@@ -197,20 +197,22 @@ struct StatsView: View {
                 x: .value("month", monthLabel(entry.month)),
                 y: .value("rallies", entry.rallies)
             )
-            .foregroundStyle(entry.month == current ? Theme.accent : Theme.surfaceHigh)
+            // Data, not a control: court, with the current month at full strength.
+            // surfaceHigh on the card was 1.28:1 and the past months vanished.
+            .foregroundStyle(entry.month == current ? Theme.court : Theme.court.opacity(0.35))
             .cornerRadius(5)
             .annotation(position: .top, spacing: 4) {
                 if entry.rallies > 0 {
                     Text(String(entry.rallies))
                         .font(.caption2.bold().monospacedDigit())
-                        .foregroundStyle(entry.month == current ? .primary : .secondary)
+                        .foregroundStyle(entry.month == current ? Color.primary : Theme.secondaryText)
                 }
             }
         }
         .chartYAxis(.hidden)
         .chartXAxis {
             AxisMarks { _ in
-                AxisValueLabel().font(.caption2).foregroundStyle(Color.secondary)
+                AxisValueLabel().font(.caption2).foregroundStyle(Theme.secondaryText)
             }
         }
         // Axis labels are chrome sized to the bars beneath them. Left to scale
@@ -236,13 +238,24 @@ struct StatsView: View {
     }
 
     private func big(_ value: String, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.title2.bold().monospacedDigit())
-                .lineLimit(1).minimumScaleFactor(0.6)
-            Text(label).font(.caption2).foregroundStyle(.secondary)
-                .lineLimit(1).minimumScaleFactor(0.7)
+        let number = Text(value)
+            .font(.system(.title, weight: .heavy).width(.compressed).monospacedDigit())
+            .lineLimit(1).minimumScaleFactor(0.6)
+        let unit = Text(label)
+            .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.secondaryText)
+            .lineLimit(1).minimumScaleFactor(0.7)
+        // Unit beside the number when the column has room; four columns of
+        // German ("Ballwechsel") do not, and then it drops under it.
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) { number; unit }
+            VStack(alignment: .leading, spacing: 0) { number; unit }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Sentence case, no tracking: the same shape in all nine languages.
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.secondaryText)
     }
 
     /// A name on the left and a value on the right, stacked once the text is
@@ -255,7 +268,7 @@ struct StatsView: View {
             // accessibility sizes it drew well outside the 22pt frame and over
             // the label beside it. It is decorative, so it is capped rather
             // than given the width it asks for.
-            Image(systemName: icon).foregroundStyle(.secondary)
+            Image(systemName: icon).foregroundStyle(Theme.secondaryText)
                 .dynamicTypeSize(...DynamicTypeSize.large)
                 .frame(width: 22)
             if typeSize.isAccessibilitySize {
@@ -286,16 +299,16 @@ struct StatsView: View {
             // accessibility sizes it drew well outside the 22pt frame and over
             // the label beside it. It is decorative, so it is capped rather
             // than given the width it asks for.
-            Image(systemName: icon).foregroundStyle(.secondary)
+            Image(systemName: icon).foregroundStyle(Theme.secondaryText)
                 .dynamicTypeSize(...DynamicTypeSize.large)
                 .frame(width: 22)
             if stacked {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.subheadline)
                     HStack(spacing: 8) {
-                        Text(value).font(.subheadline.bold().monospacedDigit())
+                        Text(value).font(.title3.weight(.bold).width(.condensed).monospacedDigit())
                         if !sub.isEmpty {
-                            Text(sub).font(.caption2).foregroundStyle(.secondary)
+                            Text(sub).font(.caption2).foregroundStyle(Theme.secondaryText)
                         }
                     }
                 }
@@ -303,9 +316,9 @@ struct StatsView: View {
             } else {
                 Text(title).font(.subheadline)
                 Spacer(minLength: 8)
-                Text(value).font(.subheadline.bold().monospacedDigit())
+                Text(value).font(.title3.weight(.bold).width(.condensed).monospacedDigit())
                 if !sub.isEmpty {
-                    Text(sub).font(.caption2).foregroundStyle(.secondary)
+                    Text(sub).font(.caption2).foregroundStyle(Theme.secondaryText)
                 }
             }
         }
@@ -524,8 +537,7 @@ private struct ShareCard: View {
 
     private var background: some View {
         ZStack {
-            LinearGradient(colors: [Color(red: 0.04, green: 0.14, blue: 0.11),
-                                    Color(red: 0.02, green: 0.04, blue: 0.07)],
+            LinearGradient(colors: [Theme.surface, Theme.background],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
 
             if let poster {

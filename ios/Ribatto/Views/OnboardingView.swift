@@ -1,104 +1,95 @@
 import SwiftUI
 
+/// One page: what the app does, which sport, start. Three swipe pages used to
+/// explain the detector before the user had seen a single clip; the sport is
+/// the one thing the first detection actually needs.
 struct OnboardingView: View {
     @AppStorage("rc_lang") private var lang = "en"
     @Environment(\.dynamicTypeSize) private var typeSize
+    @EnvironmentObject private var store: SessionStore
     @Binding var done: Bool
-    @State private var page = 0
+    /// Mirrors `store.lastSport`, which is a plain UserDefaults read and does
+    /// not redraw the chips on its own.
+    @State private var sport: Sport?
 
-    private let accent = Theme.accent
+    /// Tennis first: most users play it. Not `Sport.allCases`, whose order is
+    /// the detector's.
+    private let sports: [Sport] = [.tennis, .pickleball, .padel, .badminton]
 
-    private var pages: [(symbol: String, title: String, body: String)] {
-        [("sportscourt", L.s("ob1_t", lang), L.s("ob1_d", lang)),
-         ("waveform", L.s("ob2_t", lang), L.s("ob2_d", lang)),
-         ("square.and.arrow.up", L.s("ob3_t", lang), L.s("ob3_d", lang))]
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 10),
+              count: typeSize.isAccessibilitySize ? 1 : 2)
     }
-
-    /// The artwork yields to the words when the words need the room.
-    private var art: CGFloat { typeSize.isAccessibilitySize ? 120 : 220 }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 languageMenu
                 Spacer()
-                Button(L.s("skip", lang)) { done = true }
-                    .font(.footnote)
-                    .tint(.secondary)
             }
-            // Both are chrome. Unbounded, "한국어" broke into two lines and ran
-            // into "건너뛰기" on a 4.7" screen.
+            // Chrome. Unbounded, "한국어" broke into two lines on a 4.7" screen.
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .padding(.horizontal, 20)
             .padding(.top, 12)
 
-            TabView(selection: $page) {
-                ForEach(pages.indices, id: \.self) { i in
-                    // Scrollable, and the artwork shrinks: at the largest text
-                    // size the fixed layout cut the headline and the body off
-                    // mid-word — on the first screen a new user ever sees.
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            Spacer(minLength: 12)
-                            ZStack {
-                                Circle()
-                                    .fill(RadialGradient(colors: [accent.opacity(0.3), .clear],
-                                                         center: .center,
-                                                         startRadius: 4, endRadius: 110))
-                                    .frame(width: art, height: art)
-                                Image(systemName: pages[i].symbol)
-                                    .font(.system(size: art * 0.32, weight: .light))
-                                    .foregroundStyle(accent)
+            // Scrollable: at the largest text size the fixed layout cut the
+            // headline off mid-word — on the first screen a new user sees.
+            ScrollView {
+                VStack(spacing: 16) {
+                    Spacer(minLength: 12)
+                    Image("AppLogo")
+                        .resizable()
+                        .frame(width: 88, height: 88)
+                        .accessibilityHidden(true)
+                    Text(L.s("ob1_t", lang))
+                        .font(.title.bold())
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(L.s("ob1_d", lang))
+                        .font(.body)
+                        .foregroundStyle(Theme.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 14)
+
+                    Text(L.s("ask_sport_title", lang))
+                        .font(.headline)
+                        .padding(.top, 20)
+                        .accessibilityAddTraits(.isHeader)
+                    LazyVGrid(columns: columns, spacing: 10) {
+                        ForEach(sports) { sp in
+                            Button {
+                                sport = sp
+                                store.lastSport = sp
+                            } label: {
+                                Text("\(sp.emoji) \(L.s(sp.rawValue, lang))")
+                                    .lineLimit(2)
+                                    .frame(maxWidth: .infinity, minHeight: 28)
+                                    .chip(active: sport == sp)
                             }
-                            Text(pages[i].title)
-                                .font(.title.bold())
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Text(pages[i].body)
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.horizontal, 34)
-                            Spacer(minLength: 12)
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(sport == sp ? .isSelected : [])
                         }
-                        .frame(maxWidth: .infinity)
                     }
-                    .tag(i)
+                    Spacer(minLength: 12)
                 }
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
 
-            // Our own dots, below the pages rather than floating over them.
-            // TabView's own indicator sits on top of the scroll view, and at
-            // the largest text size it landed in the middle of the sentence.
-            HStack(spacing: 8) {
-                ForEach(pages.indices, id: \.self) { i in
-                    Circle()
-                        .fill(i == page ? Color.white : Color.white.opacity(0.3))
-                        .frame(width: 8, height: 8)
-                }
-            }
-            .padding(.top, 6)
-
-            Button {
-                if page < pages.count - 1 {
-                    withAnimation { page += 1 }
-                } else {
-                    done = true
-                }
-            } label: {
-                Text(page < pages.count - 1 ? L.s("next", lang) : L.s("get_started", lang))
+            // No sport picked is fine: the library asks before the first
+            // import, as it does for anyone who skipped this page before.
+            Button { done = true } label: {
+                Text(L.s("get_started", lang))
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 52)
             }
             .rcPrimary()
-            .tint(accent)
-            .foregroundStyle(.black)
             .padding(20)
         }
-        .background(Color.black.ignoresSafeArea())
+        .background(Theme.background.ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .onAppear { sport = store.lastSport }
     }
 
     private var languageMenu: some View {

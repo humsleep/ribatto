@@ -327,6 +327,47 @@ struct ClipPlayerSheet: View {
         session?.clipTargets?[String(clip.index)] != nil
     }
 
+    /// Star, re-point and delete under one ⋯: four glyphs across the bar left
+    /// no room for the title and read as four equal actions.
+    private var moreMenu: some View {
+        Menu {
+            // Starring is only a flag, so a preview can do it too.
+            Toggle(isOn: Binding(get: { isFavourite },
+                                 set: { _ in store.toggleFavourite(clip) })) {
+                Label(L.s("favourite", lang), systemImage: "star")
+            }
+            // Works on the clip file, which a preview does not have yet.
+            if canRetarget && !preview {
+                Button { destination = .retarget } label: {
+                    Label(L.s("target_clip", lang),
+                          systemImage: hasOwnTarget ? "person.crop.circle.badge.checkmark"
+                                                    : "person.crop.circle")
+                }
+                if hasOwnTarget {
+                    Button { Task { await store.setClipTarget(clip, nil) } } label: {
+                        Label(L.s("target_clip_reset", lang),
+                              systemImage: "arrow.uturn.backward")
+                    }
+                }
+            }
+            Divider()
+            Button(role: .destructive) {
+                // Said before the confirm, not as its answer.
+                if store.isBusy(clip.sessionID) {
+                    message = L.s("busy_wait", lang)
+                } else {
+                    confirmDelete = true
+                }
+            } label: {
+                Label(L.s("delete_clip", lang), systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .tint(.primary)
+        .accessibilityLabel(L.s("more", lang))
+    }
+
     var body: some View {
         // On an iPhone in landscape the vertical size class is compact. That is
         // the cue to give the whole screen to the video: the tracking and reel
@@ -437,27 +478,8 @@ struct ClipPlayerSheet: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
                 }
-                // Both work on the clip file, which a preview does not have yet.
-                if canRetarget && !preview {
-                    HStack(spacing: 8) {
-                        Button { destination = .retarget } label: {
-                            Label(L.s("target_clip", lang),
-                                  systemImage: hasOwnTarget
-                                      ? "person.crop.circle.badge.checkmark"
-                                      : "person.crop.circle")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .rcSecondary()
-                        if hasOwnTarget {
-                            Button(L.s("target_clip_reset", lang)) {
-                                Task { await store.setClipTarget(clip, nil) }
-                            }
-                            .rcSecondary()
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                }
+                // Re-pointing the tracker lives in the ⋯ menu: under the video
+                // it was a third full-width button competing with the reel.
 
                 // Speed, length and split, under a word: the unlabeled trim
                 // icon in the toolbar was the only way in and nobody found it.
@@ -505,9 +527,22 @@ struct ClipPlayerSheet: View {
                 // clipped to "00:0…" at every text size, not only large ones.
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 0) {
-                        Text("#" + String(current.number)).font(.headline)
+                        HStack(spacing: 4) {
+                            Text("#" + String(current.number)).font(.headline)
+                            // White: a status mark; the toggle is in ⋯.
+                            if isFavourite {
+                                Image(systemName: "star.fill").font(.caption)
+                                    .accessibilityLabel(L.s("favourite", lang))
+                            }
+                        }
+                        // A small burst on starring, so the tap reads as kept.
+                        // Only on the way in, and never with Reduce Motion —
+                        // Pow does not check that setting itself.
+                        .changeEffect(.spray {
+                            Image(systemName: "star.fill").foregroundStyle(Theme.accent)
+                        }, value: isFavourite, isEnabled: isFavourite && !reduceMotion)
                         Text(fmtPos(live.start) + "–" + fmtPos(live.end))
-                            .font(.caption2).foregroundStyle(.secondary)
+                            .font(.caption2).foregroundStyle(Theme.secondaryText)
                     }
                     .lineLimit(1)
                     .dynamicTypeSize(...DynamicTypeSize.large)
@@ -515,47 +550,27 @@ struct ClipPlayerSheet: View {
                 // The landscape variant has its own X over the video; without
                 // this the portrait sheet's only exit was a drag with no
                 // affordance, and testers got stuck in the player.
+                // Toolbar glyphs are neutral: the accent belongs to the one
+                // button that matters, Make a reel.
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark")
                     }
+                    .tint(.primary)
                     .accessibilityLabel(L.s("done", lang))
                 }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(role: .destructive) {
-                        // Said before the confirm, not as its answer.
-                        if store.isBusy(clip.sessionID) {
-                            message = L.s("busy_wait", lang)
-                        } else {
-                            confirmDelete = true
-                        }
-                    } label: {
-                        Image(systemName: "trash")
-                    }
-                    .accessibilityLabel(L.s("delete_clip", lang))
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { store.toggleFavourite(clip) } label: {
-                        Image(systemName: isFavourite ? "star.fill" : "star")
-                            .foregroundStyle(isFavourite ? Theme.accent : .secondary)
-                            // A small burst on starring, so the tap reads as
-                            // kept. Only on the way in, and never with Reduce
-                            // Motion — Pow does not check that setting itself.
-                            .changeEffect(.spray {
-                                Image(systemName: "star.fill").foregroundStyle(Theme.accent)
-                            }, value: isFavourite, isEnabled: isFavourite && !reduceMotion)
-                    }
-                    .accessibilityLabel(L.s("favourite", lang))
-                }
-                // Trim re-renders the clip file and Share hands it out; a
-                // preview has no file for either. Starring is only a flag.
+                // Share hands out the clip file; a preview has none.
                 if !preview {
                     ToolbarItem(placement: .topBarTrailing) {
                         ShareLink(item: clip.url) {
                             Image(systemName: "square.and.arrow.up")
                         }
+                        .tint(.primary)
                         .accessibilityLabel(L.s("share", lang))
                     }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    moreMenu
                 }
             }
             // A centred alert: iOS 26 draws a confirmation dialog as a popover

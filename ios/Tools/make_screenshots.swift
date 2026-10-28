@@ -27,8 +27,8 @@ let W: CGFloat = 1320, H: CGFloat = 2868
 func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) -> NSColor {
     NSColor(srgbRed: r/255, green: g/255, blue: b/255, alpha: a)
 }
-let volt = rgb(200, 246, 62)
-let ground = rgb(10, 11, 15)
+let volt = rgb(212, 255, 63)
+let ground = rgb(11, 12, 10)
 // Lifted from 150/156/168: that read 3.3:1 on the glow.
 let dim = rgb(180, 186, 198)
 
