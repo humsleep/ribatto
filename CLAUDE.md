@@ -200,6 +200,9 @@ swift Tools/make_screenshots.swift <캡처폴더> <출력폴더>   # ios/ 에서
 2026-10-12에 D1–D4 화면 기준으로 다시 만들었다: 히어로(Pro 9:16 클립) · 내 경기(라이브러리) · 세션 화면 · 릴스 결과 · 시즌.
 데모 장소명은 앱 데이터의 meta.json `placeName`을 직접 고쳐 넣었다.
 캡처는 영어 UI + Debug Pro(테스트 광고 배너가 안 찍히게) + `simctl status_bar override --time 9:41`. 히어로는 `hero.jpg`로 넣는다.
+2026-10-28부터 9개 언어 세트가 `marketing/screenshots/<locale>/`에 있다(`make_screenshots.swift <캡처> <출력> <locale>`).
+데모 데이터: sample2.mov에서 자른 5분짜리 3개를 앱 Documents/seed에 넣고 Debug 빌드를 `-seedDemo`로 띄우면 가져와 감지한다.
+언어는 `-rc_lang <code>` 실행 인자로 바꾸고, 코트 이름은 meta.json `placeName`을 언어별로 고쳐 찍었다.
 
 ## Pro 테스트
 

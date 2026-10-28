@@ -156,7 +156,8 @@ func draw(_ f: Frame, index: Int) {
                                                  .kern: 1.5]
         let s = NSAttributedString(string: line, attributes: at)
         s.draw(at: CGPoint(x: margin, y: y - font.ascender))
-        y -= size + 2
+        // Room for capital accents (Ä, É) above the second line.
+        y -= size * 1.12
     }
 
     // sub-line, wrapped

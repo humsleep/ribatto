@@ -614,7 +614,8 @@ final class SessionStore: ObservableObject {
             if let id = await importVideo(from: file, name: file.deletingPathExtension().lastPathComponent,
                                           detect: false) { ids.append(id) }
         }
-        await processQueued(ids)
+        // Plus any match left undetected by an earlier seeding run.
+        await processQueued(ids + sessions.filter { $0.segments == nil }.map(\.id))
     }
     #endif
 
