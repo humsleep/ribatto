@@ -126,14 +126,20 @@ struct ReelSheet: View {
     private var currentRecipe: String {
         chosen.map(\.id).joined(separator: ",") + "|" + pace.rawValue + "|"
             + frame.rawValue + "|" + String(captionOn) + "|" + String(hookOn)
-            + "|" + String(replayOn)
+            + "|" + String(replayOn) + "|" + look.filter.rawValue + look.backdrop.rawValue
+            + String(look.volume)
     }
     private var changed: Bool { builtWith != currentRecipe }
 
     init(request: ReelRequest) {
         self.request = request
         _pace = State(initialValue: request.pace)
+        // Starts as the first match's look; changed here, it is this reel's.
+        _look = State(initialValue: request.pairs.first?.session.effectiveEdit ?? ClipEdit())
     }
+
+    /// Colour, background and match sound for every rally in this reel.
+    @State private var look: ClipEdit
 
     struct Entry: Identifiable {
         let id: String
@@ -471,6 +477,7 @@ struct ReelSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            lookCard
             if entries.count > 1 { runningOrderCard }
             paceCard
             frameCard
@@ -614,6 +621,52 @@ struct ReelSheet: View {
     /// Segmented where all three names fit, which in English they do; as rows
     /// where they don't — "Ganzer Ballwechsel · Nur der Schluss · Hook" does
     /// not fit three ways across a phone in German.
+    /// The look of the reel, first in the panel: what people mean by "edit".
+    private var lookCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L.s("look_title", lang))
+                .font(.subheadline.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(ClipFilter.allCases) { f in
+                        Button { look.filter = f } label: {
+                            Text(L.s("filter_" + f.rawValue, lang))
+                                .font(.subheadline.weight(look.filter == f ? .semibold : .regular))
+                                .chip(active: look.filter == f)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            labeledPicker(L.s("sound_title", lang)) {
+                Picker("", selection: $look.volume) {
+                    Text(L.s("sound_full", lang)).tag(1.0)
+                    Text(L.s("sound_low", lang)).tag(0.4)
+                    Text(L.s("sound_off", lang)).tag(0.0)
+                }
+                .pickerStyle(.segmented)
+            }
+            labeledPicker(L.s("backdrop_title", lang)) {
+                Picker("", selection: $look.backdrop) {
+                    Text(L.s("backdrop_blur", lang)).tag(Backdrop.blur)
+                    Text(L.s("backdrop_black", lang)).tag(Backdrop.black)
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        .padding(14)
+        .rcCard()
+    }
+
+    private func labeledPicker<P: View>(_ title: String, @ViewBuilder _ picker: () -> P) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            picker().dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        }
+    }
+
     private var paceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L.s("reel_pace", lang))
@@ -737,7 +790,9 @@ struct ReelSheet: View {
                                               frame: frame, pace: pace,
                                               preset: nil,
                                               caption: captionOn ? nil : CaptionSettings(),
-                                              hook: hookOn, replay: replayOn)
+                                              hook: hookOn, replay: replayOn,
+                                              edits: Dictionary(pairs.map { ($0.session.id, look) },
+                                                                uniquingKeysWith: { a, _ in a }))
         else {
             failure = pairs.first(where: { store.sourceMissing($0.session) })
                 .map { L.s(store.sourceProblemKey($0.session), lang) }

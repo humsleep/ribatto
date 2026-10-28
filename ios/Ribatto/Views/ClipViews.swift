@@ -459,6 +459,18 @@ struct ClipPlayerSheet: View {
                     .padding(.bottom, 8)
                 }
 
+                // Speed, length and split, under a word: the unlabeled trim
+                // icon in the toolbar was the only way in and nobody found it.
+                if !preview {
+                    Button { destination = .trim } label: {
+                        Label(L.s("clip_edit", lang), systemImage: "slider.horizontal.3")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .rcSecondary()
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                }
+
                 // one rally is the most common thing to post, so the route to a
                 // reel sits on the clip itself rather than only behind selection
                 if !preview {
@@ -538,12 +550,6 @@ struct ClipPlayerSheet: View {
                 // Trim re-renders the clip file and Share hands it out; a
                 // preview has no file for either. Starring is only a flag.
                 if !preview {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { destination = .trim } label: {
-                            Image(systemName: "timeline.selection")
-                        }
-                        .accessibilityLabel(L.s("trim_title", lang))
-                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         ShareLink(item: clip.url) {
                             Image(systemName: "square.and.arrow.up")

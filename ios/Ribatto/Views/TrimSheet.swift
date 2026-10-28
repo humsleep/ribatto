@@ -104,6 +104,26 @@ struct TrimSheet: View {
                             .rcCard()
                     }
 
+                    // Speed first: it is the edit people come here for.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(L.s("speed_title", lang)).font(.subheadline.bold())
+                        Picker(L.s("speed_title", lang), selection: $speed) {
+                            Text("0.5×").tag(0.5)
+                            Text("1×").tag(1.0)
+                            Text("1.5×").tag(1.5)
+                            Text("2×").tag(2.0)
+                        }
+                        .pickerStyle(.segmented)
+                        .disabled(working)
+                        if speed < 1 {
+                            Text(L.s("speed_hint", lang))
+                                .font(.caption).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(14)
+                    .rcCard()
+
                     VStack(spacing: 14) {
                         strip
                         // Ranges are built with `safe`, never `a...b` directly.
@@ -123,22 +143,6 @@ struct TrimSheet: View {
                                 .font(.subheadline.monospacedDigit().bold())
                         }
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(L.s("speed_title", lang)).font(.caption).foregroundStyle(.secondary)
-                            Picker(L.s("speed_title", lang), selection: $speed) {
-                                Text("0.5×").tag(0.5)
-                                Text("1×").tag(1.0)
-                                Text("1.5×").tag(1.5)
-                                Text("2×").tag(2.0)
-                            }
-                            .pickerStyle(.segmented)
-                            .disabled(working)
-                            if speed < 1 {
-                                Text(L.s("speed_hint", lang))
-                                    .font(.caption).foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
 
                         if !hits.isEmpty {
                             Button { fitToHits() } label: {
@@ -217,7 +221,7 @@ struct TrimSheet: View {
                                 if ok { dismiss() } else { message = L.s("render_failed", lang) }
                             }
                         } label: {
-                            Label(L.s("trim_apply", lang), systemImage: "scissors")
+                            Label(L.s("apply", lang), systemImage: "checkmark")
                                 .frame(maxWidth: .infinity)
                         }
                         .rcPrimary()
@@ -236,7 +240,7 @@ struct TrimSheet: View {
             // left alone it kept displaying a time outside it.
             .onChange(of: start) { _, _ in clampSplit() }
             .onChange(of: end) { _, _ in clampSplit() }
-            .navigationTitle(L.s("trim_title", lang))
+            .navigationTitle(L.s("clip_edit", lang))
             .alert(message ?? "", isPresented: Binding(
                 get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK", role: .cancel) { message = nil }
