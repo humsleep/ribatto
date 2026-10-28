@@ -54,7 +54,25 @@ struct StatsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-            TabHeader(title: L.s("season", lang))
+            // Share sits in the header, like Fitness: as a full-width button at
+            // the end of the list it rested under the floating tab bar.
+            TabHeader(title: L.s("season", lang)) {
+                if !store.sessions.isEmpty {
+                    Button {
+                        Task { await makeCard(stats) }
+                    } label: {
+                        if building {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title3.weight(.semibold))
+                        }
+                    }
+                    .tint(Theme.accent)
+                    .disabled(building)
+                    .accessibilityLabel(L.s("share_card", lang))
+                }
+            }
             Group {
                 if store.sessions.isEmpty {
                     EmptyStateBox {
@@ -165,18 +183,6 @@ struct StatsView: View {
                     }
                 }
 
-                Button {
-                    Task { await makeCard(s) }
-                } label: {
-                    HStack {
-                        if building { ProgressView().controlSize(.small) }
-                        Label(L.s("share_card", lang), systemImage: "square.and.arrow.up")
-                            .font(.subheadline.bold())
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 26)
-                }
-                .rcPrimary()
-                .disabled(building)
             }
             .padding()
             .padding(.bottom, 62)     // clear the floating tab bar
@@ -234,7 +240,7 @@ struct StatsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
             .background(Theme.surface,
-                        in: RoundedRectangle(cornerRadius: 14))
+                        in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func big(_ value: String, _ label: String) -> some View {
@@ -244,13 +250,11 @@ struct StatsView: View {
         let unit = Text(label)
             .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.secondaryText)
             .lineLimit(1).minimumScaleFactor(0.7)
-        // Unit beside the number when the column has room; four columns of
-        // German ("Ballwechsel") do not, and then it drops under it.
-        return ViewThatFits(in: .horizontal) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) { number; unit }
-            VStack(alignment: .leading, spacing: 0) { number; unit }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // Always the label under the number. Beside it where it fitted and
+        // under it where it did not left one row in two layouts ("3 / Matches"
+        // next to "22 Rallies").
+        return VStack(alignment: .leading, spacing: 0) { number; unit }
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Sentence case, no tracking: the same shape in all nine languages.
