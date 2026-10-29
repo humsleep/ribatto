@@ -232,6 +232,20 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios
 
 이 Mac은 `xcode-select`가 Command Line Tools를 가리켜서 `DEVELOPER_DIR` 접두가 필요하다.
 
+## 감지 평가 (ios/Eval, 2026-10-29)
+
+```bash
+./Eval/eval.sh --baseline Eval/baseline.json   # ios/ 에서 실행. Eval/labels/*.json 전부 채점
+./Eval/eval.sh --draft <영상> <종목> > Eval/drafts/<이름>.json   # 지금 감지기 결과로 라벨 초안
+```
+
+- 앱과 같은 순서(RallyDetector → SoundCheck, normal)로 돌리고 정밀도·재현율·F1·경계 오차 중앙값·영상 1분당 처리 초를 낸다.
+  매칭은 IoU ≥ 0.5, 1:1. 감지는 패딩 뺀 플레이 구간(첫 타구 → 마지막 타구+1초)으로 비교한다.
+- 라벨은 서브부터 공이 죽을 때까지. `Eval/drafts/`는 **사람이 확인하기 전의 초안**이다 — 감지기 자기 출력이라 그대로 labels에 넣으면 F1 1.0이 나오는 순환이다.
+  영상과 대조해 고친 것만 `Eval/labels/`로 옮긴다. 영상은 저장소 밖, 경로만 적는다. 디코딩한 음성은 `.build/eval-cache/`에 캐시된다.
+- **규칙**: RallyDetector·SoundCheck·Sport·Sensitivity 값을 바꾸면 eval 전후 숫자를 함께 보고한다. 기준선보다 떨어지면 되돌린다.
+  `Eval/baseline.json`(`--json`으로 만든다)은 사용자 승인 후에만 갱신한다. 녹화가 한 종류뿐이면 숫자도 그 녹화만 대표한다.
+
 ## 작업 규칙
 
 - 코드 삭제·수정 전에 **반드시 사용자에게 확인**받는다.
