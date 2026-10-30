@@ -57,6 +57,7 @@ struct EditorPanel: View {
         switch tool {
         case .text: textPanel
         case .trim: trimPanel
+        case .frame: framePanel
         case .speed: speedPanel
         case .look: lookPanel
         case .zoom: zoomPanel
@@ -312,6 +313,46 @@ struct EditorPanel: View {
     }
 
     // MARK: Zoom
+
+    /// The shape this clip is made in. The match's own choice first, then the
+    /// two shapes people post to; picking the match's shape stores nothing.
+    private var framePanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            frameRow(nil, L.s("frame_match", lang), m.matchFrame.label, "rectangle.on.rectangle")
+            frameRow(OutputFrame.vertical.rawValue, "Instagram · Shorts", "9:16", "rectangle.portrait")
+            frameRow(OutputFrame.landscape.rawValue, "YouTube", "16:9", "rectangle")
+            Text(L.s("frame_clip_note", lang)).font(.caption).foregroundStyle(Theme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func frameRow(_ value: String?, _ title: String, _ detail: String, _ icon: String) -> some View {
+        // By shape: with a 16:9 match, "YouTube" is that shape too.
+        let on = value.map { m.frame == OutputFrame($0) } ?? (m.draft.frame == nil)
+        return Button {
+            m.pause()
+            m.draft.frame = value.flatMap { OutputFrame($0) == m.matchFrame ? nil : $0 }
+            m.checkpoint()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon).font(.system(size: 17))
+                    .foregroundStyle(on ? Theme.accent : Theme.secondaryText)
+                    .frame(width: 26)
+                Text(title).font(.subheadline.weight(on ? .semibold : .regular))
+                    .foregroundStyle(Theme.primaryText)
+                Spacer(minLength: 6)
+                Text(detail).font(.subheadline.monospacedDigit()).foregroundStyle(Theme.secondaryText)
+                Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(on ? Theme.accent : Theme.tertiaryText)
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
 
     private var zoomPanel: some View {
         VStack(alignment: .leading, spacing: 12) {

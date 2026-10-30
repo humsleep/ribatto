@@ -309,10 +309,14 @@ enum ReelBuilder {
                 }
             elapsed += entry.seconds
             await progress(i, planned.count)
-            let seg = RallySegment(start: entry.segment.start,
+            var seg = RallySegment(start: entry.segment.start,
                                    end: entry.segment.start + entry.seconds,
                                    hits: entry.segment.hits,
                                    hitTimes: entry.item.segment.hitTimes)
+            // The clip's own text and zoom, in source seconds like the piece:
+            // a line written on clip #3 has to show in the reel too.
+            seg.subtitles = entry.item.segment.subtitles
+            seg.zoomKeys = entry.item.segment.zoomKeys
             let part = work.appendingPathComponent(String(format: "part_%03d.mp4", i))
             let sid = entry.item.sessionID
             func attempt(_ asset: AVAsset) async throws {

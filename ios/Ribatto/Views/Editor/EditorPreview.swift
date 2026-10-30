@@ -22,12 +22,15 @@ struct EditorPreview: View {
                 if let wm = m.watermarkImage {
                     Image(decorative: wm, scale: 1).resizable().allowsHitTesting(false)
                 }
+                // Where Instagram's and Shorts' own buttons and captions sit,
+                // while text is being placed: text there is hidden once posted.
+                if m.tool == .text && m.frame == .vertical { safeZone }
                 ForEach(visibleSubtitles) { sub in subtitle(sub, in: box) }
                 if snapped {
                     Rectangle().fill(.white.opacity(0.6)).frame(width: 1)
                         .allowsHitTesting(false)
                 }
-                if m.tool == .zoom {
+                if m.tool == .zoom || m.zoomNow > 1.01 {
                     zoomBadge.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                         .padding(10).allowsHitTesting(false)
                 }
@@ -149,6 +152,21 @@ struct EditorPreview: View {
         if case .key(let id) = m.selection, let i = m.draft.zoomKeys.firstIndex(where: { $0.id == id }),
            abs(m.draft.zoomKeys[i].time - m.time) < 0.1 { return i }
         return m.keyAtPlayhead()
+    }
+
+    /// Typical bands, not measured per app: top 14%, bottom 25%, right 13%.
+    private var safeZone: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            let band = Color.black.opacity(0.35)
+            ZStack(alignment: .topLeading) {
+                band.frame(width: w, height: h * 0.14)
+                band.frame(width: w, height: h * 0.25).offset(y: h * 0.75)
+                band.frame(width: w * 0.13, height: h * 0.61).offset(x: w * 0.87, y: h * 0.14)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private var zoomBadge: some View {

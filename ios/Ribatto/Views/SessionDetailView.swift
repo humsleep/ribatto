@@ -63,7 +63,7 @@ struct SessionDetailView: View {
     /// Every modal this screen can show, so a single .sheet drives them all.
     private enum Destination: Identifiable {
         case clip(ClipInfo)
-        case merged(URL)
+        case merged(URL, orientation: String?)
         case pro(feature: String?)
         case caption
         case targetPlayer
@@ -75,7 +75,7 @@ struct SessionDetailView: View {
         var id: String {
             switch self {
             case .clip(let c): return "clip-" + c.id
-            case .merged(let u): return "merged-" + u.lastPathComponent
+            case .merged(let u, _): return "merged-" + u.lastPathComponent
             case .pro(let f): return "pro-" + (f ?? "")
             case .caption: return "caption"
             case .targetPlayer: return "target-player"
@@ -401,9 +401,9 @@ struct SessionDetailView: View {
         switch dest {
         case .clip(let clip):
             ClipPlayerSheet(clip: clip)
-        case .merged(let url):
+        case .merged(let url, let orientation):
             HighlightPlayerSheet(url: url, name: L.s("merged", lang),
-                                 orientation: session.renderedOrientation)
+                                 orientation: orientation)
         case .pro(let feature):
             ProPassView(feature: feature)
         case .caption:
@@ -1375,7 +1375,9 @@ struct SessionDetailView: View {
     private func mergeSelection(_ session: Session) {
         Task {
             if let url = await store.mergeClips(selection, in: session) {
-                destination = .merged(url)
+                // The clips' own shape: one set in the editor may differ from the match.
+                destination = .merged(url, orientation: store.clips(of: session)
+                    .first { selection.contains($0.id) }?.orientation)
             } else if store.progress[sessionID] == nil {
                 // A refusal (busy, fewer than two finished clips) said
                 // nothing; a failure shows its own card.
@@ -1579,8 +1581,10 @@ struct SessionDetailView: View {
     // MARK: - Clips
 
     private func clipGrid(_ clips: [ClipInfo]) -> some View {
-        let frame = OutputFrame(clips.first?.orientation)
-        let columns = [GridItem(.adaptive(minimum: frame.isPortrait ? 108 : 165),
+        // Most clips' shape: one clip turned vertical in the editor must not
+        // narrow the whole grid.
+        let portrait = clips.filter { OutputFrame($0.orientation).isPortrait }.count * 2 > clips.count
+        let columns = [GridItem(.adaptive(minimum: portrait ? 108 : 165),
                                 spacing: 10)]
         return LazyVGrid(columns: columns, spacing: 10) {
             ForEach(clips) { clip in

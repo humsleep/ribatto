@@ -252,9 +252,15 @@ struct ClipPlayerSheet: View {
     /// `clip` with the store's current in/out points. Trim, retarget and the
     /// reel all take this, so a reel made after a trim cuts the trimmed rally
     /// rather than the range the sheet opened with.
+    /// The shape the file on disk has now: the editor may have changed it.
+    private var orientation: String {
+        live.frame ?? session?.renderedOrientation ?? session?.partialRender?.orientation
+            ?? clip.orientation
+    }
+
     private var current: ClipInfo {
         ClipInfo(id: clip.id, index: clip.index, url: clip.url, thumbURL: clip.thumbURL,
-                 segment: live, orientation: clip.orientation,
+                 segment: live, orientation: orientation,
                  sessionID: clip.sessionID, isReady: clip.isReady)
     }
 
@@ -307,7 +313,7 @@ struct ClipPlayerSheet: View {
     /// original is out of reach.
     private var previewPlaceholder: some View {
         Color.clear
-            .aspectRatio(OutputFrame(clip.orientation).aspectRatio, contentMode: .fit)
+            .aspectRatio(OutputFrame(orientation).aspectRatio, contentMode: .fit)
             .overlay { PosterImage(url: clip.thumbURL).opacity(0.6) }
             .clipped()
             .overlay {
@@ -328,7 +334,7 @@ struct ClipPlayerSheet: View {
     /// Re-pointing only means anything where the crop can move: a portrait
     /// clip that was rendered with smart crop on, on a Pro entitlement.
     private var canRetarget: Bool {
-        pass.isPro && OutputFrame(clip.orientation).isPortrait
+        pass.isPro && OutputFrame(orientation).isPortrait
             && (session?.renderedSmartCrop ?? false)
     }
     private var hasOwnTarget: Bool {
@@ -396,7 +402,7 @@ struct ClipPlayerSheet: View {
         // over the player: the landscape layout hid it completely, and its X
         // then dismissed player and sheet together, silently dropping the trim
         // the user was in the middle of.
-        .allowsLandscape(!OutputFrame(clip.orientation).isPortrait && destination == nil && editor == nil)
+        .allowsLandscape(!OutputFrame(orientation).isPortrait && destination == nil && editor == nil)
         // On the Group, not the two layouts: rotating swaps them, and a task
         // on either would be cancelled and restarted by the turn.
         .task(id: preview ? "\(live.start)-\(live.end)" : "") {
@@ -439,7 +445,7 @@ struct ClipPlayerSheet: View {
                         // gesture then swallows the drag that would scroll to
                         // the controls underneath it.
                         ZoomableVideo(player: player)
-                            .aspectRatio(OutputFrame(clip.orientation).aspectRatio,
+                            .aspectRatio(OutputFrame(orientation).aspectRatio,
                                          contentMode: .fit)
                             .frame(maxHeight: 300)
                     } else {

@@ -37,7 +37,8 @@ struct TrimSheet: View {
             EditorPreview(m: m)
                 .padding(.horizontal, 16)
                 .padding(.top, 4)
-                .frame(minHeight: 170, maxHeight: .infinity)
+                // Small enough that the text panel still fits on an iPhone SE.
+                .frame(minHeight: 130, maxHeight: .infinity)
                 .overlay { if working { renderingOverlay } }
                 .overlay { if m.sourceMissing { missing } }
             transport
@@ -196,6 +197,7 @@ struct TrimSheet: View {
         switch t {
         case .text: return !d.subtitles.isEmpty
         case .zoom: return !d.zoomKeys.isEmpty
+        case .frame: return d.frame != nil
         case .speed: return d.speed != 1
         case .look: return d.look.filter != .original
         case .sound: return d.look.volume != 1

@@ -16,7 +16,7 @@ struct EditorTimeline: View {
 
     private let rulerH: CGFloat = 22
     private let textH: CGFloat = 30
-    private let keyH: CGFloat = 18
+    private let keyH: CGFloat = 24
     private let videoH: CGFloat = 52
     private let handleW: CGFloat = 14
 
@@ -206,16 +206,48 @@ struct EditorTimeline: View {
 
     // MARK: Keyframes
 
+    /// A labelled lane, so zoom is findable before it has a key: an empty
+    /// 18pt strip with 10pt diamonds read as nothing at all.
     private func keyTrack(_ w: CGFloat) -> some View {
-        ZStack(alignment: .topLeading) {
-            ForEach(m.draft.zoomKeys) { k in
+        let keys = m.draft.zoomKeys
+        return ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 6).fill(Theme.surfaceHigh.opacity(0.6))
+                .frame(width: max(0, x(m.draft.end, w) - x(m.draft.start, w)), height: keyH)
+                .offset(x: x(m.draft.start, w))
+                .allowsHitTesting(false)
+            // The eased move between keys; bright where the framing changes.
+            ForEach(Array(zip(keys, keys.dropFirst())), id: \.0.id) { a, b in
+                let x0 = x(a.time, w), x1 = x(b.time, w)
+                Rectangle()
+                    .fill(Color.white.opacity(a.zoom != b.zoom || a.x != b.x || a.y != b.y ? 0.85 : 0.3))
+                    .frame(width: max(0, x1 - x0), height: 2)
+                    .offset(x: x0, y: keyH / 2 - 1)
+                    .allowsHitTesting(false)
+            }
+            HStack(spacing: 4) {
+                Image(systemName: "plus.magnifyingglass").font(.system(size: 11, weight: .semibold))
+                Text(L.s("edit_zoom", lang)).font(.caption2.weight(.semibold))
+                if keys.isEmpty {
+                    Text("· " + L.s("ed_zoom_lane_hint", lang)).font(.caption2)
+                        .foregroundStyle(Theme.tertiaryText)
+                }
+            }
+            .foregroundStyle(Theme.secondaryText)
+            .lineLimit(1)
+            .padding(.horizontal, 6)
+            .frame(height: keyH)
+            .background(Theme.background.opacity(0.75), in: Capsule())
+            .dynamicTypeSize(...DynamicTypeSize.xLarge)
+            .padding(.leading, 4)
+            .allowsHitTesting(false)
+            ForEach(keys) { k in
                 let selected = m.selection == .key(k.id)
                 Rectangle()
                     .fill(selected ? Theme.accent : Color.white)
-                    .frame(width: 10, height: 10)
-                    .overlay(Rectangle().strokeBorder(Theme.background, lineWidth: 1))
+                    .frame(width: 14, height: 14)
+                    .overlay(Rectangle().strokeBorder(Theme.background, lineWidth: 1.5))
                     .rotationEffect(.degrees(45))
-                    .frame(width: 28, height: keyH)
+                    .frame(width: 44, height: keyH)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         m.selection = .key(k.id)
@@ -236,7 +268,7 @@ struct EditorTimeline: View {
                             m.draft.zoomKeys.sort { $0.time < $1.time }
                             m.checkpoint()
                         })
-                    .offset(x: x(k.time, w) - 14)
+                    .offset(x: x(k.time, w) - 22)
             }
         }
     }

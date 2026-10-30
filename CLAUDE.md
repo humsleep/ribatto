@@ -59,7 +59,10 @@ ios/Ribatto/
                            자막·키프레임(2026-10-30, 무료): `RallySegment.subtitles`(구간별 CaptionSettings, CaptionEditorView `tokens: false`로 편집)·
                            `zoomKeys`(줌·중심, smoothstep 보간 `ZoomKey.at`). 시간은 **원본 초** — 트림해도 그 순간에 남고 나누기는 양쪽에 복사.
                            export가 segment에서 직접 읽는다(배관 없음). 줌은 채움·색감 뒤·워터마크/자막 앞(`move`), 자막은 훅과 같은 `timed`.
-                           릴스는 새 RallySegment를 만들므로 둘 다 안 따른다. 미리보기 줌은 원본 프레임 기준이라 세로 클립에선 근사치
+                           릴스도 클립의 자막·줌·클립별 보정을 따른다(2026-10-30, ReelBuilder가 seg에 복사). 훅이 떠 있는 동안 자막은 숨긴다. 속도·비율은 안 따른다
+                           클립별 비율(2026-10-30): `RallySegment.frame`(nil = 경기 것). 렌더 루프·`rerenderClip`·`clips(of:)`가 먼저 읽는다. RenderStamp에는 안 넣는다.
+                           편집기 '비율' 도구(경기 설정 / Instagram·Shorts 9:16 / YouTube 16:9), 9:16에서 자막 도구를 쓰면 플랫폼 UI 영역을 어둡게 보여 준다.
+                           비율이 섞인 클립은 병합을 거절한다(`merge_mixed_frames`). 플레이어·병합 재생은 세션이 아니라 클립의 비율을 본다
     Stabilizer.swift       Vision 영상 정합으로 카메라 흔들림 보정. **연결 안 함** — 가진 녹화가 전부 고정 거치라
                            랠리 안 프레임 간 이동이 0이었다. 핸드헬드 영상이 생기면 그때 붙일 것(파일 주석 참고)
                            워터마크(무료)는 Bebas 대문자 + 얇은 검정 외곽선. 흰 글자만으로는 밝은 하늘에서 사라진다
@@ -133,7 +136,8 @@ ios/Ribatto/
                            SessionDetailView(위에서부터 전체 폭 히어로(베스트 랠리 무음 루프 + 큰 길이 숫자) → "30초 하이라이트 릴스"(유일한 주 버튼) → 요약(일반 텍스트) → 클립 격자.
                            설정은 ⋯ → 설정 시트에서만. 히어로는 완성 클립만 재생하고 없으면 포스터 — 렌더 중 원본(4K)을 같이 디코딩하면
                            인코더와 메모리를 다툰다(-11819 계열). iCloud 원본도 끌어오지 않는다)
-                           ReelSheet(열자마자 만들고 결과 화면에 착지: 인스타·저장·공유·편집. 버튼 경로는 30초 예산·랠리당 15초 상한·
+                           ReelSheet(편집 패널의 랠리 행 버튼이 클립 편집기(TrimSheet)를 연다 — 닫으면 바뀐 게 있을 때 릴스를 다시 만든다. 색감 카드는 없앴다(클립에서 정한다).
+                           열자마자 만들고 결과 화면에 착지: 인스타·저장·공유·편집. 버튼 경로는 30초 예산·랠리당 15초 상한·
                            최고 랠리 먼저·hook. 다시 만들기는 성공한 뒤에만 이 시트가 만든 이전 릴스를 지운다) · ClipViews
                            TrimSheet = 클립 편집기(2026-10-30, Instagram Edits 구성, 전체 화면 `fullScreenCover`). Views/Editor/:
                            EditorModel(초안 `EditDraft` + 되돌리기 50단계, 제스처가 **끝날 때** `checkpoint`) · EditorPreview(출력 모양 그대로:

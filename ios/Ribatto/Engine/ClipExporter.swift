@@ -462,9 +462,11 @@ enum ClipExporter {
         }
         if !lines.isEmpty {
             let hookLayer = timed
+            // A reel's opening title owns the screen: lines wait until it fades.
+            let hookEnd = hook.map { hookShown + hookFade - $0.startsAt } ?? -.infinity
             timed = { t in
                 var layer = hookLayer?(t)
-                for (a, b, image) in lines where t >= a && t < b {
+                for (a, b, image) in lines where t >= max(a, hookEnd) && t < b {
                     layer = layer.map { image.composited(over: $0) } ?? image
                 }
                 return layer

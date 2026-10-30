@@ -339,7 +339,7 @@ final class SessionStore: ObservableObject {
                                 // An unfinished render's clips are already in
                                 // its frame; drawing them 16:9 squashed a
                                 // half-made vertical session.
-                                orientation: s.renderedOrientation
+                                orientation: seg.frame ?? s.renderedOrientation
                                     ?? s.partialRender?.orientation ?? "landscape",
                                 sessionID: s.id, isReady: ready))
         }
@@ -1006,6 +1006,8 @@ final class SessionStore: ObservableObject {
         second.subtitles = seg.subtitles
         first.zoomKeys = seg.zoomKeys
         second.zoomKeys = seg.zoomKeys
+        first.frame = seg.frame
+        second.frame = seg.frame
         // The first half keeps the rally's number; the second is new.
         first.number = seg.number
         second.number = segments.nextNumber
@@ -1421,7 +1423,7 @@ final class SessionStore: ObservableObject {
                     #endif
                     do {
                         try await ClipExporter.export(
-                            source: source, segment: seg, orientation: orient, pro: pro,
+                            source: source, segment: seg, orientation: seg.frame ?? orient, pro: pro,
                             caption: CaptionText.resolve(caption, session: s, segments: segments,
                                                          index: i, lang: lang),
                             smartCrop: useSmartCrop,
@@ -1543,7 +1545,7 @@ final class SessionStore: ObservableObject {
     /// `edit` is the clip's own look; nil follows the match.
     func trimClip(_ clip: ClipInfo, start: Double, end: Double, speed: Double? = nil,
                   edit: ClipEdit?, subtitles: [Subtitle]? = nil,
-                  zoomKeys: [ZoomKey]? = nil) async -> Bool {
+                  zoomKeys: [ZoomKey]? = nil, frame: String?? = nil) async -> Bool {
         guard let session = sessions.first(where: { $0.id == clip.sessionID }),
               var segments = session.segments,
               clip.index < segments.count,
@@ -1556,6 +1558,7 @@ final class SessionStore: ObservableObject {
         segments[clip.index].edit = edit
         segments[clip.index].subtitles = subtitles?.isEmpty == false ? subtitles : nil
         segments[clip.index].zoomKeys = zoomKeys?.isEmpty == false ? zoomKeys : nil
+        if let frame { segments[clip.index].frame = frame }
         let segment = segments[clip.index]
         mutate(session.id) {
             $0.segments = segments
@@ -1615,7 +1618,7 @@ final class SessionStore: ObservableObject {
         do {
             try await ClipExporter.export(
                 source: source, segment: segment,
-                orientation: session.renderedOrientation ?? partial?.orientation
+                orientation: segment.frame ?? session.renderedOrientation ?? partial?.orientation
                     ?? session.effectiveOrientation,
                 pro: session.renderedPro ?? partial?.pro ?? isPro,
                 caption: CaptionText.resolve(session.renderedCaption ?? partial?.caption,
@@ -1786,6 +1789,12 @@ final class SessionStore: ObservableObject {
     func mergeClips(_ ids: Set<String>, in session: Session) async -> URL? {
         let chosen = clips(of: session).filter { ids.contains($0.id) && $0.isReady }
         guard chosen.count >= 2 else { return nil }
+        // One track, one frame size: a 9:16 clip joined to 16:9 ones came out
+        // squeezed into the first clip's shape.
+        guard Set(chosen.map(\.orientation)).count == 1 else {
+            progress[session.id] = .failed(L.s("merge_mixed_frames", lang))
+            return nil
+        }
         let out = dir(session).appendingPathComponent("merged.mp4")
         progress[session.id] = .merge
         defer { clearProgressUnlessFailed(session.id) }
@@ -1911,7 +1920,7 @@ final class SessionStore: ObservableObject {
                                       ? pair.session.target(forClip: pair.clip.index) : nil,
                                   sessionID: sid,
                                   hookTitle: hook ? hookTitle(for: pair) : nil,
-                                  edit: edits[sid] ?? pair.session.effectiveEdit))
+                                  edit: pair.clip.segment.edit ?? edits[sid] ?? pair.session.effectiveEdit))
         }
         guard !items.isEmpty else {
             progress[key] = .failed(missingMessage(key))

@@ -6,7 +6,8 @@ Name, subtitle and keywords change only with a new version submission; promotion
 ## ASO rationale
 
 - **The name carries the head term.** `Rally Clips` was a phrase nobody searches. Each name now says the sport plus what people type: "tennis highlights" (EN/DE), "테니스 영상" (KO), "テニス動画" (JA), "pádel/padel" first where it outsells tennis in search (ES, IT), "网球视频集锦" (ZH).
-- **The subtitle carries the second sports + the job.** Pickleball/padel/badminton are low-competition niches where only 1–3 small apps compete (PerfectSwing, LikeSports, PadelClippy, ShuttleCut); "rally clips / video editor" pairs with them.
+- **Tennis leads; pickleball/padel are "also works"** (2026-10-30 owner decision: only tennis is measured, so ES/IT names now put tennis first and subtitles/descriptions say the paddle sports work too; badminton stays a keyword only).
+- **The subtitle carries the job + the second sports.** Pickleball/padel/badminton are low-competition niches where only 1–3 small apps compete (PerfectSwing, LikeSports, PadelClippy, ShuttleCut); "rally clips / video editor" pairs with them.
 - **Keywords never repeat a word from the name or subtitle** (Apple indexes all three together and builds combinations across them). They target the new 1.2.0 editor (slow motion, zoom, captions/subtitles, trim/cut) and intent words (best/points/match/court/racket).
 - **No platform trademarks** (Instagram, TikTok, YouTube, Reels, Shorts) in name, subtitle, keywords or description (2.3.7). Descriptions say "vertical 9:16 for any short-video app" instead. EN keeps the generic word `reel` ("highlight reel"); the KO/JA equivalents 릴스·リール are platform brand words there and are left out.
 - **No price words** in name/subtitle/keywords (2.3.7). "Free" and "no subscription" live in the first description line and promo text.
@@ -25,7 +26,7 @@ Ribatto: Tennis Highlights
 
 **Subtitle** (max 30) — 30 chars
 ```
-Pickleball & Padel Rally Clips
+Rally Clips + Pickleball/Padel
 ```
 
 **Keywords** (max 100, comma separated, no spaces) — 99 chars
@@ -44,7 +45,7 @@ New: a real clip editor. Trim, slow-mo, zoom in on the winning shot and put text
 ```
 Free, one-tap 30-second highlights from the match you already filmed. No subscription.
 
-Ribatto listens for the sound of the strike, finds every rally and cuts the dead time away. A 90-minute match becomes the handful of points worth watching, vertical and ready to post. Tennis, pickleball, padel and badminton.
+Ribatto listens for the sound of the strike, finds every rally and cuts the dead time away. A 90-minute match becomes the handful of points worth watching, vertical and ready to post. Built for tennis. Pickleball and padel work too.
 
 NEW: A REAL CLIP EDITOR — FREE
 Every clip opens in a full editor built like the pro short-video apps:
@@ -103,7 +104,7 @@ Ribatto: 테니스 영상 하이라이트
 
 **부제** (30자) — 20 chars
 ```
-피클볼·배드민턴·파델 랠리 자동 편집
+랠리 자동 편집, 피클볼·파델도 지원
 ```
 
 **키워드** (100자) — 92 chars
@@ -122,7 +123,7 @@ Ribatto: 테니스 영상 하이라이트
 ```
 이미 찍어 둔 경기 영상, 탭 한 번이면 30초 하이라이트. 무료, 구독 없음.
 
-Ribatto가 타구음을 듣고 랠리를 모두 찾아 사이의 빈 시간을 잘라냅니다. 90분 경기가 다시 볼 만한 포인트 몇 개로 줄어들고, 세로 영상으로 바로 올릴 수 있습니다. 테니스·피클볼·파델·배드민턴.
+Ribatto가 타구음을 듣고 랠리를 모두 찾아 사이의 빈 시간을 잘라냅니다. 90분 경기가 다시 볼 만한 포인트 몇 개로 줄어들고, 세로 영상으로 바로 올릴 수 있습니다. 테니스에 맞춰 만들었고, 피클볼·파델도 됩니다.
 
 새 기능: 제대로 된 클립 편집기 — 무료
 모든 클립이 숏폼 전문 편집 앱처럼 만든 편집기에서 열립니다.
@@ -179,9 +180,9 @@ Ribatto는 광고로 운영되는 무료 앱이고, 편집 기능은 전부 무�
 Ribatto: テニス動画ハイライト
 ```
 
-**Subtitle** (max 30) — 19 chars
+**Subtitle** (max 30) — 20 chars
 ```
-ピックルボール・パデルのラリー自動編集
+ラリー自動編集・ピックルボールとパデルも
 ```
 
 **Keywords** (max 100) — 96 chars
@@ -199,7 +200,7 @@ Ribatto: テニス動画ハイライト
 ```
 撮っておいた試合動画が、ワンタップで30秒のハイライトに。無料、サブスクなし。
 
-Ribattoは打球音を聞き取ってラリーをすべて見つけ、待ち時間を切り落とします。90分の試合が見返したい数ポイントになり、縦動画のまますぐ投稿できます。テニス・ピックルボール・パデル・バドミントンに対応。
+Ribattoは打球音を聞き取ってラリーをすべて見つけ、待ち時間を切り落とします。90分の試合が見返したい数ポイントになり、縦動画のまますぐ投稿できます。テニス向けに作り、ピックルボールとパデルにも対応。
 
 新機能:本格的なクリップ編集 — 無料
 すべてのクリップが、プロ向けショート動画アプリのような編集画面で開きます。
@@ -253,7 +254,7 @@ Ribattoは広告で運営される無料アプリで、編集機能はすべて�
 
 **App Name** (max 30) — 28 chars
 ```
-Ribatto: Pádel y Tenis Clips
+Ribatto: Tenis y Pádel Clips
 ```
 
 **Subtitle** (max 30) — 29 chars
@@ -275,7 +276,7 @@ Nuevo editor de clips: recorta, cámara lenta, zoom al golpe ganador y texto don
 ```
 Los mejores puntos de tu partido en 30 segundos, con un toque. Gratis y sin suscripción, con el vídeo que ya grabaste.
 
-Ribatto escucha el golpeo, encuentra cada punto y elimina el tiempo muerto. Un partido de 90 minutos se queda en los puntos que merece la pena ver, en vertical y listo para publicar. Pádel, tenis, pickleball y bádminton.
+Ribatto escucha el golpeo, encuentra cada punto y elimina el tiempo muerto. Un partido de 90 minutos se queda en los puntos que merece la pena ver, en vertical y listo para publicar. Pensado para el tenis; también funciona con pádel y pickleball.
 
 NUEVO: UN EDITOR DE VERDAD, GRATIS
 Cada clip se abre en un editor como el de las apps profesionales de vídeo corto:
@@ -352,7 +353,7 @@ Novo editor de clipes: corte, câmera lenta, zoom no ponto vencedor e texto onde
 ```
 Os melhores lances da sua partida em 30 segundos, com um toque. Grátis, sem assinatura, com o vídeo que você já gravou.
 
-O Ribatto escuta o som da batida, encontra cada rally e corta o tempo morto. Uma partida de 90 minutos vira os pontos que valem a pena rever, na vertical e prontos para postar. Tênis, padel, pickleball e badminton.
+O Ribatto escuta o som da batida, encontra cada rally e corta o tempo morto. Uma partida de 90 minutos vira os pontos que valem a pena rever, na vertical e prontos para postar. Feito para o tênis; também funciona com padel e pickleball.
 
 NOVO: UM EDITOR DE VERDADE, GRÁTIS
 Cada clipe abre num editor no estilo dos apps profissionais de vídeo curto:
@@ -428,7 +429,7 @@ Neu: ein echter Clip-Editor. Schneiden, Zeitlupe, Zoom auf den Gewinnschlag und 
 ```
 Mit einem Tipp 30 Sekunden Highlights aus dem Match, das du schon gefilmt hast. Kostenlos, kein Abo.
 
-Ribatto hört den Schlag, findet jeden Ballwechsel und schneidet die Wartezeit weg. Aus 90 Minuten Match werden die Punkte, die man sehen will, hochkant und fertig zum Posten. Tennis, Pickleball, Padel und Badminton.
+Ribatto hört den Schlag, findet jeden Ballwechsel und schneidet die Wartezeit weg. Aus 90 Minuten Match werden die Punkte, die man sehen will, hochkant und fertig zum Posten. Für Tennis gemacht, funktioniert auch bei Pickleball und Padel.
 
 NEU: EIN ECHTER CLIP-EDITOR — KOSTENLOS
 Jeder Clip öffnet sich in einem Editor wie in den Profi-Apps für Kurzvideos:
@@ -504,7 +505,7 @@ Nouveau : un vrai éditeur de clips. Coupe, ralenti, zoom sur le point gagnant e
 ```
 Les temps forts de votre match en 30 secondes, d'un seul geste. Gratuit, sans abonnement, avec la vidéo que vous avez déjà.
 
-Ribatto écoute le bruit de la frappe, trouve chaque échange et coupe les temps morts. Un match de 90 minutes devient les points qui méritent d'être revus, en vertical et prêts à publier. Tennis, padel, pickleball et badminton.
+Ribatto écoute le bruit de la frappe, trouve chaque échange et coupe les temps morts. Un match de 90 minutes devient les points qui méritent d'être revus, en vertical et prêts à publier. Conçu pour le tennis, fonctionne aussi au padel et au pickleball.
 
 NOUVEAU : UN VRAI ÉDITEUR, GRATUIT
 Chaque clip s'ouvre dans un éditeur pensé comme les applis pro de vidéo courte :
@@ -558,7 +559,7 @@ L'éditeur de clips, entièrement refait. Tous les outils sont gratuits.
 
 **App Name** (max 30) — 29 chars
 ```
-Ribatto: Padel e Tennis Video
+Ribatto: Tennis e Padel Video
 ```
 
 **Subtitle** (max 30) — 25 chars
@@ -580,7 +581,7 @@ Nuovo editor di clip: taglia, rallenta, zooma sul colpo vincente e metti il test
 ```
 I momenti migliori della tua partita in 30 secondi, con un tocco. Gratis, senza abbonamento, dal video che hai già girato.
 
-Ribatto ascolta il suono del colpo, trova ogni scambio e taglia i tempi morti. Una partita di 90 minuti diventa i punti che vale la pena rivedere, in verticale e pronti da pubblicare. Padel, tennis, pickleball e badminton.
+Ribatto ascolta il suono del colpo, trova ogni scambio e taglia i tempi morti. Una partita di 90 minuti diventa i punti che vale la pena rivedere, in verticale e pronti da pubblicare. Pensato per il tennis, funziona anche con padel e pickleball.
 
 NOVITÀ: UN VERO EDITOR, GRATIS
 Ogni clip si apre in un editor pensato come le app professionali per video brevi:
@@ -639,7 +640,7 @@ Ribatto: 网球视频集锦剪辑
 
 **Subtitle** (max 30) — 17 chars
 ```
-匹克球·羽毛球·板式网球回合自动剪
+回合自动剪辑，匹克球、板式网球也行
 ```
 
 **Keywords** (max 100) — 86 chars
@@ -656,7 +657,7 @@ Ribatto: 网球视频集锦剪辑
 ```
 已经拍好的比赛视频，一键变成 30 秒集锦。免费，无需订阅。
 
-Ribatto 听击球声找出每一个回合，把空档全部剪掉。90 分钟的比赛，只留下真正值得回看的几分球，竖屏成片，随手就能发。支持网球、匹克球、板式网球和羽毛球。
+Ribatto 听击球声找出每一个回合，把空档全部剪掉。90 分钟的比赛，只留下真正值得回看的几分球，竖屏成片，随手就能发。专为网球打造，匹克球和板式网球也能用。
 
 新功能：真正的片段编辑器，免费
 每个片段都会在一个像专业短视频剪辑 App 那样的编辑器里打开：

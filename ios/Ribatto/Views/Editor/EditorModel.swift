@@ -11,15 +11,18 @@ struct EditDraft: Equatable {
     var look: ClipEdit
     var subtitles: [Subtitle]
     var zoomKeys: [ZoomKey]
+    /// This clip's own shape; nil follows the match.
+    var frame: String?
 }
 
 enum EditorTool: String, CaseIterable, Identifiable {
-    case text, trim, speed, look, zoom, sound, background, split
+    case text, trim, frame, speed, look, zoom, sound, background, split
     var id: String { rawValue }
     var icon: String {
         switch self {
         case .text: return "textformat"
         case .trim: return "timeline.selection"
+        case .frame: return "aspectratio"
         case .speed: return "gauge.with.dots.needle.67percent"
         case .look: return "camera.filters"
         case .zoom: return "plus.magnifyingglass"
@@ -32,6 +35,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         switch self {
         case .text: return "edit_text"
         case .trim: return "edit_trim"
+        case .frame: return "edit_frame"
         case .speed: return "edit_speed"
         case .look: return "edit_look"
         case .zoom: return "edit_zoom"
@@ -51,12 +55,14 @@ final class PreviewParams: @unchecked Sendable {
     private let lock = NSLock()
     private var look = ClipEdit()
     private var keys: [ZoomKey] = []
-    func set(_ look: ClipEdit, _ keys: [ZoomKey]) {
-        lock.lock(); self.look = look; self.keys = keys; lock.unlock()
+    private var out = CGSize(width: 960, height: 540)
+    private var blur = false
+    func set(_ look: ClipEdit, _ keys: [ZoomKey], out: CGSize, blur: Bool) {
+        lock.lock(); self.look = look; self.keys = keys; self.out = out; self.blur = blur; lock.unlock()
     }
-    var snapshot: (ClipEdit, [ZoomKey]) {
+    var snapshot: (look: ClipEdit, keys: [ZoomKey], out: CGSize, blur: Bool) {
         lock.lock(); defer { lock.unlock() }
-        return (look, keys)
+        return (look, keys, out, blur)
     }
 }
 
@@ -66,23 +72,33 @@ final class PreviewParams: @unchecked Sendable {
 final class EditorModel: ObservableObject {
     let clip: ClipInfo
     let matchLook: ClipEdit
-    let frame: OutputFrame
+    /// The match's shape, which a clip with no frame of its own follows.
+    let matchFrame: OutputFrame
+    var frame: OutputFrame { draft.frame.map { OutputFrame($0) } ?? matchFrame }
     /// Handles may reach this far outside the detected rally, to recover a
     /// celebration the cut missed.
     let lower: Double, upper: Double
     let hits: [Double]
     let minClip: Double
+    private let sourceAspect: CGFloat
+    private let smartCrop: Bool
     /// The free vertical frame: the whole picture over a blurred fill.
-    let blurFill: Bool
+    var blurFill: Bool { frame.isPortrait && !smartCrop && sourceAspect > frame.aspectRatio + 0.01 }
     /// Pass framing (smart crop, player tracking) is not re-run live.
-    let approximateFraming: Bool
+    var approximateFraming: Bool { frame.isPortrait && smartCrop }
     let watermark: Bool
     /// The preview renders at this size; overlays are drawn in its pixels.
-    let outSize: CGSize
+    var outSize: CGSize {
+        let r = frame.ratio
+        return r.w >= r.h
+            ? CGSize(width: 960, height: (960 * r.h / r.w / 2).rounded() * 2)
+            : CGSize(width: (960 * r.w / r.h / 2).rounded() * 2, height: 960)
+    }
     let original: EditDraft
 
     @Published var draft: EditDraft {
         didSet {
+            if draft.frame != oldValue.frame { reshape() }
             if draft.look != oldValue.look || draft.zoomKeys != oldValue.zoomKeys { pushPreview() }
             if draft.speed != oldValue.speed || draft.look.volume != oldValue.look.volume { applyPlayback() }
         }
@@ -116,30 +132,25 @@ final class EditorModel: ObservableObject {
         self.minClip = minClip
         let seg = clip.segment
         matchLook = session?.effectiveEdit ?? ClipEdit()
-        frame = OutputFrame(session?.renderedOrientation ?? session?.effectiveOrientation ?? clip.orientation)
+        matchFrame = OutputFrame(session?.renderedOrientation ?? session?.effectiveOrientation ?? clip.orientation)
         lower = max(0, seg.start - 4)
         upper = min(session?.duration ?? seg.end + 4, seg.end + 4)
         hits = (seg.hitTimes ?? []).filter { $0 >= seg.start - 4 && $0 <= seg.end + 4 }.sorted()
-        let sourceAspect: CGFloat = {
+        sourceAspect = {
             guard let s = session, s.width > 0, s.height > 0 else { return 16.0 / 9 }
             return CGFloat(s.width) / CGFloat(s.height)
         }()
-        let smartCrop = session?.renderedSmartCrop ?? false
-        blurFill = frame.isPortrait && !smartCrop && sourceAspect > frame.aspectRatio + 0.01
-        approximateFraming = frame.isPortrait && smartCrop
+        smartCrop = session?.renderedSmartCrop ?? false
         watermark = !(session?.renderedPro ?? false)
-        let r = frame.ratio
-        outSize = r.w >= r.h
-            ? CGSize(width: 960, height: (960 * r.h / r.w / 2).rounded() * 2)
-            : CGSize(width: (960 * r.w / r.h / 2).rounded() * 2, height: 960)
         let d = EditDraft(start: seg.start, end: seg.end, speed: seg.speed ?? 1,
                           look: seg.edit ?? (session?.effectiveEdit ?? ClipEdit()),
-                          subtitles: seg.subtitles ?? [], zoomKeys: seg.zoomKeys ?? [])
+                          subtitles: seg.subtitles ?? [], zoomKeys: seg.zoomKeys ?? [],
+                          frame: seg.frame)
         original = d
         draft = d
         checkpointed = d
         time = seg.start
-        params.set(d.look, d.zoomKeys)
+        params.set(d.look, d.zoomKeys, out: outSize, blur: blurFill)
     }
 
     var changed: Bool { draft != original }
@@ -182,16 +193,16 @@ final class EditorModel: ObservableObject {
         self.asset = asset
         let item = AVPlayerItem(asset: asset)
         item.audioTimePitchAlgorithm = .spectral
-        let p = params, out = outSize, blur = blurFill
+        let p = params
         if let comp = try? await AVMutableVideoComposition.videoComposition(with: asset, applyingCIFiltersWithHandler: { req in
-            let (look, keys) = p.snapshot
-            var image = EditorModel.outputFrame(req.sourceImage, out: out, blur: blur, look: look)
-            if let k = ZoomKey.at(req.compositionTime.seconds, in: keys) {
+            let s = p.snapshot
+            var image = EditorModel.outputFrame(req.sourceImage, out: s.out, blur: s.blur, look: s.look)
+            if let k = ZoomKey.at(req.compositionTime.seconds, in: s.keys) {
                 image = ClipExporter.zoomed(image, k)
             }
             req.finish(with: image, context: nil)
         }) {
-            comp.renderSize = out
+            comp.renderSize = outSize
             item.videoComposition = comp
         }
         player.replaceCurrentItem(with: item)
@@ -201,9 +212,7 @@ final class EditorModel: ObservableObject {
             MainActor.assumeIsolated { self?.tick(t.seconds) }
         }
         seek(time, exact: true)
-        if watermark, let wm = ClipExporter.watermarkImage(for: out) {
-            watermarkImage = context.createCGImage(wm, from: CGRect(origin: .zero, size: out))
-        }
+        drawWatermark()
         ready = true
         await makeThumbs(asset)
     }
@@ -294,11 +303,26 @@ final class EditorModel: ObservableObject {
     }
 
     /// Hands the new look and keys to the composition and redraws a paused frame.
-    private func pushPreview() {
-        params.set(draft.look, draft.zoomKeys)
-        guard !playing, let item = player.currentItem,
-              let comp = item.videoComposition?.mutableCopy() as? AVVideoComposition else { return }
+    private func pushPreview(resize: Bool = false) {
+        params.set(draft.look, draft.zoomKeys, out: outSize, blur: blurFill)
+        guard !playing || resize, let item = player.currentItem,
+              let comp = item.videoComposition?.mutableCopy() as? AVMutableVideoComposition else { return }
+        comp.renderSize = outSize
         item.videoComposition = comp
+    }
+
+    /// A new shape: the preview, the watermark and every text layer are
+    /// drawn at the output size, so all of them are made again.
+    private func reshape() {
+        captionCache.removeAll()
+        drawWatermark()
+        pushPreview(resize: true)
+    }
+
+    private func drawWatermark() {
+        let out = outSize
+        guard watermark, let wm = ClipExporter.watermarkImage(for: out) else { watermarkImage = nil; return }
+        watermarkImage = context.createCGImage(wm, from: CGRect(origin: .zero, size: out))
     }
 
     // MARK: - Thumbnails
@@ -436,7 +460,9 @@ final class EditorModel: ObservableObject {
 
     func commit(_ store: SessionStore) async -> Bool {
         await store.trimClip(clip, start: draft.start, end: draft.end, speed: draft.speed,
-                             edit: clipLook, subtitles: draft.subtitles, zoomKeys: draft.zoomKeys)
+                             edit: clipLook, subtitles: draft.subtitles, zoomKeys: draft.zoomKeys,
+                             // Back to the match's own shape stores nothing.
+                             frame: .some(draft.frame.flatMap { OutputFrame($0) == matchFrame ? nil : $0 }))
     }
 
     var canSplit: Bool { time - draft.start >= minClip && draft.end - time >= minClip }

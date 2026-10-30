@@ -126,20 +126,30 @@ struct ReelSheet: View {
     private var currentRecipe: String {
         chosen.map(\.id).joined(separator: ",") + "|" + pace.rawValue + "|"
             + frame.rawValue + "|" + String(captionOn) + "|" + String(hookOn)
-            + "|" + String(replayOn) + "|" + look.filter.rawValue + look.backdrop.rawValue
-            + String(look.volume)
+            + "|" + String(replayOn) + "|" + edited
     }
     private var changed: Bool { builtWith != currentRecipe }
 
     init(request: ReelRequest) {
         self.request = request
         _pace = State(initialValue: request.pace)
-        // Starts as the first match's look; changed here, it is this reel's.
-        _look = State(initialValue: request.pairs.first?.session.effectiveEdit ?? ClipEdit())
     }
 
-    /// Colour, background and match sound for every rally in this reel.
-    @State private var look: ClipEdit
+    /// Bumped each time a rally comes back from the clip editor changed, so
+    /// the recipe differs and the reel is made again.
+    @State private var editCount = 0
+    private var edited: String { String(editCount) }
+    /// The rally whose clip editor is open over this sheet.
+    @State private var clipEditor: ClipEditTarget?
+    /// The same, kept past the cover's dismissal: the item is already nil by
+    /// the time `onDismiss` runs.
+    @State private var lastEditor: ClipEditTarget?
+    struct ClipEditTarget: Identifiable {
+        let id = UUID()
+        let entryID: String
+        let session: Session
+        let clip: ClipInfo
+    }
 
     struct Entry: Identifiable {
         let id: String
@@ -239,6 +249,9 @@ struct ReelSheet: View {
                 }
             }
             .sheet(isPresented: $showPass) { ProPassView() }
+            .fullScreenCover(item: $clipEditor, onDismiss: clipEditorClosed) { target in
+                TrimSheet(clip: target.clip, minClip: store.minClipSeconds, session: target.session)
+            }
             // On a different view from the pass sheet: two `.sheet`s on one
             // view collide (ClipPlayerSheet's note).
             .background {
@@ -441,8 +454,7 @@ struct ReelSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            lookCard
-            if entries.count > 1 { runningOrderCard }
+            runningOrderCard
             paceCard
             frameCard
             VStack(alignment: .leading, spacing: 12) {
@@ -553,6 +565,17 @@ struct ReelSheet: View {
                             .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                         }
                         Spacer(minLength: 0)
+                        // The same editor a clip opens: one way to edit, and
+                        // what is set there is what the reel plays.
+                        Button { openEditor(entry) } label: {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Theme.primaryText)
+                                .frame(width: 40, height: 40)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(L.s("reel_edit_clip", lang) + " #\(entry.clip.number)")
                     }
                     .opacity(entry.included ? 1 : 0.45)
                     .listRowBackground(Color.clear)
@@ -585,52 +608,6 @@ struct ReelSheet: View {
     /// Segmented where all three names fit, which in English they do; as rows
     /// where they don't — "Ganzer Ballwechsel · Nur der Schluss · Hook" does
     /// not fit three ways across a phone in German.
-    /// The look of the reel, first in the panel: what people mean by "edit".
-    private var lookCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L.s("look_title", lang))
-                .font(.subheadline.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(ClipFilter.allCases) { f in
-                        Button { look.filter = f } label: {
-                            Text(L.s("filter_" + f.rawValue, lang))
-                                .font(.subheadline.weight(look.filter == f ? .semibold : .regular))
-                                .chip(active: look.filter == f)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-            labeledPicker(L.s("sound_title", lang)) {
-                Picker("", selection: $look.volume) {
-                    Text(L.s("sound_full", lang)).tag(1.0)
-                    Text(L.s("sound_low", lang)).tag(0.4)
-                    Text(L.s("sound_off", lang)).tag(0.0)
-                }
-                .pickerStyle(.segmented)
-            }
-            labeledPicker(L.s("backdrop_title", lang)) {
-                Picker("", selection: $look.backdrop) {
-                    Text(L.s("backdrop_blur", lang)).tag(Backdrop.blur)
-                    Text(L.s("backdrop_black", lang)).tag(Backdrop.black)
-                }
-                .pickerStyle(.segmented)
-            }
-        }
-        .padding(14)
-        .rcCard()
-    }
-
-    private func labeledPicker<P: View>(_ title: String, @ViewBuilder _ picker: () -> P) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.caption).foregroundStyle(Theme.secondaryText)
-            picker().dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        }
-    }
-
     private var paceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L.s("reel_pace", lang))
@@ -723,6 +700,34 @@ struct ReelSheet: View {
 
     // MARK: - Actions
 
+    /// The whole clip, not the strike-cut piece the reel plays: the editor
+    /// trims and writes the rally itself.
+    private func openEditor(_ entry: Entry) {
+        guard let session = store.sessions.first(where: { $0.id == entry.session.id }),
+              let clip = store.clips(of: session).first(where: { $0.number == entry.clip.number })
+        else { return }
+        player?.pause()
+        let target = ClipEditTarget(entryID: entry.id, session: session, clip: clip)
+        lastEditor = target
+        clipEditor = target
+    }
+
+    /// Picks up what the editor wrote and makes the reel again if anything moved.
+    private func clipEditorClosed() {
+        guard let target = lastEditor else { return }
+        lastEditor = nil
+        guard let i = entries.firstIndex(where: { $0.id == target.entryID }),
+              let session = store.sessions.first(where: { $0.id == target.session.id }),
+              let clip = store.clips(of: session).first(where: { $0.number == target.clip.number })
+        else { player?.play(); return }
+        entries[i] = Entry(id: entries[i].id, session: session, clip: clip.forReel,
+                           included: entries[i].included)
+        guard clip.segment != target.clip.segment
+                || session.effectiveEdit != target.session.effectiveEdit else { player?.play(); return }
+        editCount += 1
+        Task { await build() }
+    }
+
     /// Builds the reel from the current choices. A rebuild replaces what is on
     /// screen only once it has succeeded; the reel it replaces stays in the
     /// Reels tab, where the store filed it when it was made.
@@ -755,8 +760,7 @@ struct ReelSheet: View {
                                               preset: nil,
                                               caption: captionOn ? nil : CaptionSettings(),
                                               hook: hookOn, replay: replayOn,
-                                              edits: Dictionary(pairs.map { ($0.session.id, look) },
-                                                                uniquingKeysWith: { a, _ in a }))
+                                              edits: [:])
         else {
             failure = pairs.first(where: { store.sourceMissing($0.session) })
                 .map { L.s(store.sourceProblemKey($0.session), lang) }

@@ -202,6 +202,9 @@ struct RallySegment: Codable, Equatable {
     var subtitles: [Subtitle]? = nil
     /// Zoom and pan over the finished frame, eased between keys. Source seconds too.
     var zoomKeys: [ZoomKey]? = nil
+    /// This clip's own output shape (`OutputFrame` raw value), set in the
+    /// editor. nil follows the match. Clips only: a reel keeps its own frame.
+    var frame: String? = nil
 }
 
 /// One line of text on a clip, from `start` to `end` in source seconds.
