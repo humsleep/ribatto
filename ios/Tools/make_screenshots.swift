@@ -197,14 +197,21 @@ func draw(_ f: Frame, index: Int) {
         y -= size * 1.12
     }
 
-    // sub-line, wrapped
+    // sub-line: one sentence per line, so wrapping never breaks mid-phrase
+    // ("…nunca sale de / tu iPhone"). The box grows if a sentence still wraps.
     y -= 34
     let para = NSMutableParagraphStyle(); para.lineSpacing = 10
-    let sub = NSAttributedString(string: f.sub, attributes: [
+    let lines = f.sub.replacingOccurrences(of: ". ", with: ".\n")
+        .replacingOccurrences(of: "。", with: "。\n")
+        .trimmingCharacters(in: .newlines)
+    let sub = NSAttributedString(string: lines, attributes: [
         .font: body(46), .foregroundColor: dim, .paragraphStyle: para])
-    let subBox = CGRect(x: margin, y: y - 150, width: W - margin * 2 - 40, height: 150)
-    sub.draw(with: subBox, options: [.usesLineFragmentOrigin])
-    y -= 168
+    let subW = W - margin * 2 - 40
+    let subH = ceil(sub.boundingRect(with: CGSize(width: subW, height: 1000),
+                                     options: [.usesLineFragmentOrigin]).height)
+    sub.draw(with: CGRect(x: margin, y: y - subH, width: subW, height: subH),
+             options: [.usesLineFragmentOrigin])
+    y -= subH + 18
 
     // The screen, run off the bottom edge so it reads as a device in hand
     // rather than a stamp floating in a box.
