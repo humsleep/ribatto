@@ -31,8 +31,11 @@ struct RibattoApp: App {
                     // last 63pt of every list and sliced the pinned selection
                     // bars in half (2026-09-23). Each tab root adds the slot
                     // inside its own stack instead.
+                    // Inside each tab the default tint is white: volt is for the
+                    // current selection (the tab bar keeps it) and brand moments.
                     TabView(selection: $tab) {
                         LibraryView()
+                            .tint(Theme.primaryText)
                             .tabItem {
                                 Label(L.s("library", lang), systemImage: "rectangle.stack")
                             }
@@ -44,12 +47,14 @@ struct RibattoApp: App {
                         // the matches and the numbers: they are what the app
                         // is for.
                         ReelsView(openLibrary: { tab = 0 })
+                            .tint(Theme.primaryText)
                             .tabItem {
                                 Label(L.s("reels", lang),
                                       systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
                             }
                             .tag(1)
                         StatsView(openLibrary: { tab = 0 })
+                            .tint(Theme.primaryText)
                             .tabItem {
                                 Label(L.s("season", lang), systemImage: "chart.bar.fill")
                             }

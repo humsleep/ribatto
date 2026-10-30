@@ -68,7 +68,7 @@ struct StatsView: View {
                                 .font(.title3.weight(.semibold))
                         }
                     }
-                    .tint(Theme.accent)
+                    .tint(Theme.primaryText)
                     .disabled(building)
                     .accessibilityLabel(L.s("share_card", lang))
                 }

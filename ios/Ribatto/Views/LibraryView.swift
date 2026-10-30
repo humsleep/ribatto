@@ -440,8 +440,8 @@ struct LibraryView: View {
         Label(L.s("import_video", lang), systemImage: "plus")
             .font(.headline)
             .padding(.horizontal, 20).padding(.vertical, 12)
-            .background(.tint, in: Capsule())
-            .foregroundStyle(Theme.onAccent)
+            .background(Theme.primaryFill, in: Capsule())
+            .foregroundStyle(Theme.onPrimary)
     }
 
     /// Every way a match gets in, in one menu: Photos, Files, or shooting

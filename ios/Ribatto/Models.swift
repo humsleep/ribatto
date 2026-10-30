@@ -193,6 +193,53 @@ struct RallySegment: Codable, Equatable {
     /// Playback speed of this clip, set in the trim sheet. nil = 1×. Clips
     /// only: a reel keeps its own timing.
     var speed: Double? = nil
+    /// This clip's own colour, sound and background, set in the edit sheet.
+    /// nil follows the match's `Session.edit`. Clips only, like `speed`.
+    var edit: ClipEdit? = nil
+    /// Timed lines burned into this clip, each styled and placed like the
+    /// match caption. Seconds in the original, so a trim keeps every line on
+    /// the moment it was written for. Clips only, like `edit`.
+    var subtitles: [Subtitle]? = nil
+    /// Zoom and pan over the finished frame, eased between keys. Source seconds too.
+    var zoomKeys: [ZoomKey]? = nil
+}
+
+/// One line of text on a clip, from `start` to `end` in source seconds.
+struct Subtitle: Codable, Equatable, Identifiable {
+    var id = UUID()
+    var start: Double
+    var end: Double
+    var caption: CaptionSettings
+}
+
+/// A framing at one moment of a clip. Between two keys the frame eases from
+/// one to the next, like a camera move.
+struct ZoomKey: Codable, Equatable, Identifiable {
+    var id = UUID()
+    var time: Double
+    /// 1 is the whole frame, 2 keeps half its width
+    var zoom: Double = 1.5
+    /// centre of what stays in view, normalized in the frame, y from the top
+    var x: Double = 0.5
+    var y: Double = 0.5
+
+    /// The framing at `t`: held before the first key and after the last.
+    static func at(_ t: Double, in keys: [ZoomKey]) -> ZoomKey? {
+        let k = keys.sorted { $0.time < $1.time }
+        guard let first = k.first, let last = k.last else { return nil }
+        if t <= first.time { return first }
+        if t >= last.time { return last }
+        guard let i = k.firstIndex(where: { $0.time > t }) else { return last }
+        let a = k[i - 1], b = k[i]
+        let u = (t - a.time) / max(b.time - a.time, 1e-6)
+        let e = u * u * (3 - 2 * u)
+        var r = a
+        r.time = t
+        r.zoom = a.zoom + (b.zoom - a.zoom) * e
+        r.x = a.x + (b.x - a.x) * e
+        r.y = a.y + (b.y - a.y) * e
+        return r
+    }
 }
 
 // MARK: - Look and sound

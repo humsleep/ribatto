@@ -50,7 +50,7 @@ struct AddRallySheet: View {
                         Spacer()
                         Text(fmtPos(end)).font(.caption.monospacedDigit())
                     }
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.primaryText)
                 }
                 .padding(14)
                 .rcCard()
@@ -60,7 +60,7 @@ struct AddRallySheet: View {
                     .multilineTextAlignment(.center)
 
                 if working {
-                    ProgressView().progressViewStyle(.linear).tint(Theme.accent)
+                    ProgressView().progressViewStyle(.linear).tint(.white)
                 }
                 Spacer(minLength: 0)
             }

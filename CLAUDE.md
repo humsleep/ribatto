@@ -52,6 +52,14 @@ ios/Ribatto/
                            편집(1.2, 전부 무료): `ClipEdit`(Session.edit) = 색감 프리셋(`graded`, 오버레이 아래) · 세로 배경 블러/검정(`blackFilled`) ·
                            경기 소리 1/0.4/0. RenderStamp·needsRerender가 비교한다. 클립별 속도(RallySegment.speed, TrimSheet 0.5–2×)는
                            완성 파일을 한 번 더 인코딩하는 `retime`(피치 유지). 릴스는 속도를 무시하고 세션의 ClipEdit만 따른다
+                           클립별 보정(2026-10-30): `RallySegment.edit`(nil = 경기 것을 따름)가 세션 ClipEdit보다 우선한다. 렌더 루프·`rerenderClip` 둘 다.
+                           RenderStamp에는 넣지 않는다(속도처럼 그 클립만 다시 만든다). "모든 클립에 적용"(`useLookForAll`)은 세션 edit을 바꾸고
+                           클립별 값을 지운 뒤, 적용이 전체 재렌더를 할 거면 맡기고 아니면 덮어썼던 클립만 다시 만든다
+                           편집 시트(TrimSheet)는 원본 미리보기에 `graded`를 videoComposition으로 입혀 색감을 바로 보여 준다
+                           자막·키프레임(2026-10-30, 무료): `RallySegment.subtitles`(구간별 CaptionSettings, CaptionEditorView `tokens: false`로 편집)·
+                           `zoomKeys`(줌·중심, smoothstep 보간 `ZoomKey.at`). 시간은 **원본 초** — 트림해도 그 순간에 남고 나누기는 양쪽에 복사.
+                           export가 segment에서 직접 읽는다(배관 없음). 줌은 채움·색감 뒤·워터마크/자막 앞(`move`), 자막은 훅과 같은 `timed`.
+                           릴스는 새 RallySegment를 만들므로 둘 다 안 따른다. 미리보기 줌은 원본 프레임 기준이라 세로 클립에선 근사치
     Stabilizer.swift       Vision 영상 정합으로 카메라 흔들림 보정. **연결 안 함** — 가진 녹화가 전부 고정 거치라
                            랠리 안 프레임 간 이동이 0이었다. 핸드헬드 영상이 생기면 그때 붙일 것(파일 주석 참고)
                            워터마크(무료)는 Bebas 대문자 + 얇은 검정 외곽선. 흰 글자만으로는 밝은 하늘에서 사라진다
@@ -127,8 +135,13 @@ ios/Ribatto/
                            인코더와 메모리를 다툰다(-11819 계열). iCloud 원본도 끌어오지 않는다)
                            ReelSheet(열자마자 만들고 결과 화면에 착지: 인스타·저장·공유·편집. 버튼 경로는 30초 예산·랠리당 15초 상한·
                            최고 랠리 먼저·hook. 다시 만들기는 성공한 뒤에만 이 시트가 만든 이전 릴스를 지운다) · ClipViews
-                           TrimSheet(클립별 길이 조정 → 해당 클립만 재렌더. 썸네일 스트립은 TrimmerBar+PryntTrimmerView,
-                           타구 위치를 눈금으로 찍고 VoiceOver용 스테퍼를 함께 둔다) · TargetPlayerSheet(추적 대상 선택)
+                           TrimSheet = 클립 편집기(2026-10-30, Instagram Edits 구성, 전체 화면 `fullScreenCover`). Views/Editor/:
+                           EditorModel(초안 `EditDraft` + 되돌리기 50단계, 제스처가 **끝날 때** `checkpoint`) · EditorPreview(출력 모양 그대로:
+                           컴포지션 핸들러가 블러/검정 채움→`graded`→`zoomed`, 워터마크·자막은 `ClipExporter.captionImage/watermarkImage` 픽셀을 겹침,
+                           자막 끌기·핀치, 줌 도구일 땐 핀치·끌기가 재생 위치 키프레임을 만든다) · EditorTimeline(가운데 고정 재생헤드, 끌어 스크럽·핀치 배율,
+                           자막 막대·키프레임 마름모·트림 핸들·타구 눈금) · EditorPanels(도구별 패널, VoiceOver용 스테퍼·목록 포함).
+                           완료는 `trimClip` 한 번, 나누기는 확인 후 `splitRally`. 추적 크롭(Pass)은 미리보기에서 가운데 크롭 근사.
+                           TrimmerBar/PryntTrimmerView는 더는 쓰이지 않는다 · TargetPlayerSheet(추적 대상 선택)
                            LibraryView(헤더는 + 메뉴(사진·파일·촬영)와 톱니(AppSettingsView: 언어·개인정보·라이선스·광고 동의)뿐.
                            선택은 세션 카드 길게 누르기. 검색·종목 칩은 세션 8개 이상일 때만)
                            AnalysisStrip(감지 중 포스터·파형·진행·남은 시간, 감지 후 랠리 구간 표시. 상태는 Store/AnalysisFeed — 비영속·세션별)
@@ -142,8 +155,10 @@ ios/Ribatto/
 
 ## 디자인 시스템 (2026-10-28 리디자인, ios/REDESIGN_DIRECTIONS.md)
 
-- 색은 셋만: 브랜드 `accent` #D4FF3F(누르는 것·현재 선택만), 데이터 `court` #5CC8DE(파형·차트·구간, 누르지 않음), 상태 warning/danger.
-  바닥 #0B0C0A · 카드 #171915 · 높은 면 #23261F, 보조 글자 `Theme.secondaryText` #A6AC9D(.tertiary 대신).
+- 2026-10-30 중립 회색으로 교체(올리브 빛 회색 + 볼트 채움이 "촌스럽다"는 오너 피드백). 바닥 #0A0A0B · surface #141416 · surfaceHigh #1E1E21 ·
+  raised2 #2A2A2E · letterbox #050506. 글자 primaryText #F5F5F7 / secondaryText #A1A1A6 / tertiaryText #8E8E93(raised2 위 금지, 4.38:1).
+  주 버튼·선택 칩은 **흰 채움**(`primaryFill`/`onPrimary`). 볼트 `accent` #D4FF3F는 현재 선택·활성 토글/도구·PASS 테두리·브랜드 순간(인트로·워터마크·영상 자막색)에만.
+  탭 안쪽 기본 tint는 흰색(RibattoApp, 탭 바 선택만 볼트). 데이터 `court` #5CC8DE(파형·타구 눈금), 상태 warning/danger #FF5A4F.
   볼트를 바꾸면 영상에 굽는 `CaptionColor.volt`·AccentColor 에셋·스크린샷 도구 볼트도 같이 바꾼다.
 - 서체: UI는 전부 SF. 탭 제목 `.largeTitle.heavy.condensed`, 큰 숫자 `.heavy.compressed.monospacedDigit()`(숫자에만 compressed), 버튼 `.body.semibold` 최소 50·2줄.
 - 영상 위 글자는 흰색만, 아래 55% 스크림. 카드 반경 16, 히어로 22.

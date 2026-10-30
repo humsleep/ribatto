@@ -57,12 +57,12 @@ struct ProPassView: View {
         VStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .fill(RadialGradient(colors: [Theme.accent.opacity(0.35), .clear],
+                    .fill(RadialGradient(colors: [Color.white.opacity(0.18), .clear],
                                          center: .center, startRadius: 4, endRadius: 60))
                     .frame(width: 120, height: 120)
                 Image(systemName: "play.rectangle.fill")
                     .font(.system(size: 40, weight: .medium))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.primaryText)
             }
             Text(L.s("paywall_title", lang))
                 .font(.largeTitle.bold())
@@ -157,7 +157,7 @@ struct ProPassView: View {
                     ads.showRewarded { pass.grant() }
                 } label: {
                     HStack(spacing: 8) {
-                        if !ads.rewardedReady { ProgressView().tint(Theme.onAccent) }
+                        if !ads.rewardedReady { ProgressView().tint(Theme.onPrimary) }
                         Text(ads.rewardedReady
                              ? String(format: L.s("pass_watch_fmt", lang),
                                       Int(ProPass.duration / 60))

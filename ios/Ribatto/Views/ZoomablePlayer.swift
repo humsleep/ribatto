@@ -184,7 +184,7 @@ struct ZoomableVideo: View {
                         .font(.title3)
                         .frame(width: 44, height: 34)
                 }
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(Theme.primaryText)
                 Spacer()
                 Text(fmtPos(duration))
             }

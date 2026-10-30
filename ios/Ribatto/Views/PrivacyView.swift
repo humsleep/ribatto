@@ -53,7 +53,7 @@ struct PrivacyView: View {
                     Link(destination: Self.policyURL) {
                         Text("\(L.s("privacy_full", lang)) \(Image(systemName: "arrow.up.right"))")
                             .font(.subheadline.bold())
-                            .foregroundStyle(Theme.accent)
+                            .foregroundStyle(Theme.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.top, 6)

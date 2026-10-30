@@ -999,6 +999,13 @@ final class SessionStore: ObservableObject {
         // Both halves play at the speed the rally was set to.
         first.speed = seg.speed
         second.speed = seg.speed
+        first.edit = seg.edit
+        second.edit = seg.edit
+        // Source seconds, so each half simply shows the lines and moves inside it.
+        first.subtitles = seg.subtitles
+        second.subtitles = seg.subtitles
+        first.zoomKeys = seg.zoomKeys
+        second.zoomKeys = seg.zoomKeys
         // The first half keeps the rally's number; the second is new.
         first.number = seg.number
         second.number = segments.nextNumber
@@ -1425,7 +1432,7 @@ final class SessionStore: ObservableObject {
                             // stretch to hold it.
                             thumbURL: cdir.appendingPathComponent("\(base).jpg"),
                             targetPlayer: useSmartCrop ? (perClip[String(i)] ?? target) : nil,
-                            edit: edit, speed: seg.speed ?? 1)
+                            edit: seg.edit ?? edit, speed: seg.speed ?? 1)
                         #if DEBUG
                         DebugLog.write("clip \(i + 1) done state=\(UIApplication.shared.applicationState.rawValue)")
                         #endif
@@ -1533,7 +1540,10 @@ final class SessionStore: ObservableObject {
     /// often with the previous clip's re-render) or the re-render failed.
     /// TrimSheet used to close on both as though the trim had taken.
     @discardableResult
-    func trimClip(_ clip: ClipInfo, start: Double, end: Double, speed: Double? = nil) async -> Bool {
+    /// `edit` is the clip's own look; nil follows the match.
+    func trimClip(_ clip: ClipInfo, start: Double, end: Double, speed: Double? = nil,
+                  edit: ClipEdit?, subtitles: [Subtitle]? = nil,
+                  zoomKeys: [ZoomKey]? = nil) async -> Bool {
         guard let session = sessions.first(where: { $0.id == clip.sessionID }),
               var segments = session.segments,
               clip.index < segments.count,
@@ -1543,6 +1553,9 @@ final class SessionStore: ObservableObject {
         segments[clip.index].end = min(session.duration, end)
         segments[clip.index].trimmed = true
         if let speed { segments[clip.index].speed = speed == 1 ? nil : speed }
+        segments[clip.index].edit = edit
+        segments[clip.index].subtitles = subtitles?.isEmpty == false ? subtitles : nil
+        segments[clip.index].zoomKeys = zoomKeys?.isEmpty == false ? zoomKeys : nil
         let segment = segments[clip.index]
         mutate(session.id) {
             $0.segments = segments
@@ -1559,6 +1572,25 @@ final class SessionStore: ObservableObject {
             $0.segments?[clip.index] = old
         }
         return false
+    }
+
+    /// One look for the whole match: the session's edit, with every clip's own
+    /// look dropped. When Apply will remake every clip anyway, that is left to
+    /// it; otherwise only the clips that had their own look are remade now.
+    func useLookForAll(_ session: Session, _ edit: ClipEdit) async -> Bool {
+        guard !isBusy(session.id), var segments = session.segments else { return false }
+        let overridden = segments.indices.filter { segments[$0].edit != nil }
+        for i in overridden { segments[i].edit = nil }
+        mutate(session.id) {
+            $0.edit = edit
+            $0.segments = segments
+        }
+        guard let s = sessions.first(where: { $0.id == session.id }), !s.needsRerender
+        else { return true }
+        for i in overridden where !(await rerenderClip(s, segments: segments, index: i)) {
+            return false
+        }
+        return true
     }
 
     /// Renders one clip again with the settings the session was last rendered
@@ -1597,7 +1629,8 @@ final class SessionStore: ObservableObject {
                 // not be framed differently from the rest of the match.
                 liteZoom: RenderStamp.zooms(session.renderedOrientation != nil
                                             ? session.renderedLook : partial?.look),
-                edit: (session.renderedOrientation != nil ? session.renderedEdit : partial?.edit)
+                edit: segment.edit
+                    ?? (session.renderedOrientation != nil ? session.renderedEdit : partial?.edit)
                     ?? ClipEdit(),
                 speed: segment.speed ?? 1)
             syncPartialStamp(session.id)

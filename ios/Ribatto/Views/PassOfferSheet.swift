@@ -344,7 +344,7 @@ struct PassOfferSheet: View {
                 ads.showRewarded { pass.grant() }
             } label: {
                 HStack(spacing: 8) {
-                    if !ads.rewardedReady { ProgressView().tint(Theme.onAccent) }
+                    if !ads.rewardedReady { ProgressView().tint(Theme.onPrimary) }
                     Text(L.s("offer_watch", lang))
                         .font(.headline)
                         .multilineTextAlignment(.center)

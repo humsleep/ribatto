@@ -293,9 +293,9 @@ struct ReelSheet: View {
             VStack(spacing: 8) {
                 if let p = buildProgress {
                     ProgressView(value: Double(p.done), total: Double(p.total))
-                        .tint(Theme.accent)
+                        .tint(.white)
                 } else {
-                    ProgressView().progressViewStyle(.linear).tint(Theme.accent)
+                    ProgressView().progressViewStyle(.linear).tint(.white)
                 }
                 Text(buildingLabel)
                     .font(.subheadline.monospacedDigit())
@@ -511,7 +511,7 @@ struct ReelSheet: View {
             Button(String(format: L.s("reel_pick_top", lang), n)) { keepTop(n) }
                 .font(.caption.bold())
                 .buttonStyle(.plain)
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(Theme.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -650,7 +650,7 @@ struct ReelSheet: View {
                             selectableRow(
                                 badge: Image(systemName: p.symbol)
                                     .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(pace == p ? Theme.onAccent : Theme.accent)
+                                    .foregroundStyle(pace == p ? Theme.onAccent : Theme.primaryText)
                                     .frame(width: 26, height: 26)
                                     .background(pace == p ? Theme.accent : Theme.surfaceHigh,
                                                 in: Circle()),

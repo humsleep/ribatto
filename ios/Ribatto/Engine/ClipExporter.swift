@@ -452,10 +452,34 @@ enum ClipExporter {
                 timed = hookLayer(image, startsAt: hook.startsAt)
             }
         }
+        // The user's own lines, each over its stretch. Clip clock, like the hook.
+        let base = segStart.seconds
+        let lines: [(Double, Double, CIImage)] = (segment.subtitles ?? []).compactMap { sub in
+            var c = sub.caption
+            c.enabled = true
+            guard c.isVisible, let image = captionImage(c, in: out) else { return nil }
+            return (sub.start - base, sub.end - base, image)
+        }
+        if !lines.isEmpty {
+            let hookLayer = timed
+            timed = { t in
+                var layer = hookLayer?(t)
+                for (a, b, image) in lines where t >= a && t < b {
+                    layer = layer.map { image.composited(over: $0) } ?? image
+                }
+                return layer
+            }
+        }
+        // Keyframed zoom moves the picture only: watermark and text stay put.
+        var move: Moved?
+        if let keys = segment.zoomKeys, !keys.isEmpty {
+            move = { image, t in ZoomKey.at(t + base, in: keys).map { zoomed(image, $0) } ?? image }
+        }
         do {
             try await encode(asset: asset, composition: comp, audioMix: audioMix,
                              timeRange: range, out: out, fps: fps, pro: pro,
-                             overlay: overlay, compose: compose, timed: timed, to: staging)
+                             overlay: overlay, compose: compose, move: move, timed: timed,
+                             to: staging)
         } catch let error as NSError where error.domain == AVFoundationErrorDomain
                     // mediaServicesWereReset / operationInterrupted, as raw
                     // codes: the named cases are iOS-only and Tools/ builds
@@ -483,7 +507,8 @@ enum ClipExporter {
             do {
                 try await legacyEncode(asset: asset, composition: comp, audioMix: audioMix,
                                        timeRange: range, watermark: !pro, caption: caption,
-                                       compose: compose, timed: timed, out: out, to: staging)
+                                       compose: compose, move: move, timed: timed,
+                                       out: out, to: staging)
             } catch {
                 #if DEBUG
                 trace?("  legacy failed: \(error)")
@@ -583,6 +608,23 @@ enum ClipExporter {
     /// Builds one output frame from the composition's frame. Runs per frame
     /// inside the encode pump, so it must stay a pure CIImage recipe.
     typealias Compose = @Sendable (CIImage) -> CIImage
+    /// A per-frame change that depends on the clip's own clock, in seconds.
+    typealias Moved = @Sendable (CIImage, Double) -> CIImage
+
+    /// The frame pushed in on (x, y): a window 1/zoom of its size, kept
+    /// inside the frame so no edge goes empty, scaled back up to fill it.
+    static func zoomed(_ image: CIImage, _ k: ZoomKey) -> CIImage {
+        let r = image.extent
+        guard k.zoom > 1.001, r.width > 0, r.height > 0, r.width.isFinite else { return image }
+        let z = CGFloat(min(k.zoom, 4)), w = r.width / z, h = r.height / z
+        let wx = min(max(r.minX + CGFloat(k.x) * r.width - w / 2, r.minX), r.maxX - w)
+        let wy = min(max(r.minY + (1 - CGFloat(k.y)) * r.height - h / 2, r.minY), r.maxY - h)
+        return image.clampedToExtent()
+            .transformed(by: CGAffineTransform(translationX: -wx, y: -wy)
+                .concatenating(CGAffineTransform(scaleX: z, y: z))
+                .concatenating(CGAffineTransform(translationX: r.minX, y: r.minY)))
+            .cropped(to: r)
+    }
 
     /// The free portrait frame: `frame` (the source at the output's width)
     /// centred over a blurred, 25%-darker copy of itself scaled to fill.
@@ -955,6 +997,7 @@ enum ClipExporter {
                                pro: Bool,
                                overlay: CIImage?,
                                compose: Compose? = nil,
+                               move: Moved? = nil,
                                timed: Timed? = nil,
                                to url: URL) async throws {
 #if targetEnvironment(simulator)
@@ -1135,9 +1178,10 @@ enum ClipExporter {
                 // target is always the output size.
                 var image = CIImage(cvPixelBuffer: source)
                 if let compose { image = compose(image) }
+                let local = CMTimeGetSeconds(CMTimeSubtract(time, timeRange.start))
+                if let move { image = move(image, local) }
                 if let overlay { image = overlay.composited(over: image) }
-                if let timed,
-                   let layer = timed(CMTimeGetSeconds(CMTimeSubtract(time, timeRange.start))) {
+                if let timed, let layer = timed(local) {
                     image = layer.composited(over: image)
                 }
                 context.render(image, to: target)
@@ -1256,6 +1300,7 @@ enum ClipExporter {
                                      watermark: Bool,
                                      caption: CaptionSettings?,
                                      compose: Compose? = nil,
+                                     move: Moved? = nil,
                                      timed: Timed? = nil,
                                      out: CGSize,
                                      to url: URL) async throws {
@@ -1272,7 +1317,7 @@ enum ClipExporter {
         // wrote the frame at `fitSize`, and this pass draws it into the full
         // output frame — so the fallback looks the same as the main path.
         try await burnOverlays(into: url, watermark: watermark, caption: caption,
-                               compose: compose, timed: timed, out: out)
+                               compose: compose, move: move, timed: timed, out: out)
     }
 
     // MARK: - Burned-in overlays
@@ -1307,9 +1352,11 @@ enum ClipExporter {
                                      watermark: Bool,
                                      caption: CaptionSettings?,
                                      compose: Compose? = nil,
+                                     move: Moved? = nil,
                                      timed: Timed? = nil,
                                      out: CGSize? = nil) async throws {
-        guard watermark || (caption?.isVisible ?? false) || compose != nil || timed != nil
+        guard watermark || (caption?.isVisible ?? false) || compose != nil || move != nil
+                || timed != nil
         else { return }
 
         let asset = AVURLAsset(url: url)
@@ -1318,11 +1365,12 @@ enum ClipExporter {
         // Composed, the output is the full frame, not the fitted strip.
         let size = compose != nil ? (out ?? natural) : natural
         let overlay = overlayImage(for: size, watermark: watermark, caption: caption)
-        guard overlay != nil || compose != nil || timed != nil else { return }
+        guard overlay != nil || compose != nil || move != nil || timed != nil else { return }
 
         let comp = AVMutableVideoComposition(asset: asset) { request in
             var image = request.sourceImage
             if let compose { image = compose(image) }
+            if let move { image = move(image, request.compositionTime.seconds) }
             if let overlay { image = overlay.composited(over: image) }
             // The preset pass wrote the range from zero, so composition time
             // is already the clip's own clock.
@@ -1361,7 +1409,7 @@ enum ClipExporter {
         try? FileManager.default.removeItem(at: tmp)
     }
 
-    private static func captionImage(_ c: CaptionSettings, in size: CGSize) -> CIImage? {
+    static func captionImage(_ c: CaptionSettings, in size: CGSize) -> CIImage? {
         let asked = max(14, size.height * 0.045 * c.size)
         let v = c.color.rgb
         let fill = CGColor(srgbRed: v.r, green: v.g, blue: v.b, alpha: 0.98)
@@ -1428,7 +1476,7 @@ enum ClipExporter {
     /// a bright sky, which is the half of the job that matters — so it is drawn
     /// in the bundled condensed face with a thin dark outline, which holds on
     /// both a white cloud and a dark court.
-    private static func watermarkImage(for size: CGSize,
+    static func watermarkImage(for size: CGSize,
                                        clearOf occupied: CGRect? = nil) -> CIImage? {
         let fontSize = max(20, size.height * 0.040)
         guard let image = textImage("RIBATTO", font: .bebas, fontSize: fontSize,

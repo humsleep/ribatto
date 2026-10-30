@@ -188,6 +188,16 @@ struct ClipPlayerSheet: View {
     @State private var player: AVPlayer?
     @State private var confirmDelete = false
     @State private var destination: Destination?
+    @State private var editor: EditorRequest?
+    private struct EditorRequest: Identifiable {
+        let id = UUID()
+        let focus: TrimSheet.Focus?
+    }
+    /// The clip carries an edit of its own beyond a trim.
+    private var edited: Bool {
+        let s = live
+        return s.speed != nil || s.edit != nil || s.subtitles != nil || s.zoomKeys != nil
+    }
     @State private var message: String?
     /// Set the moment a delete is confirmed. The store then shifts the next
     /// rally into this index, and without the flag the sheet reloaded the
@@ -211,13 +221,11 @@ struct ClipPlayerSheet: View {
     /// several `.sheet` modifiers on one view collides — a second one added
     /// here opened the first one's content instead of its own.
     private enum Destination: Identifiable {
-        case trim
         case retarget
         case reel(ReelRequest)
 
         var id: String {
             switch self {
-            case .trim: return "trim"
             case .retarget: return "retarget"
             case .reel(let r): return "reel-" + r.id.uuidString
             }
@@ -388,7 +396,7 @@ struct ClipPlayerSheet: View {
         // over the player: the landscape layout hid it completely, and its X
         // then dismissed player and sheet together, silently dropping the trim
         // the user was in the middle of.
-        .allowsLandscape(!OutputFrame(clip.orientation).isPortrait && destination == nil)
+        .allowsLandscape(!OutputFrame(clip.orientation).isPortrait && destination == nil && editor == nil)
         // On the Group, not the two layouts: rotating swaps them, and a task
         // on either would be cancelled and restarted by the turn.
         .task(id: preview ? "\(live.start)-\(live.end)" : "") {
@@ -484,11 +492,14 @@ struct ClipPlayerSheet: View {
                 // Speed, length and split, under a word: the unlabeled trim
                 // icon in the toolbar was the only way in and nobody found it.
                 if !preview {
-                    Button { destination = .trim } label: {
+                    // Four tools by name, each opening the sheet on its own card:
+                    // one grey "Edit" button hid colour and sound in the ⋯ menu.
+                    Button { editor = EditorRequest(focus: nil) } label: {
                         Label(L.s("clip_edit", lang), systemImage: "slider.horizontal.3")
                             .frame(maxWidth: .infinity)
                     }
                     .rcSecondary()
+                    .accessibilityValue(edited ? L.s("edit_on", lang) : "")
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
                 }
@@ -602,13 +613,16 @@ struct ClipPlayerSheet: View {
                 Button("OK", role: .cancel) { message = nil }
             }
             .alert(L.s("long_block_explain", lang), isPresented: $explainLong) {
-                Button(L.s("split_rally", lang)) { destination = .trim }
+                Button(L.s("split_rally", lang)) { editor = EditorRequest(focus: .split) }
                 Button(L.s("cancel", lang), role: .cancel) {}
+            }
+            // Full screen: in a sheet, a drag down the timeline dismissed it.
+            .fullScreenCover(item: $editor, onDismiss: reloadPlayer) { req in
+                TrimSheet(clip: current, focus: req.focus, minClip: store.minClipSeconds,
+                          session: session)
             }
             .sheet(item: $destination) { dest in
                 switch dest {
-                case .trim:
-                    TrimSheet(clip: current)
                 case .retarget:
                     if let session { TargetPlayerSheet(session: session, clip: current) }
                 case .reel(let request):

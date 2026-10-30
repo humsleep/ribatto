@@ -77,6 +77,12 @@ func selftest() {
     let t = score(detected: [(0, 20)], truth: [(0, 10), (0, 12)])
     assert(t.tp == 1 && t.fn == 1)
     assert(median([3, 1, 2]) == 2 && median([1, 2, 3, 4]) == 2.5)
+    // Zoom keys: held outside, eased between, order of the array does not matter.
+    let keys = [ZoomKey(time: 10, zoom: 3, x: 1, y: 1), ZoomKey(time: 0, zoom: 1, x: 0, y: 0)]
+    assert(ZoomKey.at(-1, in: keys)?.zoom == 1 && ZoomKey.at(20, in: keys)?.zoom == 3)
+    assert(abs((ZoomKey.at(5, in: keys)?.zoom ?? 0) - 2) < 1e-9)
+    assert((ZoomKey.at(1, in: keys)?.zoom ?? 0) < 1.2)   // eased, not linear (1.2)
+    assert(ZoomKey.at(5, in: []) == nil)
     print("selftest ok")
 }
 

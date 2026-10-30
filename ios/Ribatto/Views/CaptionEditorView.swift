@@ -16,6 +16,8 @@ struct CaptionEditorView: View {
     /// reel — in which case applying hands it back instead of writing it to
     /// the session.
     private let onApply: ((CaptionSettings) -> Void)?
+    /// Off for a clip's subtitle: tokens are only filled in for the match caption.
+    private var tokens = true
     @State private var draft: CaptionSettings
     @State private var dragging = false
     /// Where Instagram's own buttons and text sit over a 9:16 reel. Preview
@@ -42,10 +44,12 @@ struct CaptionEditorView: View {
     init(session: Session,
          caption: CaptionSettings?,
          frame: OutputFrame,
+         tokens: Bool = true,
          onApply: @escaping (CaptionSettings) -> Void) {
         self.session = session
         self.previewFrame = frame
         self.onApply = onApply
+        self.tokens = tokens
         _draft = State(initialValue: caption ?? session.caption ?? Self.fresh(for: frame))
     }
 
@@ -63,7 +67,7 @@ struct CaptionEditorView: View {
                             .tint(Theme.accent)
                     }
                     textField
-                    autoText
+                    if tokens { autoText }
                     lookPicker
                     fontPicker
                     stylePicker
@@ -284,8 +288,10 @@ struct CaptionEditorView: View {
 
     private var textField: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle(L.s("show_caption", lang), isOn: $draft.enabled)
-                .tint(accent)
+            if tokens {
+                Toggle(L.s("show_caption", lang), isOn: $draft.enabled)
+                    .tint(accent)
+            }
             HStack {
                 TextField(L.s("caption_placeholder", lang), text: $draft.text)
                     .textFieldStyle(.roundedBorder)

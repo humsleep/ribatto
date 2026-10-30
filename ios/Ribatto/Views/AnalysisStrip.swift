@@ -61,7 +61,7 @@ struct AnalysisProgress: View {
                               stageText: stageText, onTapRally: onTapRally)
                 if analysing && item.phase != .found {
                     ProgressView(value: item.overall)
-                        .tint(Theme.accent)
+                        .tint(.white)
                         .accessibilityHidden(true)
                     if let eta = item.eta {
                         EtaText(seconds: eta)

@@ -5,50 +5,57 @@ import SwiftUI
 /// Volt lime on near-black: it ties back to the ball in the app icon, reads as
 /// sports rather than "generic dark app", and stays legible on video posters.
 ///
-/// Where the accent is allowed: things you can press, and the thing that is
-/// currently selected. Not values, not status text, not row decoration — a
+/// Where the accent is allowed (2026-10-30): the thing that is currently
+/// selected, the PASS badge, and brand moments. Actions are white
+/// (`RCPrimaryButton`). Not values, not status text, not row decoration — a
 /// screen that paints its counts, its stats and its list glyphs in the accent
 /// has nothing left to mark the one button that matters, which is what the
 /// library, session and season screens had become.
 enum Theme {
-    // 2026-10-28 redesign (ios/REDESIGN_DIRECTIONS.md): a warm graphite ground
-    // instead of the blue-black one, which fought the volt; a brighter volt;
-    // and a court cyan kept for data only. Three colour roles, no more:
+    // 2026-10-28 redesign (ios/REDESIGN_DIRECTIONS.md): a brighter volt and a
+    // court cyan kept for data only. Three colour roles, no more:
     // brand (accent), data (court), state (warning / danger).
     /// #D4FF3F. The same volt is burned into clips (`CaptionColor.volt`).
     static let accent      = Color(red: 0.831, green: 1.0, blue: 0.247)
     /// #0D1500. Text and glyphs drawn on top of `accent` (16.2:1).
     static let onAccent    = Color(red: 0.051, green: 0.082, blue: 0.0)
 
-    static let background  = Color(red: 0.043, green: 0.047, blue: 0.039)   // #0B0C0A
-    static let surface     = Color(red: 0.090, green: 0.098, blue: 0.082)   // #171915
-    static let surfaceHigh = Color(red: 0.137, green: 0.149, blue: 0.122)   // #23261F
-    static let hairline    = Color.white.opacity(0.09)
-    /// #A6AC9D. Dates, hints, units, section headers: 6.6:1 or better on every
-    /// surface, where `.tertiary` read 2.4:1.
-    static let secondaryText = Color(red: 0.651, green: 0.675, blue: 0.616)
+    // 2026-10-30: neutral greys instead of the olive graphite, so the volt is
+    // the only colour with a hue on screen and white carries the primary action.
+    static let background  = Color(red: 0.039, green: 0.039, blue: 0.043)   // #0A0A0B
+    static let surface     = Color(red: 0.078, green: 0.078, blue: 0.086)   // #141416
+    static let surfaceHigh = Color(red: 0.118, green: 0.118, blue: 0.129)   // #1E1E21
+    static let raised2     = Color(red: 0.165, green: 0.165, blue: 0.180)   // #2A2A2E
+    /// Behind video that does not fill its frame.
+    static let letterbox   = Color(red: 0.020, green: 0.020, blue: 0.024)   // #050506
+    static let hairline    = Color.white.opacity(0.08)
+    static let primaryText = Color(red: 0.961, green: 0.961, blue: 0.969)   // #F5F5F7
+    /// #A1A1A6. Dates, hints, units, section headers.
+    static let secondaryText = Color(red: 0.631, green: 0.631, blue: 0.651)
+    /// #8E8E93. Least important text. Not on `raised2` (contrast too low there).
+    static let tertiaryText = Color(red: 0.557, green: 0.557, blue: 0.576)
+    /// Primary button fill and its label.
+    static let primaryFill = Color.white
+    static let onPrimary   = Color(red: 0.039, green: 0.039, blue: 0.043)   // #0A0A0B
     /// #5CC8DE. Data only — waveforms, chart bars, ranges. Never on a button.
     static let court       = Color(red: 0.361, green: 0.784, blue: 0.871)
 
     static let warning     = Color(red: 1.0, green: 0.710, blue: 0.278)     // #FFB547
-    static let danger      = Color(red: 1.0, green: 0.420, blue: 0.369)     // #FF6B5E
+    static let danger      = Color(red: 1.0, green: 0.353, blue: 0.310)     // #FF5A4F
 
     /// Card background used across the app.
     static func card(_ radius: CGFloat = 16) -> some ShapeStyle { surface }
 }
 
 extension View {
-    /// Standard elevated card: surface fill plus a hairline edge so panels
-    /// separate from the background without heavy borders.
+    /// Standard elevated card. No edge: the neutral surface already separates
+    /// from the background.
     func rcCard(_ radius: CGFloat = 16) -> some View {
-        self
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: radius))
-            .overlay(RoundedRectangle(cornerRadius: radius)
-                .strokeBorder(Theme.hairline, lineWidth: 1))
+        background(Theme.surface, in: RoundedRectangle(cornerRadius: radius))
     }
 }
 
-/// Filter / choice pill. Selected pills are solid accent, unselected are
+/// Filter / choice pill. Selected pills are solid white, unselected are
 /// outlined — the old low-contrast grey fills were easy to miss entirely.
 struct ChipStyle: ViewModifier {
     let active: Bool
@@ -57,10 +64,10 @@ struct ChipStyle: ViewModifier {
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
-            .background(active ? AnyShapeStyle(Theme.accent) : AnyShapeStyle(Theme.surfaceHigh),
+            .background(active ? AnyShapeStyle(Theme.primaryFill) : AnyShapeStyle(Theme.surfaceHigh),
                         in: Capsule())
             .overlay(Capsule().strokeBorder(active ? .clear : Theme.hairline, lineWidth: 1))
-            .foregroundStyle(active ? Theme.onAccent : Color.primary)
+            .foregroundStyle(active ? Theme.background : Theme.primaryText)
     }
 }
 
@@ -247,11 +254,11 @@ struct ProBadge: View {
 
 // MARK: - Buttons
 
-/// Solid accent button.
+/// Solid white button.
 ///
-/// `.borderedProminent` draws its label white, which on volt lime is close to
-/// invisible — every primary action in the app was affected. These styles pin
-/// the pairing (accent fill, near-black label) so contrast can't drift.
+/// `.borderedProminent` draws its label white, which on a light fill is close to
+/// invisible. These styles pin the pairing (white fill, near-black label) so
+/// contrast can't drift. Volt is kept for selection and brand, not actions.
 struct RCPrimaryButton: ButtonStyle {
     @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
@@ -262,8 +269,8 @@ struct RCPrimaryButton: ButtonStyle {
             .lineLimit(2)
             .padding(.horizontal, 16).padding(.vertical, 12)
             .frame(minHeight: 50)
-            .background(Theme.accent.opacity(enabled ? 1 : 0.3), in: Capsule())
-            .foregroundStyle(Theme.onAccent)
+            .background(Theme.primaryFill.opacity(enabled ? 1 : 0.3), in: Capsule())
+            .foregroundStyle(Theme.onPrimary)
             .opacity(configuration.isPressed ? 0.75 : 1)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)

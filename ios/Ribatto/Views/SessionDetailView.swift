@@ -590,7 +590,7 @@ struct SessionDetailView: View {
                             .font(.caption)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.primaryText)
                     .padding(.top, 2)
                 }
             }
@@ -932,7 +932,7 @@ struct SessionDetailView: View {
             }
         }
         .pickerStyle(.menu)
-        .tint(Theme.accent)
+        .tint(Theme.primaryText)
     }
 
     private func soundPicker(_ session: Session) -> some View {
@@ -1076,7 +1076,7 @@ struct SessionDetailView: View {
                     Image(systemName: picked
                           ? "person.crop.circle.badge.checkmark"
                           : "person.crop.circle.badge.plus")
-                        .foregroundStyle(picked ? Theme.accent : Color.primary)
+                        .foregroundStyle(Theme.primaryText)
                     Text(picked ? L.s("target_change", lang) : L.s("target_pick", lang))
                     if !pass.isPro { ProBadge() }
                     Spacer()
@@ -1669,7 +1669,7 @@ struct SessionDetailView: View {
                 } label: {
                     Text(L.s("undo", lang))
                         .font(.subheadline.bold())
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(Theme.primaryText)
                         .padding(.horizontal, 12)
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
