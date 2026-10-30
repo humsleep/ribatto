@@ -63,9 +63,9 @@ struct Frame {
 // [headline line 1, line 2, sub] per frame, per locale. Platform names stay
 // out of the copy (guideline 2.3.7 risk); the app's own words for rally and
 // season are used so the frames match the UI.
-let copy: [String: [[String]]] = [
+var copy: [String: [[String]]] = [
     "en": [["ONE TAP,", "MATCH TO REEL", "Every rally found by its sound and cut vertical, ready to post."],
-           ["EDIT IT", "YOUR WAY", "Text anywhere, zoom keyframes, slow motion, colour looks. All free."],
+           ["EDIT IT", "YOUR WAY", "Text anywhere, zoom keyframes, slow motion, color looks. All free."],
            ["FOUND BY", "SOUND", "It hears every strike and cuts the dead time. Best rally first."],
            ["ZOOM IN ON", "THE WINNER", "Zoom and pan keyframes on a real timeline. Slow the last shot to 0.5×."],
            ["30 SECONDS,", "BEST FIRST", "One tap makes a vertical reel, best rally first. Share it anywhere."],
@@ -118,7 +118,18 @@ let copy: [String: [[String]]] = [
                 ["致胜一击", "放大看", "在时间线上设置缩放与平移关键帧，最后一击 0.5× 慢放。"],
                 ["30 秒竖版视频", "最佳回合打头", "轻点一下生成竖版视频，最佳回合排第一。随处分享。"],
                 ["你的赛季", "尽在记录", "每个回合，每块球场。你的视频从不离开你的 iPhone。"]],
+    "pt-PT": [["UM TOQUE,", "DO JOGO AO REEL", "Encontra cada ponto pelo som e corta na vertical. Pronto a publicar."],
+              ["EDITE À", "SUA MANEIRA", "Texto onde quiser, zoom, câmara lenta e cores. Tudo grátis."],
+              ["ENCONTRADO", "PELO SOM", "Ouve cada pancada e corta o tempo morto. O melhor ponto primeiro."],
+              ["ZOOM NO", "PONTO VENCEDOR", "Keyframes de zoom na linha temporal. A última pancada a 0,5×."],
+              ["30 SEGUNDOS,", "O MELHOR PRIMEIRO", "Um toque cria um reel vertical com o melhor ponto primeiro. Partilhe."],
+              ["A SUA ÉPOCA,", "EM NÚMEROS", "Cada ponto, cada campo. O seu vídeo nunca sai do seu iPhone."]],
 ]
+// Storefront variants: British spelling for UK/Australia/Canada, Latin American
+// words for Mexico and the US Spanish index.
+copy["en-GB"] = copy["en"]!.map { $0.map { $0.replacingOccurrences(of: "color", with: "colour") } }
+copy["es-MX"] = copy["es"]!.map { $0.map { $0.replacingOccurrences(of: "vídeo", with: "video")
+                                              .replacingOccurrences(of: "pista", with: "cancha") } }
 let files = ["hero.jpg", "s5_editor_text.png", "s2_session.png", "s6_editor_zoom.png", "s3_reel.png", "s4_season.png"]
 let frames: [Frame] = files.enumerated().map { i, f in
     let c = (copy[locale] ?? copy["en"]!)[i]
@@ -155,7 +166,7 @@ func draw(_ f: Frame, index: Int) {
     // capsule is the app's primary-button shape. Drop it next version.
     if index == 1 {
         let word = ["es": "NUEVO", "pt": "NOVO", "de": "NEU", "fr": "NOUVEAU",
-                    "it": "NUOVO", "zh-Hans": "新功能"][locale] ?? "NEW"
+                    "it": "NUOVO", "zh": "新功能"][String(locale.prefix(2))] ?? "NEW"
         let t = NSAttributedString(string: word, attributes: [.font: body(38, .bold),
                                                                .foregroundColor: volt, .kern: 2])
         let ts = t.size()
