@@ -218,7 +218,7 @@ Pro: **리워드 광고를 끝까지 보면 `ProPass.duration`(1시간) 동안**
 
 ## 마케팅 자산
 
-`marketing/` — 앱스토어 스크린샷 5장(1320x2868, 6.9인치 규격)과 등록 문구(`app-store-copy.md`).
+`marketing/` — 앱스토어 스크린샷 6장(1320x2868, 6.9인치 규격)과 등록 문구(`app-store-copy.md`, 1.2.0에서 ASO로 이름·부제·키워드 재작성).
 스크린샷은 `ios/Tools/make_screenshots.swift`가 만든다. 실기기 캡처를 헤드라인과 함께 합성하는 방식이며,
 캡처를 갱신하려면 시뮬레이터 화면을 `xcrun simctl io <udid> screenshot`으로 다시 찍어 넣고 도구를 재실행한다.
 
@@ -231,6 +231,8 @@ swift Tools/make_screenshots.swift <캡처폴더> <출력폴더>   # ios/ 에서
 데모 장소명은 앱 데이터의 meta.json `placeName`을 직접 고쳐 넣었다.
 캡처는 영어 UI + Debug Pro(테스트 광고 배너가 안 찍히게) + `simctl status_bar override --time 9:41`. 히어로는 `hero.jpg`로 넣는다.
 2026-10-28부터 9개 언어 세트가 `marketing/screenshots/<locale>/`에 있다(`make_screenshots.swift <캡처> <출력> <locale>`).
+2026-10-30(1.2.0): 히어로 · 편집기 자막(NEW 칩) · 세션 · 편집기 줌 · 릴스 · 시즌 6장(`screenshot-plan.md`). 히어로는 10-28 캡처 재사용,
+편집기 캡처는 test_import 세션 #1(가로, "MATCH POINT" 자막·줌 키를 meta.json에 직접 넣음)을 17초/21초에 세워 찍었다. 릴스 화면은 재생 중 프레임(영어 훅이 안 보이게).
 데모 데이터: sample2.mov에서 자른 5분짜리 3개를 앱 Documents/seed에 넣고 Debug 빌드를 `-seedDemo`로 띄우면 가져와 감지한다.
 언어는 `-rc_lang <code>` 실행 인자로 바꾸고, 코트 이름은 meta.json `placeName`을 언어별로 고쳐 찍었다.
 

@@ -1,52 +1,72 @@
-# Ribatto — App Store listing copy
+# Ribatto — App Store listing copy (1.2.0)
 
-Character limits are Apple's. Counts are given so you can edit safely.
+Character limits are Apple's. Counts (Python `len()`, Unicode characters) are given so you can edit safely.
+Name, subtitle and keywords change only with a new version submission; promotional text can change any time.
+
+## ASO rationale
+
+- **The name carries the head term.** `Rally Clips` was a phrase nobody searches. Each name now says the sport plus what people type: "tennis highlights" (EN/DE), "테니스 영상" (KO), "テニス動画" (JA), "pádel/padel" first where it outsells tennis in search (ES, IT), "网球视频集锦" (ZH).
+- **The subtitle carries the second sports + the job.** Pickleball/padel/badminton are low-competition niches where only 1–3 small apps compete (PerfectSwing, LikeSports, PadelClippy, ShuttleCut); "rally clips / video editor" pairs with them.
+- **Keywords never repeat a word from the name or subtitle** (Apple indexes all three together and builds combinations across them). They target the new 1.2.0 editor (slow motion, zoom, captions/subtitles, trim/cut) and intent words (best/points/match/court/racket).
+- **No platform trademarks** (Instagram, TikTok, YouTube, Reels, Shorts) in name, subtitle, keywords or description (2.3.7). Descriptions say "vertical 9:16 for any short-video app" instead. EN keeps the generic word `reel` ("highlight reel"); the KO/JA equivalents 릴스·リール are platform brand words there and are left out.
+- **No price words** in name/subtitle/keywords (2.3.7). "Free" and "no subscription" live in the first description line and promo text.
+- iOS does **not** index the description, so it is written for conversion: hook in line 1–3, the new editor second, privacy and PASS later.
+- The US storefront also indexes Spanish (Mexico) metadata; this app ships `es` (Spain wording) only, so US padel/Spanish reach comes from the es locale only if ASC maps it to es-MX. Worth adding an es-MX copy later.
+- Keyword limits are counted in characters here. If App Store Connect rejects a CJK field as too long, drop the last keyword(s).
 
 ---
 
 ## English (primary)
 
-**App Name** (max 30) — 20 chars
+**App Name** (max 30) — 26 chars
 ```
-Ribatto: Rally Clips
-```
-
-**Subtitle** (max 30) — 29 chars
-```
-Rally clips for racket sports
+Ribatto: Tennis Highlights
 ```
 
-**Keywords** (max 100, comma separated, no spaces) — 97 chars
+**Subtitle** (max 30) — 30 chars
 ```
-pickleball,badminton,padel,tennis,reel,highlights,cut,point,trim,editor,racquet,match,court,video
-```
-Apple indexes the name, subtitle and keywords together, so words already in the name or subtitle
-(rally, clips, racket, sports) are left out — repeating one spends space without adding reach.
-`tennis` is in neither, so it belongs here. Other apps' trademarks (Shorts, Reels, TikTok,
-Instagram) are not used as keywords (guideline 2.3.7).
-
-**Promotional text** (max 170, editable without a new build) — 116 chars
-```
-Free, no account, and your video never leaves your iPhone. Your match is analysed right on the device, even offline.
+Pickleball & Padel Rally Clips
 ```
 
-**Description** (max 4000)
+**Keywords** (max 100, comma separated, no spaces) — 99 chars
 ```
-Film your match. Ribatto keeps only the rallies.
+badminton,video,editor,reel,cut,point,match,slow,motion,zoom,caption,trim,racquet,racket,court,shot
+```
+Not repeated: tennis, highlights, pickleball, padel, rally, clips (name/subtitle). Search combinations this enables:
+"tennis video editor", "pickleball highlights", "padel video", "badminton highlights", "slow motion tennis", "rally cut".
 
-Point your phone at the court and play. Ribatto listens for the sound of the strike, finds every rally, and cuts the dead time away. A 30-minute match becomes the handful of points worth watching — ready to post.
+**Promotional text** (max 170, editable without a new build) — 153 chars
+```
+New: a real clip editor. Trim, slow-mo, zoom in on the winning shot and put text anywhere. All free, no account, and your video never leaves your iPhone.
+```
 
-NO COURT-SIDE RIG, NO SETUP
-Detection works from sound, not from a fixed camera angle, so the phone does not have to see the whole court. Prop it on a bag, a fence or a bench — anywhere it can sit still. Tuned on outdoor tennis, with settings for other racket sports. It listens for the strike, so it does best where that sound carries clearly.
+**Description** (max 4000) — 2592 chars
+```
+Free, one-tap 30-second highlights from the match you already filmed. No subscription.
 
-BUILT FOR REELS
-Every rally is exported vertical for Reels, Shorts and TikTok, or 4:5 for the feed. Free vertical clips keep the whole frame over a blurred background; with a pass, smart crop follows the rally.
+Ribatto listens for the sound of the strike, finds every rally and cuts the dead time away. A 90-minute match becomes the handful of points worth watching, vertical and ready to post. Tennis, pickleball, padel and badminton.
 
-FOLLOW ONE PLAYER
-With a pass, pick yourself once and every vertical clip stays centred on you, even as you move across the court.
+NEW: A REAL CLIP EDITOR — FREE
+Every clip opens in a full editor built like the pro short-video apps:
+• Timeline under a fixed playhead. Scrub, pinch to zoom the timeline, trim and split in place.
+• Text anywhere. Drag it, pinch it, pick the colour, font and style, and time each caption to the moment.
+• Zoom & pan keyframes. Glide in on the winning shot and back out, smoothly.
+• Speed from 0.5× slow motion to 2×.
+• Colour looks, game sound full / low / off, and a blurred or black background for vertical clips.
+• One look for this clip, or apply it to every clip at once.
+• Undo and redo. The preview is exactly what you export.
 
-THE STORY ON THE CLIP
-Captions fill themselves in from what was detected — shot count, rank, court, date. One caption reads differently on every rally.
+ONE TAP, ONE REEL
+Tap once for a 30-second vertical highlight reel: best rally first, a hook caption up front, ready for any short-video app. Rallies are ranked by shots, length and crowd reaction, so the best point leads.
+
+NO RIG, NO SETUP
+Detection works from sound, not from a camera angle, so the phone does not have to see the whole court. Prop it on a bag, a fence or a bench. Import a video you already have, or film inside the app. Tuned on outdoor tennis, with settings for each racket sport; it does best where the strike sounds clearly.
+
+EVERY FORMAT
+Export each rally vertical 9:16, 4:5 for the feed, or landscape 16:9.
+
+CAPTIONS THAT WRITE THEMSELVES
+Auto captions fill in what was detected: shot count, rank, court and date. One caption reads differently on every rally.
 
 YOUR SEASON
 Rallies, courts, longest point and shots per rally, month by month.
@@ -54,166 +74,177 @@ Rallies, courts, longest point and shots per rally, month by month.
 IT ALL RUNS ON YOUR IPHONE
 No account. No sign-up. No Ribatto servers. Your video and its audio never leave the phone, and detection works offline at the court. About your match, the only thing that ever leaves is a coordinate sent to Apple to name a court, and only if your video carries GPS. The free version shows ads from Google AdMob, described in the privacy policy.
 
-FREE, WITH A FREE PASS ON DEMAND
-Ribatto is free to use and supported by ads. Watch one short ad and a one-hour pass opens everything: no ads, source quality with no watermark, smart vertical crop and player tracking. Clips and reels you make in that hour keep their quality.
+FREE, WITH A PASS ON DEMAND
+Ribatto is free and supported by ads. Every editing tool is free. Watch one short ad and a one-hour PASS adds: no ads, source quality (4K landscape, 1080p vertical), no watermark, smart vertical crop that follows the rally, follow-one-player tracking, batch save and merge. Clips and reels you make in that hour keep their quality.
 
 Free: unlimited imports, 720p, watermark.
 ```
 
-**What's New (1.1.1)**
+**What's New (1.2.0)** — 522 chars
 ```
-- A fresh new look and app icon: cleaner screens, bigger match highlights, and an Edit button right on every clip.
-- New free editing: colour presets, per-clip speed (0.5× slow motion to 2×), match sound full / low / off, and a black or blurred background for vertical clips.
-- The caption editor shows an Instagram safe-area guide.
-- On vertical clips, the watermark and new captions now stay clear of Instagram's and TikTok's buttons and captions.
-- See what a PASS adds (original quality, no watermark) while your match is analysed and before you rebuild clips. Not interested? Everything carries on for free.
-- Delete confirmations for clips, matches and reels now appear centred.
-- Fixes for Undo, the PASS and ads.
-```
+The clip editor, rebuilt. Every tool is free.
 
-**What's New (1.0)**
-```
-First release.
+- Timeline editing: scrub under a fixed playhead, pinch the timeline, trim and split right there.
+- Text anywhere: drag and pinch your own captions, pick colour, font and style, and time each one to the moment.
+- Zoom & pan keyframes: glide in on the winning shot.
+- Speed 0.5–2×, colour looks, game sound and vertical background, for one clip or every clip at once.
+- Undo and redo, and a preview that matches the export exactly.
+- A calmer, neutral new look across the app.
 ```
 
 ---
 
 ## 한국어
 
-**앱 이름** (30자) — 14 chars
+**앱 이름** (30자) — 21 chars
 ```
-Ribatto: 랠리 클립
-```
-
-**부제** (30자) — 16 chars
-```
-테니스·라켓 스포츠 랠리 편집
+Ribatto: 테니스 영상 하이라이트
 ```
 
-**키워드** (100자) — 60 chars
+**부제** (30자) — 20 chars
 ```
-피클볼,배드민턴,패들,릴스,숏츠,하이라이트,자르기,편집,영상,코트,경기,클립,라켓,동호회,테니스영상,경기영상
-```
-
-**프로모션 문구** (170자) — 68 chars
-```
-무료, 계정 없음. 영상은 아이폰 밖으로 나가지 않습니다. 경기 영상은 아이폰 안에서 분석되며, 오프라인에서도 동작합니다.
+피클볼·배드민턴·파델 랠리 자동 편집
 ```
 
-**설명** (4000자)
+**키워드** (100자) — 92 chars
 ```
-경기를 찍기만 하세요. 랠리만 남습니다.
+슬로모션,자막,줌,자르기,컷,클립,숏폼,세로영상,동호회,레슨,경기,코트,라켓,스포츠,기록,영상편집,피클볼영상,배드민턴영상,파델영상,베스트,명장면,리플레이,테린이,연습
+```
+이름·부제 단어(테니스, 영상, 하이라이트, 피클볼, 배드민턴, 파델, 랠리, 자동, 편집)는 단독으로 넣지 않았다.
+한국어 검색은 띄어쓰기 없이 치는 경우가 많아 `피클볼영상`·`영상편집` 같은 붙여 쓴 형태만 따로 넣었다. 릴스·숏츠는 브랜드어라 뺐다.
 
-폰을 코트로 향해 두고 경기하세요. Ribatto가 타구음을 듣고 랠리를 찾아내 사이의 빈 시간을 잘라냅니다. 30분짜리 경기가 볼 만한 포인트 몇 개로 정리되고, 바로 올릴 수 있는 상태가 됩니다.
+**프로모션 문구** (170자) — 76 chars
+```
+새 클립 편집기: 자르기, 슬로모션, 위닝샷 줌, 원하는 자리에 자막까지 전부 무료. 계정 없이, 영상은 아이폰 밖으로 나가지 않습니다.
+```
 
-거창한 거치대도 세팅도 필요 없습니다
-영상이 아니라 소리로 찾기 때문에 카메라 각도를 맞출 필요가 없고, 코트 전체가 화면에 들어오지 않아도 됩니다. 가방 위, 펜스, 벤치 — 흔들리지 않게 둘 수 있는 곳이면 됩니다. 실외 테니스를 기준으로 맞췄고, 다른 라켓 스포츠용 설정도 있습니다. 타구음을 듣기 때문에 그 소리가 잘 전달되는 곳에서 가장 정확합니다.
+**설명** (4000자) — 1448 chars
+```
+이미 찍어 둔 경기 영상, 탭 한 번이면 30초 하이라이트. 무료, 구독 없음.
 
-릴스에 맞춘 결과물
-모든 랠리를 릴스·쇼츠·틱톡용 세로로, 또는 피드용 4:5로 내보냅니다. 무료 세로 클립은 흐린 배경 위에 화면 전체를 담고, 패스가 있으면 스마트 크롭이 랠리를 따라갑니다.
+Ribatto가 타구음을 듣고 랠리를 모두 찾아 사이의 빈 시간을 잘라냅니다. 90분 경기가 다시 볼 만한 포인트 몇 개로 줄어들고, 세로 영상으로 바로 올릴 수 있습니다. 테니스·피클볼·파델·배드민턴.
 
-한 선수만 따라가기
-패스가 있으면 본인을 한 번만 지정해도 코트를 옮겨 다녀도 모든 세로 클립이 본인을 중심으로 잡힙니다.
+새 기능: 제대로 된 클립 편집기 — 무료
+모든 클립이 숏폼 전문 편집 앱처럼 만든 편집기에서 열립니다.
+• 가운데 고정 재생헤드 아래 타임라인. 끌어서 넘기고, 핀치로 늘리고, 그 자리에서 자르고 나눕니다.
+• 원하는 자리에 자막. 끌고 키우고, 색·글꼴·스타일을 고르고, 나올 순간을 타임라인에서 맞춥니다.
+• 줌·이동 키프레임. 위닝샷으로 부드럽게 들어갔다 나옵니다.
+• 0.5× 슬로모션부터 2×까지 속도 조절.
+• 색감 프리셋, 경기 소리(원래대로/작게/끄기), 세로 클립의 블러·검정 배경.
+• 이 클립에만, 또는 모든 클립에 한 번에 적용.
+• 되돌리기·다시 하기. 미리보기가 그대로 내보내집니다.
 
-클립이 스스로 설명합니다
-자막은 감지된 정보로 알아서 채워집니다 — 타구 수, 순위, 코트, 날짜. 자막 하나가 랠리마다 다르게 읽힙니다.
+탭 한 번, 릴스 한 편
+한 번 누르면 30초 세로 하이라이트가 나옵니다. 베스트 랠리가 맨 앞, 첫 화면에 훅 자막. 어떤 숏폼 앱에도 바로 올릴 수 있습니다. 랠리는 타구 수·길이·환호로 순위를 매겨 가장 좋은 포인트가 먼저 나옵니다.
+
+거치대도 세팅도 필요 없습니다
+영상이 아니라 소리로 찾기 때문에 카메라 각도를 맞출 필요가 없고, 코트 전체가 화면에 들어오지 않아도 됩니다. 가방 위, 펜스, 벤치 어디든 세워 두세요. 갖고 있던 영상을 가져와도 되고, 앱에서 바로 찍어도 됩니다. 실외 테니스를 기준으로 맞췄고 종목별 설정이 있습니다. 타구음이 또렷하게 들리는 곳에서 가장 정확합니다.
+
+모든 화면비
+랠리마다 세로 9:16, 피드용 4:5, 가로 16:9로 내보냅니다.
+
+알아서 채워지는 자막
+감지된 정보로 자막이 채워집니다 — 타구 수, 순위, 코트, 날짜. 자막 하나가 랠리마다 다르게 읽힙니다.
 
 시즌 기록
 랠리 수, 코트, 최장 랠리, 랠리당 타구 수가 달마다 쌓입니다.
 
 전부 아이폰에서 처리됩니다
-계정도 가입도 없고, 리바토 서버도 없습니다. 영상과 소리는 폰을 벗어나지 않고, 감지는 코트에서 오프라인으로도 동작합니다. 경기에 관해 밖으로 나가는 것은 코트 이름을 붙일 때 애플에 보내는 좌표뿐이며, 그것도 영상에 GPS 정보가 있을 때만입니다. 무료 버전에는 Google AdMob 광고가 표시되며, 자세한 내용은 개인정보 처리방침에 있습니다.
+계정도 가입도 없고, Ribatto 서버도 없습니다. 영상과 소리는 폰을 벗어나지 않고, 감지는 코트에서 오프라인으로도 동작합니다. 경기에 관해 밖으로 나가는 것은 코트 이름을 붙일 때 애플에 보내는 좌표뿐이며, 그것도 영상에 GPS 정보가 있을 때만입니다. 무료 버전에는 Google AdMob 광고가 표시되며, 자세한 내용은 개인정보 처리방침에 있습니다.
 
 무료, 패스는 필요할 때만
-Ribatto는 광고로 운영되는 무료 앱입니다. 짧은 광고 한 편을 보면 1시간짜리 패스가 열려 모든 기능을 씁니다 — 광고 없음, 워터마크 없는 원본 화질, 스마트 세로 크롭, 선수 추적. 그 사이 만든 클립과 릴스는 품질이 그대로 남습니다.
+Ribatto는 광고로 운영되는 무료 앱이고, 편집 기능은 전부 무료입니다. 짧은 광고 한 편을 보면 1시간 패스가 열립니다 — 광고 없음, 원본 화질(가로 4K·세로 1080p), 워터마크 없음, 랠리를 따라가는 스마트 세로 크롭, 한 선수만 따라가기, 일괄 저장, 클립 병합. 그 사이 만든 클립과 릴스는 품질이 그대로 남습니다.
 
 무료: 가져오기 무제한, 720p, 워터마크.
 ```
 
-**새로운 기능 (1.1.1)**
+**새로운 기능 (1.2.0)** — 279 chars
 ```
-- 새 디자인과 새 앱 아이콘: 더 깔끔한 화면, 크게 보이는 베스트 랠리, 모든 클립에 바로 보이는 '편집' 버튼.
-- 무료 편집 기능이 생겼어요: 색감 프리셋, 클립별 속도(0.5× 슬로모션~2×), 경기 소리(원래대로/작게/끄기), 세로 클립의 검정·블러 배경.
-- 자막 편집 화면에 인스타그램 안전 영역 가이드가 보여요.
-- 세로 클립의 워터마크와 새 자막이 인스타그램·틱톡의 버튼과 설명 글에 가리지 않는 자리에 놓여요.
-- 경기 영상을 분석하는 동안과 클립을 다시 만들기 전에, 패스로 무엇이 좋아지는지(원본 화질·워터마크 없음) 바로 알려 드려요. 원하지 않으면 무료로 그대로 진행됩니다.
-- 클립·경기·릴스 삭제 확인 창이 화면 가운데에 깔끔하게 뜹니다.
-- 되돌리기, 패스, 광고 관련 안정성을 개선했어요.
-```
+클립 편집기를 새로 만들었어요. 모든 도구가 무료입니다.
 
-**새로운 기능 (1.0)**
-```
-첫 출시입니다.
+- 타임라인 편집: 고정 재생헤드 아래로 끌어 넘기고, 핀치로 늘리고, 그 자리에서 자르고 나눠요.
+- 원하는 자리에 자막: 끌고 키우고, 색·글꼴·스타일을 고르고, 나오는 순간을 맞춰요.
+- 줌·이동 키프레임: 위닝샷으로 부드럽게 들어가요.
+- 속도 0.5–2×, 색감, 경기 소리, 세로 배경을 이 클립에만 또는 모든 클립에 한 번에.
+- 되돌리기·다시 하기, 내보낸 결과와 똑같은 미리보기.
+- 앱 전체가 차분한 새 색으로 바뀌었어요.
 ```
 
 ---
 
 ## 日本語 (ja)
 
-**App Name** (max 30) — 15 chars
+**App Name** (max 30) — 19 chars
 ```
-ラリー切り抜き Ribatto
-```
-
-**Subtitle** (max 30) — 16 chars
-```
-テニス・ラケット競技のラリー編集
+Ribatto: テニス動画ハイライト
 ```
 
-**Keywords** (max 100) — 67 chars
+**Subtitle** (max 30) — 19 chars
 ```
-バドミントン,ピックルボール,パデル,リール,ショート,切り抜き,ハイライト,編集,動画,コート,試合,クリップ,ラケット,テニス動画
-```
-
-**Promotional text** (max 170) — 46 chars
-```
-無料・アカウント不要。動画はiPhoneから出ません。コートでオフラインのまま解析できます。
+ピックルボール・パデルのラリー自動編集
 ```
 
-**Description**
+**Keywords** (max 100) — 96 chars
 ```
-試合を撮る。ラリーだけが残る。
+バドミントン,切り抜き,スロー,ズーム,字幕,テロップ,カット,クリップ,縦動画,試合,コート,ラケット,部活,サークル,記録,スポーツ,編集アプリ,動画編集,名場面,リプレイ,練習,ダブルス
+```
+リール・ショートはプラットフォーム名として扱い外した。「テロップ」は日本の動画編集で字幕を指す一般語。
 
-コートにiPhoneを向けて、あとはプレーするだけ。Ribattoは打球音を聞き取ってラリーを見つけ、待ち時間を切り落とします。30分の試合が、見る価値のある数ポイントに変わります。
+**Promotional text** (max 170) — 76 chars
+```
+新しいクリップ編集機能:トリミング、スロー、決めのショットへのズーム、好きな位置のテロップまで全部無料。アカウント不要、動画はiPhoneから出ません。
+```
 
-大がかりな三脚は不要
-映像ではなく音で探すので、カメラの角度を合わせる必要がありません。コート全体が画面に入らなくても大丈夫。バッグの上、フェンス、ベンチ — 動かずに置ける場所ならどこでも。屋外テニスを基準に調整しており、ほかのラケット競技用の設定もあります。打球音を聞き取るので、その音がよく通る場所で最も正確です。
+**Description** — 1292 chars
+```
+撮っておいた試合動画が、ワンタップで30秒のハイライトに。無料、サブスクなし。
 
-リール向けの書き出し
-すべてのラリーをリール・ショート・TikTok用の縦型、またはフィード用の4:5で書き出します。無料の縦型クリップはぼかした背景の上に画面全体を収め、パスがあればスマートクロップがラリーを追います。
+Ribattoは打球音を聞き取ってラリーをすべて見つけ、待ち時間を切り落とします。90分の試合が見返したい数ポイントになり、縦動画のまますぐ投稿できます。テニス・ピックルボール・パデル・バドミントンに対応。
 
-ひとりを追いかける
-パスがあれば、最初に自分を選んでおくだけでコートを動いても縦型クリップの中心に残り続けます。
+新機能:本格的なクリップ編集 — 無料
+すべてのクリップが、プロ向けショート動画アプリのような編集画面で開きます。
+• 中央固定の再生ヘッドとタイムライン。ドラッグで送り、ピンチで拡大、その場でトリミングと分割。
+• 好きな位置にテロップ。ドラッグとピンチで配置し、色・フォント・スタイルを選び、出るタイミングをタイムラインで合わせます。
+• ズーム&パンのキーフレーム。決めのショットへなめらかに寄って、また引きます。
+• 0.5倍スローから2倍まで速度を調整。
+• カラープリセット、試合音(そのまま/小さく/オフ)、縦型クリップのぼかし・黒背景。
+• このクリップだけ、またはすべてのクリップに一括適用。
+• 取り消し・やり直し。プレビューがそのまま書き出されます。
 
-クリップが語る
-検出した内容から字幕が自動で埋まります — 打数、順位、コート、日付。ひとつの字幕がラリーごとに違う文になります。
+ワンタップで1本
+1回押すだけで30秒の縦型ハイライト。ベストラリーを先頭に、冒頭にはフック字幕。どのショート動画アプリにもそのまま投稿できます。ラリーは打数・長さ・歓声で順位づけされ、いちばんのポイントから始まります。
+
+三脚もセッティングも不要
+映像ではなく音で探すので、カメラの角度を合わせる必要がなく、コート全体が映っていなくても大丈夫。バッグの上、フェンス、ベンチに置くだけ。手持ちの動画を取り込んでも、アプリで撮影してもOK。屋外テニスを基準に調整し、競技ごとの設定もあります。打球音がはっきり届く場所ほど正確です。
+
+すべての画面比率
+ラリーごとに縦9:16、フィード用4:5、横16:9で書き出せます。
+
+自動で埋まる字幕
+検出した内容から字幕が埋まります — 打数、順位、コート、日付。ひとつの字幕がラリーごとに違う文になります。
 
 シーズンの記録
 ラリー数、コート、最長ポイント、ラリーあたりの打数を月ごとに。
 
 すべてiPhoneの中で
-アカウントも登録も不要で、Ribatto のサーバーもありません。動画も音声も端末から出ず、コートでオフラインのまま検出できます。試合に関して外に出るのは、コート名を調べるためにAppleへ送る座標だけ。それも動画にGPS情報がある場合だけです。無料版ではGoogle AdMobの広告を表示します。詳細はプライバシーポリシーに記載しています。
+アカウントも登録も不要で、Ribattoのサーバーもありません。動画も音声も端末から出ず、コートでオフラインのまま検出できます。試合に関して外に出るのは、コート名を調べるためにAppleへ送る座標だけ。それも動画にGPS情報がある場合だけです。無料版ではGoogle AdMobの広告を表示します。詳細はプライバシーポリシーに記載しています。
 
 無料、必要なときだけパス
-Ribattoは広告で運営される無料アプリです。短い広告を1本見ると1時間のパスが開き、すべての機能が使えます — 広告なし、ウォーターマークなしの元画質、スマート縦切り抜き、選手追尾。その間に作ったクリップとリールは、終わったあとも画質そのままです。
+Ribattoは広告で運営される無料アプリで、編集機能はすべて無料です。短い広告を1本見ると1時間のパスが開きます — 広告なし、元画質(横4K・縦1080p)、ウォーターマークなし、ラリーを追うスマート縦切り抜き、選手ひとりの追尾、一括保存、クリップ結合。その間に作ったクリップとリールは、終わったあとも画質そのままです。
 
 無料: 取り込み無制限、720p、ウォーターマークあり。
 ```
 
-**What's New (1.1.1)**
+**What's New (1.2.0)** — 249 chars
 ```
-- 新しいデザインとアプリアイコン：すっきりした画面、大きく見えるベストラリー、すべてのクリップに「編集」ボタン。
-- 無料の編集機能を追加:カラープリセット、クリップごとの速度(0.5×スローモーション〜2×)、試合音(そのまま/小さく/オフ)、縦型クリップの黒・ぼかし背景。
-- キャプション編集画面にInstagramのセーフエリアガイドを表示します。
-- 縦型クリップのウォーターマークと新しいキャプションが、InstagramやTikTokのボタン・説明文に重ならない位置に置かれます。
-- 試合を解析している間とクリップを作り直す前に、パスで何が良くなるか(元画質・ウォーターマークなし)をお知らせします。不要ならそのまま無料で進みます。
-- クリップ・試合・リールの削除確認が画面中央に表示されるようになりました。
-- 取り消す、パス、広告まわりの安定性を改善しました。
-```
+クリップ編集を作り直しました。すべての機能が無料です。
 
-**What's New (1.0)**
-```
-最初のリリースです。
+- タイムライン編集:固定の再生ヘッドでドラッグ、ピンチで拡大、その場でトリミングと分割。
+- 好きな位置にテロップ:ドラッグとピンチで配置し、色・フォント・スタイルと表示タイミングを設定。
+- ズーム&パンのキーフレーム:決めのショットへなめらかに寄れます。
+- 速度0.5〜2倍、カラー、試合音、縦型の背景を、1本だけでも全クリップ一括でも。
+- 取り消し・やり直し。書き出しと同じプレビュー。
+- アプリ全体が落ち着いた新しい配色に。
 ```
 
 ---
@@ -222,41 +253,51 @@ Ribattoは広告で運営される無料アプリです。短い広告を1本見
 
 **App Name** (max 30) — 28 chars
 ```
-Rally Clips: tenis y raqueta
+Ribatto: Pádel y Tenis Clips
 ```
 
-**Subtitle** (max 30) — 27 chars
+**Subtitle** (max 30) — 29 chars
 ```
-Clips de puntos automáticos
-```
-
-**Keywords** (max 100) — 97 chars
-```
-bádminton,pickleball,reel,shorts,clip,puntos,destacados,cortar,editar,vídeo,pista,partido,raqueta
+Editor de vídeo de tus puntos
 ```
 
-**Promotional text** (max 170) — 92 chars
+**Keywords** (max 100) — 100 chars
 ```
-Gratis, sin cuenta y tu vídeo no sale del iPhone. Tu vídeo se analiza en el iPhone, incluso sin conexión.
+bádminton,pickleball,resumen,mejores,cámara,lenta,zoom,subtítulos,cortar,partido,pista,raqueta,golpe
 ```
 
-**Description**
+**Promotional text** (max 170) — 145 chars
 ```
-Graba tu partido. Ribatto se queda solo con los puntos.
+Nuevo editor de clips: recorta, cámara lenta, zoom al golpe ganador y texto donde quieras. Todo gratis, sin cuenta y tu vídeo no sale del iPhone.
+```
 
-Apunta el móvil a la pista y juega. Ribatto escucha el golpeo, encuentra cada punto y elimina el tiempo muerto. Un partido de 30 minutos se convierte en los puntos que merece la pena ver, listos para publicar.
+**Description** — 2778 chars
+```
+Los mejores puntos de tu partido en 30 segundos, con un toque. Gratis y sin suscripción, con el vídeo que ya grabaste.
+
+Ribatto escucha el golpeo, encuentra cada punto y elimina el tiempo muerto. Un partido de 90 minutos se queda en los puntos que merece la pena ver, en vertical y listo para publicar. Pádel, tenis, pickleball y bádminton.
+
+NUEVO: UN EDITOR DE VERDAD, GRATIS
+Cada clip se abre en un editor como el de las apps profesionales de vídeo corto:
+• Línea de tiempo con cabezal fijo. Desliza, pellizca para ampliar, recorta y divide ahí mismo.
+• Texto donde quieras. Arrástralo, cambia tamaño, color, fuente y estilo, y haz que aparezca en el momento justo.
+• Fotogramas clave de zoom y encuadre. Acércate con suavidad al golpe ganador.
+• Velocidad de 0,5× a cámara lenta hasta 2×.
+• Estilos de color, sonido del partido completo / bajo / apagado y fondo desenfocado o negro en vertical.
+• Ajustes para un clip o para todos a la vez.
+• Deshacer y rehacer. Lo que ves es exactamente lo que exportas.
+
+UN TOQUE, UN VÍDEO
+Toca una vez y tienes un resumen vertical de 30 segundos: el mejor punto primero y un texto gancho al inicio, listo para cualquier app de vídeo corto. Los puntos se ordenan por golpes, duración y reacción del público.
 
 SIN TRÍPODE, SIN MONTAJE
-La detección funciona por sonido, no por el ángulo de cámara, así que el móvil no necesita ver toda la pista. Apóyalo en una bolsa, una valla o un banco: donde pueda quedarse quieto. Ajustado con tenis al aire libre, con opciones para otros deportes de raqueta. Escucha el golpeo, así que funciona mejor donde ese sonido se oye bien.
+La detección funciona por sonido, no por el ángulo de cámara, así que el móvil no necesita ver toda la pista. Apóyalo en una bolsa, una valla o un banco. Importa un vídeo que ya tengas o graba desde la app. Ajustado con tenis al aire libre, con opciones para cada deporte de raqueta; funciona mejor donde el golpeo se oye bien.
 
-PENSADO PARA REELS
-Cada punto se exporta en vertical para Reels, Shorts y TikTok, o en 4:5 para el feed. Los clips verticales gratis muestran el encuadre completo sobre un fondo desenfocado; con un pase, el recorte inteligente sigue el punto.
+TODOS LOS FORMATOS
+Cada punto en vertical 9:16, 4:5 para el feed u horizontal 16:9.
 
-SIGUE A UN JUGADOR
-Con un pase, elígete una vez y cada clip vertical se mantiene centrado en ti, aunque te muevas por la pista.
-
-LA HISTORIA EN EL CLIP
-Los subtítulos se rellenan solos con lo detectado: número de golpes, posición, pista, fecha. Un mismo subtítulo se lee distinto en cada punto.
+SUBTÍTULOS QUE SE ESCRIBEN SOLOS
+Se rellenan con lo detectado: golpes, posición, pista y fecha. Un mismo subtítulo se lee distinto en cada punto.
 
 TU TEMPORADA
 Puntos, pistas, el punto más largo y golpes por punto, mes a mes.
@@ -265,68 +306,75 @@ TODO OCURRE EN TU IPHONE
 Sin cuenta. Sin registro. Sin servidores de Ribatto. Tu vídeo y su audio nunca salen del móvil, y la detección funciona sin conexión en la pista. De tu partido, lo único que sale es una coordenada enviada a Apple para nombrar la pista, y solo si el vídeo lleva GPS. La versión gratuita muestra anuncios de Google AdMob, descritos en la política de privacidad.
 
 GRATIS, CON UN PASE CUANDO LO NECESITES
-Ribatto es gratis y se financia con anuncios. Mira un anuncio corto y un pase de una hora lo abre todo: sin anuncios, calidad original sin marca de agua, recorte vertical inteligente y seguimiento de jugador. Los clips y reels que hagas en esa hora conservan su calidad.
+Ribatto es gratis y se financia con anuncios. Todas las herramientas de edición son gratis. Mira un anuncio corto y un PASE de una hora añade: sin anuncios, calidad original (4K horizontal, 1080p vertical), sin marca de agua, recorte vertical inteligente que sigue el punto, seguimiento de un jugador, guardado en lote y unión de clips. Lo que hagas en esa hora conserva su calidad.
 
 Gratis: importaciones ilimitadas, 720p, marca de agua.
 ```
 
-**What's New (1.1.1)**
+**What's New (1.2.0)** — 544 chars
 ```
-- Nuevo diseño e icono: pantallas más limpias, el mejor punto más grande y un botón Editar en cada clip.
-- Nueva edición gratuita: ajustes de color, velocidad por clip (cámara lenta 0,5× a 2×), sonido del partido completo / bajo / apagado y fondo negro o difuminado para clips verticales.
-- El editor de subtítulos muestra una guía de zona segura de Instagram.
-- En los clips verticales, la marca de agua y los nuevos subtítulos ya no quedan bajo los botones y textos de Instagram y TikTok.
-- Mientras se analiza tu partido y antes de rehacer los clips, verás qué añade un PASE (calidad original, sin marca de agua). ¿No te interesa? Todo sigue gratis.
-- Las confirmaciones para borrar clips, partidos y reels ahora aparecen centradas.
-- Correcciones en Deshacer, el PASE y los anuncios.
-```
+Hemos rehecho el editor de clips. Todas las herramientas son gratis.
 
-**What's New (1.0)**
-```
-Primera versión.
+- Línea de tiempo: desliza bajo un cabezal fijo, pellizca para ampliar, recorta y divide ahí mismo.
+- Texto donde quieras: arrastra, cambia tamaño, color, fuente y estilo, y elige cuándo aparece.
+- Fotogramas clave de zoom y encuadre: acércate suave al golpe ganador.
+- Velocidad 0,5–2×, color, sonido del partido y fondo vertical, para un clip o para todos.
+- Deshacer y rehacer, y una vista previa idéntica a la exportación.
+- Un aspecto nuevo, más sobrio, en toda la app.
 ```
 
 ---
 
 ## Português (pt-BR)
 
-**App Name** (max 30) — 28 chars
+**App Name** (max 30) — 29 chars
 ```
-Rally Clips: tênis e raquete
+Ribatto: Tênis e Padel Clipes
 ```
 
-**Subtitle** (max 30) — 29 chars
+**Subtitle** (max 30) — 26 chars
 ```
-Clipes de rallies automáticos
+Editor de vídeo de rallies
 ```
 
 **Keywords** (max 100) — 98 chars
 ```
-badminton,pickleball,reels,shorts,clipe,pontos,melhores,cortar,editar,vídeo,quadra,partida,raquete
+badminton,pickleball,melhores,momentos,lances,câmera,lenta,zoom,legenda,cortar,quadra,raquete,jogo
+```
+`beach tennis` é muito buscado no Brasil, mas o app não foi testado nesse esporte; ficou de fora para não prometer.
+
+**Promotional text** (max 170) — 142 chars
+```
+Novo editor de clipes: corte, câmera lenta, zoom no ponto vencedor e texto onde quiser. Tudo grátis, sem conta, e seu vídeo não sai do iPhone.
 ```
 
-**Promotional text** (max 170) — 87 chars
+**Description** — 2725 chars
 ```
-Grátis, sem conta e seu vídeo não sai do iPhone. Seu vídeo é analisado no próprio iPhone, mesmo offline.
-```
+Os melhores lances da sua partida em 30 segundos, com um toque. Grátis, sem assinatura, com o vídeo que você já gravou.
 
-**Description**
-```
-Grave sua partida. O Ribatto guarda só os rallies.
+O Ribatto escuta o som da batida, encontra cada rally e corta o tempo morto. Uma partida de 90 minutos vira os pontos que valem a pena rever, na vertical e prontos para postar. Tênis, padel, pickleball e badminton.
 
-Aponte o celular para a quadra e jogue. O Ribatto escuta o som da batida, encontra cada rally e corta o tempo morto. Uma partida de 30 minutos vira os poucos pontos que valem a pena assistir, prontos para postar.
+NOVO: UM EDITOR DE VERDADE, GRÁTIS
+Cada clipe abre num editor no estilo dos apps profissionais de vídeo curto:
+• Linha do tempo com agulha fixa. Arraste, faça pinça para ampliar, corte e divida ali mesmo.
+• Texto onde quiser. Arraste, mude tamanho, cor, fonte e estilo, e escolha o momento em que aparece.
+• Keyframes de zoom e movimento. Chegue suave no ponto vencedor e volte.
+• Velocidade de 0,5× em câmera lenta até 2×.
+• Estilos de cor, som da partida normal / baixo / desligado e fundo desfocado ou preto na vertical.
+• Ajuste só este clipe ou todos de uma vez.
+• Desfazer e refazer. O que você vê é exatamente o que exporta.
+
+UM TOQUE, UM VÍDEO
+Toque uma vez e saia com um vídeo vertical de 30 segundos: o melhor rally primeiro e um texto de abertura que prende, pronto para qualquer app de vídeo curto. Os rallies são ordenados por batidas, duração e reação da torcida.
 
 SEM TRIPÉ, SEM PREPARO
-A detecção funciona pelo som, não pelo ângulo da câmera, então o celular não precisa enxergar a quadra inteira. Apoie numa bolsa, na grade ou num banco — onde ele puder ficar parado. Ajustado com tênis ao ar livre, com opções para outros esportes de raquete. Ele escuta a batida, então funciona melhor onde esse som se propaga bem.
+A detecção funciona pelo som, não pelo ângulo da câmera, então o celular não precisa enxergar a quadra inteira. Apoie numa bolsa, na grade ou num banco. Importe um vídeo que você já tem ou grave pelo app. Ajustado com tênis ao ar livre, com opções para cada esporte de raquete; funciona melhor onde a batida soa clara.
 
-FEITO PARA REELS
-Cada rally é exportado na vertical para Reels, Shorts e TikTok, ou em 4:5 para o feed. Os clipes verticais grátis mostram o quadro inteiro sobre um fundo desfocado; com um passe, o corte inteligente acompanha o rally.
+TODOS OS FORMATOS
+Cada rally na vertical 9:16, 4:5 para o feed ou horizontal 16:9.
 
-SIGA UM JOGADOR
-Com um passe, escolha você mesmo uma vez e cada clipe vertical continua centrado em você, mesmo quando você se move pela quadra.
-
-A HISTÓRIA NO CLIPE
-As legendas se preenchem sozinhas com o que foi detectado: número de batidas, posição, quadra, data. Uma legenda só se lê diferente em cada rally.
+LEGENDAS QUE SE ESCREVEM SOZINHAS
+Preenchidas com o que foi detectado: batidas, posição, quadra e data. Uma legenda só se lê diferente em cada rally.
 
 SUA TEMPORADA
 Rallies, quadras, ponto mais longo e batidas por rally, mês a mês.
@@ -335,68 +383,74 @@ TUDO RODA NO SEU IPHONE
 Sem conta. Sem cadastro. Sem servidores do Ribatto. Seu vídeo e o áudio nunca saem do aparelho, e a detecção funciona offline na quadra. Da sua partida, a única coisa que sai é uma coordenada enviada à Apple para dar nome à quadra, e só se o vídeo tiver GPS. A versão gratuita mostra anúncios do Google AdMob, descritos na política de privacidade.
 
 GRÁTIS, COM UM PASSE QUANDO PRECISAR
-O Ribatto é grátis e mantido por anúncios. Assista a um anúncio curto e um passe de uma hora abre tudo: sem anúncios, qualidade original sem marca d'água, corte vertical inteligente e rastreamento de jogador. Os clipes e reels feitos nessa hora mantêm a qualidade.
+O Ribatto é grátis e mantido por anúncios. Todas as ferramentas de edição são grátis. Assista a um anúncio curto e um PASSE de uma hora acrescenta: sem anúncios, qualidade original (4K na horizontal, 1080p na vertical), sem marca d'água, corte vertical inteligente que acompanha o rally, seguir um jogador, salvar em lote e juntar clipes. O que você fizer nessa hora mantém a qualidade.
 
 Grátis: importações ilimitadas, 720p, marca d'água.
 ```
 
-**What's New (1.1.1)**
+**What's New (1.2.0)** — 509 chars
 ```
-- Novo visual e novo ícone: telas mais limpas, o melhor ponto em destaque e um botão Editar em cada clipe.
-- Nova edição grátis: predefinições de cor, velocidade por clipe (câmera lenta 0,5× a 2×), som da partida normal / baixo / desligado e fundo preto ou desfocado para clipes verticais.
-- O editor de legendas mostra um guia da área segura do Instagram.
-- Nos clipes verticais, a marca d'água e as novas legendas ficam longe dos botões e textos do Instagram e do TikTok.
-- Enquanto sua partida é analisada e antes de refazer os clipes, veja o que um PASSE acrescenta (qualidade original, sem marca d'água). Não quer? Tudo continua grátis.
-- As confirmações para apagar clipes, partidas e reels agora aparecem centralizadas.
-- Correções em Desfazer, no PASSE e nos anúncios.
-```
+Refizemos o editor de clipes. Todas as ferramentas são grátis.
 
-**What's New (1.0)**
-```
-Primeira versão.
+- Linha do tempo: arraste sob a agulha fixa, faça pinça para ampliar, corte e divida ali mesmo.
+- Texto onde quiser: arraste, mude tamanho, cor, fonte e estilo, e escolha quando aparece.
+- Keyframes de zoom e movimento: chegue suave no ponto vencedor.
+- Velocidade 0,5–2×, cor, som da partida e fundo vertical, para um clipe ou todos.
+- Desfazer e refazer, e uma prévia idêntica ao vídeo exportado.
+- Um visual novo e mais sóbrio no app inteiro.
 ```
 
 ---
 
 ## Deutsch (de)
 
-**App Name** (max 30) — 28 chars
+**App Name** (max 30) — 26 chars
 ```
-Rally Clips: Tennis und mehr
-```
-
-**Subtitle** (max 30) — 30 chars
-```
-Ballwechsel automatisch cutten
+Ribatto: Tennis Highlights
 ```
 
-**Keywords** (max 100) — 97 chars
+**Subtitle** (max 30) — 28 chars
 ```
-badminton,pickleball,reel,shorts,clip,ballwechsel,highlights,schneiden,video,platz,match,schläger
-```
-
-**Promotional text** (max 170) — 100 chars
-```
-Kostenlos, ohne Konto, dein Video bleibt auf dem iPhone. Dein Video wird direkt auf dem iPhone ausgewertet, auch offline.
+Video-Editor für Ballwechsel
 ```
 
-**Description**
+**Keywords** (max 100) — 98 chars
 ```
-Nimm dein Match auf. Ribatto behält nur die Ballwechsel.
+padel,pickleball,badminton,zeitlupe,zoom,untertitel,text,schneiden,kürzen,match,platz,schläger,cut
+```
 
-Richte das iPhone auf den Platz und spiel. Ribatto hört den Schlag, findet jeden Ballwechsel und schneidet die Wartezeit weg. Aus 30 Minuten Match werden die wenigen Punkte, die man sehen will — fertig zum Posten.
+**Promotional text** (max 170) — 162 chars
+```
+Neu: ein echter Clip-Editor. Schneiden, Zeitlupe, Zoom auf den Gewinnschlag und Text, wo du willst. Alles kostenlos, ohne Konto, dein Video bleibt auf dem iPhone.
+```
+
+**Description** — 2887 chars
+```
+Mit einem Tipp 30 Sekunden Highlights aus dem Match, das du schon gefilmt hast. Kostenlos, kein Abo.
+
+Ribatto hört den Schlag, findet jeden Ballwechsel und schneidet die Wartezeit weg. Aus 90 Minuten Match werden die Punkte, die man sehen will, hochkant und fertig zum Posten. Tennis, Pickleball, Padel und Badminton.
+
+NEU: EIN ECHTER CLIP-EDITOR — KOSTENLOS
+Jeder Clip öffnet sich in einem Editor wie in den Profi-Apps für Kurzvideos:
+• Zeitleiste unter festem Abspielkopf. Wischen, mit zwei Fingern zoomen, direkt kürzen und teilen.
+• Text, wo du willst. Ziehen, skalieren, Farbe, Schrift und Stil wählen und jeden Untertitel genau timen.
+• Zoom- und Schwenk-Keyframes. Gleite weich auf den Gewinnschlag und wieder heraus.
+• Tempo von 0,5× Zeitlupe bis 2×.
+• Farblooks, Spielton voll / leise / aus und unscharfer oder schwarzer Hintergrund für Hochkant.
+• Für diesen Clip oder für alle Clips auf einmal.
+• Rückgängig und Wiederholen. Die Vorschau ist genau das, was exportiert wird.
+
+EIN TIPP, EIN VIDEO
+Einmal tippen, und ein 30-Sekunden-Highlight im Hochformat ist fertig: bester Ballwechsel zuerst, ein Aufhänger-Text am Anfang, bereit für jede Kurzvideo-App. Ballwechsel werden nach Schlägen, Länge und Jubel gereiht.
 
 KEIN STATIV, KEIN AUFBAU
-Die Erkennung läuft über den Ton, nicht über den Kamerawinkel. Das Handy muss den Platz nicht ganz im Bild haben. Stell es auf eine Tasche, an den Zaun oder auf eine Bank — irgendwohin, wo es still stehen kann. Abgestimmt auf Tennis im Freien, mit Einstellungen für andere Schlägersportarten. Die Erkennung hört den Schlag, funktioniert also dort am besten, wo dieser Ton gut trägt.
+Die Erkennung läuft über den Ton, nicht über den Kamerawinkel. Das Handy muss den Platz nicht ganz im Bild haben. Stell es auf eine Tasche, an den Zaun oder auf eine Bank. Importiere ein vorhandenes Video oder filme direkt in der App. Abgestimmt auf Tennis im Freien, mit Einstellungen für jede Schlägersportart; am besten dort, wo der Schlag klar zu hören ist.
 
-FÜR REELS GEMACHT
-Jeder Ballwechsel wird hochkant für Reels, Shorts und TikTok exportiert, oder in 4:5 für den Feed. Kostenlose Hochkant-Clips zeigen das ganze Bild vor einem unscharfen Hintergrund; mit einem Pass folgt der smarte Zuschnitt dem Ballwechsel.
+JEDES FORMAT
+Jeder Ballwechsel hochkant 9:16, 4:5 für den Feed oder quer 16:9.
 
-EINER PERSON FOLGEN
-Mit einem Pass wählst du dich einmal aus, und jeder Hochkant-Clip bleibt auf dir, auch wenn du über den Platz läufst.
-
-DIE GESCHICHTE IM CLIP
-Untertitel füllen sich aus dem, was erkannt wurde: Schlagzahl, Platzierung, Platz, Datum. Ein Untertitel liest sich bei jedem Ballwechsel anders.
+UNTERTITEL, DIE SICH SELBST SCHREIBEN
+Sie füllen sich mit dem Erkannten: Schlagzahl, Platzierung, Platz und Datum. Ein Untertitel liest sich bei jedem Ballwechsel anders.
 
 DEINE SAISON
 Ballwechsel, Plätze, längster Punkt und Schläge pro Ballwechsel, Monat für Monat.
@@ -405,68 +459,74 @@ ALLES LÄUFT AUF DEINEM IPHONE
 Kein Konto. Keine Anmeldung. Keine Ribatto-Server. Dein Video und sein Ton verlassen das Handy nie, und die Erkennung läuft offline auf dem Platz. Von deinem Match verlässt nur eine Koordinate das Gerät, die an Apple geht, um den Platz zu benennen — und nur, wenn dein Video GPS-Daten hat. Die kostenlose Version zeigt Werbung von Google AdMob, beschrieben in der Datenschutzerklärung.
 
 KOSTENLOS, MIT PASS BEI BEDARF
-Ribatto ist kostenlos und finanziert sich über Werbung. Sieh dir eine kurze Anzeige an, und ein Pass öffnet eine Stunde lang alles: keine Werbung, Originalqualität ohne Wasserzeichen, smarter Hochkant-Ausschnitt und Spielerverfolgung. Clips und Reels aus dieser Stunde behalten ihre Qualität.
+Ribatto ist kostenlos und finanziert sich über Werbung. Alle Bearbeitungswerkzeuge sind kostenlos. Sieh dir eine kurze Anzeige an, und ein PASS bringt eine Stunde lang: keine Werbung, Originalqualität (4K quer, 1080p hochkant), kein Wasserzeichen, smarter Hochkant-Ausschnitt, der dem Ballwechsel folgt, Verfolgung einer Person, Sammelspeichern und Zusammenfügen. Was du in dieser Stunde erstellst, behält seine Qualität.
 
 Kostenlos: unbegrenzt importieren, 720p, Wasserzeichen.
 ```
 
-**What's New (1.1.1)**
+**What's New (1.2.0)** — 544 chars
 ```
-- Neues Design und neues App-Symbol: aufgeräumtere Bildschirme, der beste Ballwechsel groß im Blick und ein Bearbeiten-Knopf an jedem Clip.
-- Neue kostenlose Bearbeitung: Farbvorlagen, Tempo pro Clip (Zeitlupe 0,5× bis 2×), Spielton voll / leise / aus und schwarzer oder unscharfer Hintergrund für Hochformat-Clips.
-- Der Untertitel-Editor zeigt eine Hilfslinie für den sicheren Bereich von Instagram.
-- In Hochformat-Clips liegen Wasserzeichen und neue Untertitel jetzt nicht mehr unter den Buttons und Texten von Instagram und TikTok.
-- Während dein Match ausgewertet wird und bevor du Clips neu erstellst, siehst du, was ein PASS bringt (Originalqualität, kein Wasserzeichen). Kein Interesse? Alles läuft kostenlos weiter.
-- Löschbestätigungen für Clips, Matches und Reels erscheinen jetzt mittig.
-- Fehlerbehebungen bei Rückgängig, dem PASS und der Werbung.
-```
+Der Clip-Editor, neu gebaut. Jedes Werkzeug ist kostenlos.
 
-**What's New (1.0)**
-```
-Erste Version.
+- Zeitleiste: unter festem Abspielkopf wischen, mit zwei Fingern zoomen, direkt kürzen und teilen.
+- Text, wo du willst: ziehen, skalieren, Farbe, Schrift und Stil wählen und den Moment festlegen.
+- Zoom- und Schwenk-Keyframes: weich auf den Gewinnschlag zoomen.
+- Tempo 0,5–2×, Farblook, Spielton und Hochkant-Hintergrund, für einen Clip oder alle.
+- Rückgängig und Wiederholen, und eine Vorschau, die dem Export genau entspricht.
+- Ein ruhigeres, neutrales Design in der ganzen App.
 ```
 
 ---
 
 ## Français (fr)
 
-**App Name** (max 30) — 28 chars
+**App Name** (max 30) — 25 chars
 ```
-Rally Clips : tennis et plus
-```
-
-**Subtitle** (max 30) — 28 chars
-```
-Échanges découpés tout seuls
+Ribatto : Tennis et Padel
 ```
 
-**Keywords** (max 100) — 100 chars
+**Subtitle** (max 30) — 29 chars
 ```
-badminton,pickleball,reel,shorts,clip,echanges,temps forts,couper,montage,video,court,match,raquette
-```
-
-**Promotional text** (max 170) — 91 chars
-```
-Gratuit, sans compte, votre vidéo reste sur l'iPhone. Votre vidéo est analysée sur l'iPhone, même hors ligne.
+Montage vidéo de vos échanges
 ```
 
-**Description**
+**Keywords** (max 100) — 96 chars
 ```
-Filmez votre match. Ribatto ne garde que les échanges.
+pickleball,badminton,temps,forts,meilleurs,points,ralenti,zoom,sous-titres,couper,match,raquette
+```
 
-Posez le téléphone face au court et jouez. Ribatto écoute le bruit de la frappe, trouve chaque échange et coupe les temps morts. Un match de 30 minutes devient les quelques points qui méritent d'être vus, prêts à publier.
+**Promotional text** (max 170) — 156 chars
+```
+Nouveau : un vrai éditeur de clips. Coupe, ralenti, zoom sur le point gagnant et texte où vous voulez. Gratuit, sans compte, votre vidéo reste sur l'iPhone.
+```
+
+**Description** — 2987 chars
+```
+Les temps forts de votre match en 30 secondes, d'un seul geste. Gratuit, sans abonnement, avec la vidéo que vous avez déjà.
+
+Ribatto écoute le bruit de la frappe, trouve chaque échange et coupe les temps morts. Un match de 90 minutes devient les points qui méritent d'être revus, en vertical et prêts à publier. Tennis, padel, pickleball et badminton.
+
+NOUVEAU : UN VRAI ÉDITEUR, GRATUIT
+Chaque clip s'ouvre dans un éditeur pensé comme les applis pro de vidéo courte :
+• Timeline sous une tête de lecture fixe. Faites défiler, pincez pour zoomer, coupez et scindez sur place.
+• Du texte où vous voulez. Glissez, redimensionnez, choisissez couleur, police et style, et calez chaque sous-titre au bon moment.
+• Images clés de zoom et de cadrage. Glissez en douceur vers le point gagnant, puis ressortez.
+• Vitesse de 0,5× (ralenti) à 2×.
+• Rendus couleur, son du match normal / faible / coupé et fond flou ou noir en vertical.
+• Pour ce clip seulement, ou pour tous d'un coup.
+• Annuler et rétablir. L'aperçu est exactement ce que vous exportez.
+
+UN GESTE, UNE VIDÉO
+Touchez une fois pour un résumé vertical de 30 secondes : le meilleur échange en premier, une accroche à l'écran dès le début, prêt pour n'importe quelle appli de vidéo courte. Les échanges sont classés par frappes, durée et réaction du public.
 
 PAS DE TRÉPIED, PAS D'INSTALLATION
-La détection se fait au son, pas à l'angle de caméra : le téléphone n'a pas besoin de voir tout le court. Posez-le sur un sac, contre un grillage ou sur un banc — partout où il peut rester immobile. Réglé sur du tennis en extérieur, avec des options pour d'autres sports de raquette. La détection écoute la frappe : elle est donc plus juste là où ce son porte bien.
+La détection se fait au son, pas à l'angle de caméra : le téléphone n'a pas besoin de voir tout le court. Posez-le sur un sac, contre un grillage ou sur un banc. Importez une vidéo existante ou filmez dans l'appli. Réglé sur du tennis en extérieur, avec des réglages pour chaque sport de raquette ; plus juste là où la frappe s'entend bien.
 
-PENSÉ POUR LES REELS
-Chaque échange est exporté en vertical pour Reels, Shorts et TikTok, ou en 4:5 pour le fil. Les clips verticaux gratuits gardent l'image entière sur un fond flouté ; avec un pass, le recadrage intelligent suit l'échange.
+TOUS LES FORMATS
+Chaque échange en vertical 9:16, en 4:5 pour le fil ou en horizontal 16:9.
 
-SUIVRE UN JOUEUR
-Avec un pass, choisissez-vous une fois et chaque clip vertical reste centré sur vous, même quand vous traversez le court.
-
-L'HISTOIRE SUR LE CLIP
-Les sous-titres se remplissent à partir de ce qui a été détecté : nombre de frappes, classement, court, date. Un même sous-titre se lit différemment à chaque échange.
+DES SOUS-TITRES QUI S'ÉCRIVENT TOUT SEULS
+Ils se remplissent avec ce qui a été détecté : frappes, classement, court et date. Un même sous-titre se lit différemment à chaque échange.
 
 VOTRE SAISON
 Échanges, courts, point le plus long et frappes par échange, mois par mois.
@@ -475,68 +535,74 @@ TOUT SE PASSE SUR VOTRE IPHONE
 Pas de compte. Pas d'inscription. Aucun serveur Ribatto. Votre vidéo et son son ne quittent jamais le téléphone, et la détection fonctionne hors ligne sur le court. De votre match, la seule chose qui sort est une coordonnée envoyée à Apple pour nommer le court, et seulement si la vidéo contient des données GPS. La version gratuite affiche des publicités Google AdMob, décrites dans la politique de confidentialité.
 
 GRATUIT, AVEC UN PASS QUAND IL FAUT
-Ribatto est gratuit et financé par la publicité. Regardez une courte publicité et un pass d'une heure ouvre tout : sans publicité, qualité d'origine sans filigrane, cadrage vertical intelligent et suivi du joueur. Les clips et reels créés pendant cette heure gardent leur qualité.
+Ribatto est gratuit et financé par la publicité. Tous les outils de montage sont gratuits. Regardez une courte publicité et un PASS d'une heure ajoute : sans publicité, qualité d'origine (4K horizontal, 1080p vertical), sans filigrane, cadrage vertical intelligent qui suit l'échange, suivi d'un joueur, enregistrement groupé et fusion de clips. Ce que vous créez pendant cette heure garde sa qualité.
 
 Gratuit : imports illimités, 720p, filigrane.
 ```
 
-**What's New (1.1.1)**
+**What's New (1.2.0)** — 570 chars
 ```
-- Nouveau design et nouvelle icône : des écrans plus clairs, le meilleur échange en grand et un bouton Modifier sur chaque clip.
-- Nouvelle édition gratuite : préréglages de couleur, vitesse par clip (ralenti 0,5× à 2×), son du match normal / faible / coupé et fond noir ou flou pour les clips verticaux.
-- L'éditeur de légendes affiche un repère de zone sûre Instagram.
-- Sur les clips verticaux, le filigrane et les nouvelles légendes ne passent plus sous les boutons et textes d'Instagram et de TikTok.
-- Pendant l'analyse de votre match et avant de refaire vos clips, découvrez ce qu'apporte un PASS (qualité d'origine, sans filigrane). Pas intéressé ? Tout continue gratuitement.
-- Les confirmations de suppression des clips, matchs et reels s'affichent maintenant au centre.
-- Corrections pour Annuler, le PASS et les publicités.
-```
+L'éditeur de clips, entièrement refait. Tous les outils sont gratuits.
 
-**What's New (1.0)**
-```
-Première version.
+- Timeline : faites défiler sous une tête de lecture fixe, pincez pour zoomer, coupez et scindez sur place.
+- Du texte où vous voulez : glissez, redimensionnez, choisissez couleur, police et style, et le moment d'apparition.
+- Images clés de zoom et de cadrage : approchez-vous en douceur du point gagnant.
+- Vitesse 0,5–2×, couleur, son du match et fond vertical, pour un clip ou pour tous.
+- Annuler et rétablir, et un aperçu identique à l'export.
+- Un nouveau look plus sobre dans toute l'appli.
 ```
 
 ---
 
 ## Italiano (it)
 
-**App Name** (max 30) — 27 chars
+**App Name** (max 30) — 29 chars
 ```
-Rally Clips: tennis e altro
-```
-
-**Subtitle** (max 30) — 29 chars
-```
-Scambi tagliati in automatico
+Ribatto: Padel e Tennis Video
 ```
 
-**Keywords** (max 100) — 94 chars
+**Subtitle** (max 30) — 25 chars
 ```
-badminton,pickleball,reel,shorts,clip,scambi,highlights,tagliare,video,campo,partita,racchetta
-```
-
-**Promotional text** (max 170) — 94 chars
-```
-Gratis, senza account, il video resta sull'iPhone. Il video si analizza sull'iPhone, anche offline.
+Montaggio dei tuoi scambi
 ```
 
-**Description**
+**Keywords** (max 100) — 99 chars
 ```
-Riprendi la partita. Ribatto tiene solo gli scambi.
+pickleball,badminton,highlights,migliori,punti,rallentatore,zoom,sottotitoli,tagliare,partita,campo
+```
 
-Punta il telefono sul campo e gioca. Ribatto ascolta il suono del colpo, trova ogni scambio e taglia i tempi morti. Una partita di 30 minuti diventa i pochi punti che vale la pena guardare, pronti da pubblicare.
+**Promotional text** (max 170) — 149 chars
+```
+Nuovo editor di clip: taglia, rallenta, zooma sul colpo vincente e metti il testo dove vuoi. Tutto gratis, senza account, il video resta sull'iPhone.
+```
+
+**Description** — 2881 chars
+```
+I momenti migliori della tua partita in 30 secondi, con un tocco. Gratis, senza abbonamento, dal video che hai già girato.
+
+Ribatto ascolta il suono del colpo, trova ogni scambio e taglia i tempi morti. Una partita di 90 minuti diventa i punti che vale la pena rivedere, in verticale e pronti da pubblicare. Padel, tennis, pickleball e badminton.
+
+NOVITÀ: UN VERO EDITOR, GRATIS
+Ogni clip si apre in un editor pensato come le app professionali per video brevi:
+• Timeline sotto una testina fissa. Scorri, pizzica per ingrandire, taglia e dividi sul posto.
+• Testo dove vuoi. Trascinalo, ridimensionalo, scegli colore, carattere e stile e fallo comparire al momento giusto.
+• Keyframe di zoom e panoramica. Avvicinati morbido al colpo vincente e torna indietro.
+• Velocità dal rallentatore 0,5× fino a 2×.
+• Look colore, audio della partita pieno / basso / spento e sfondo sfocato o nero in verticale.
+• Solo per questa clip o per tutte insieme.
+• Annulla e ripristina. L'anteprima è esattamente ciò che esporti.
+
+UN TOCCO, UN VIDEO
+Tocca una volta e hai un video verticale di 30 secondi: lo scambio migliore per primo e una frase d'apertura che aggancia, pronto per qualsiasi app di video brevi. Gli scambi sono ordinati per colpi, durata e reazione del pubblico.
 
 NIENTE TREPPIEDE, NIENTE PREPARAZIONE
-Il rilevamento funziona con il suono, non con l'angolo di ripresa: il telefono non deve inquadrare tutto il campo. Appoggialo su una borsa, alla rete o su una panchina — dove può stare fermo. Tarato sul tennis all'aperto, con impostazioni per altri sport con racchetta. Ascolta il colpo, quindi funziona meglio dove quel suono si sente bene.
+Il rilevamento funziona con il suono, non con l'angolo di ripresa: il telefono non deve inquadrare tutto il campo. Appoggialo su una borsa, alla recinzione o su una panchina. Importa un video che hai già o riprendi dall'app. Tarato sul tennis all'aperto, con impostazioni per ogni sport con racchetta; rende meglio dove il colpo si sente bene.
 
-FATTO PER I REEL
-Ogni scambio viene esportato in verticale per Reel, Shorts e TikTok, o in 4:5 per il feed. Le clip verticali gratuite mostrano l'inquadratura intera su uno sfondo sfocato; con un pass, il ritaglio intelligente segue lo scambio.
+TUTTI I FORMATI
+Ogni scambio in verticale 9:16, 4:5 per il feed o orizzontale 16:9.
 
-SEGUI UN GIOCATORE
-Con un pass, scegli te stesso una volta e ogni clip verticale resta centrata su di te, anche mentre ti muovi in campo.
-
-LA STORIA SULLA CLIP
-I sottotitoli si riempiono da soli con quello che è stato rilevato: numero di colpi, posizione, campo, data. Un solo sottotitolo si legge diverso a ogni scambio.
+SOTTOTITOLI CHE SI SCRIVONO DA SOLI
+Si riempiono con quello che è stato rilevato: colpi, posizione, campo e data. Un solo sottotitolo si legge diverso a ogni scambio.
 
 LA TUA STAGIONE
 Scambi, campi, punto più lungo e colpi per scambio, mese per mese.
@@ -545,68 +611,74 @@ TUTTO GIRA SUL TUO IPHONE
 Nessun account. Nessuna registrazione. Nessun server di Ribatto. Il video e il suo audio non escono mai dal telefono, e il rilevamento funziona offline in campo. Della tua partita esce solo una coordinata inviata ad Apple per dare un nome al campo, e solo se il video ha i dati GPS. La versione gratuita mostra annunci di Google AdMob, descritti nell'informativa sulla privacy.
 
 GRATIS, CON UN PASS QUANDO SERVE
-Ribatto è gratis e si sostiene con la pubblicità. Guarda un annuncio breve e un pass di un'ora apre tutto: niente pubblicità, qualità originale senza filigrana, inquadratura verticale intelligente e inseguimento del giocatore. Le clip e i reel creati in quell'ora mantengono la loro qualità.
+Ribatto è gratis e si sostiene con la pubblicità. Tutti gli strumenti di modifica sono gratis. Guarda un annuncio breve e un PASS di un'ora aggiunge: niente pubblicità, qualità originale (4K orizzontale, 1080p verticale), niente filigrana, inquadratura verticale intelligente che segue lo scambio, segui un giocatore, salvataggio multiplo e unione di clip. Ciò che crei in quell'ora mantiene la sua qualità.
 
 Gratis: importazioni illimitate, 720p, filigrana.
 ```
 
-**What's New (1.1.1)**
+**What's New (1.2.0)** — 536 chars
 ```
-- Nuovo design e nuova icona: schermate più pulite, lo scambio migliore in grande e un pulsante Modifica su ogni clip.
-- Nuove modifiche gratuite: preset colore, velocità per clip (rallentatore 0,5× fino a 2×), audio della partita pieno / basso / spento e sfondo nero o sfocato per le clip verticali.
-- L'editor delle didascalie mostra una guida dell'area sicura di Instagram.
-- Nelle clip verticali, filigrana e nuove didascalie non finiscono più sotto i pulsanti e i testi di Instagram e TikTok.
-- Mentre la partita viene analizzata e prima di rifare le clip, vedi cosa aggiunge un PASS (qualità originale, senza filigrana). Non ti interessa? Tutto continua gratis.
-- Le conferme di eliminazione di clip, partite e reel ora compaiono al centro.
-- Correzioni per Annulla, il PASS e gli annunci.
-```
+Abbiamo rifatto l'editor delle clip. Tutti gli strumenti sono gratis.
 
-**What's New (1.0)**
-```
-Prima versione.
+- Timeline: scorri sotto una testina fissa, pizzica per ingrandire, taglia e dividi sul posto.
+- Testo dove vuoi: trascina, ridimensiona, scegli colore, carattere, stile e quando compare.
+- Keyframe di zoom e panoramica: avvicinati morbido al colpo vincente.
+- Velocità 0,5–2×, colore, audio della partita e sfondo verticale, per una clip o per tutte.
+- Annulla e ripristina, e un'anteprima identica all'esportazione.
+- Un nuovo aspetto, più sobrio, in tutta l'app.
 ```
 
 ---
 
 ## 简体中文 (zh-Hans)
 
-**App Name** (max 30) — 16 chars
+**App Name** (max 30) — 17 chars
 ```
-Rally Clips 回合剪辑
-```
-
-**Subtitle** (max 30) — 9 chars
-```
-自动剪出每一个回合
+Ribatto: 网球视频集锦剪辑
 ```
 
-**Keywords** (max 100) — 45 chars
+**Subtitle** (max 30) — 17 chars
 ```
-羽毛球,匹克球,板式网球,短视频,剪辑,回合,精彩,剪掉,视频,球场,比赛,球拍,网球视频
-```
-
-**Promotional text** (max 170) — 35 chars
-```
-免费、无需账号，视频不离开 iPhone。视频就在 iPhone 上分析，离线也能用。
+匹克球·羽毛球·板式网球回合自动剪
 ```
 
-**Description**
+**Keywords** (max 100) — 86 chars
 ```
-拍下比赛，只留下回合。
+慢动作,字幕,缩放,变焦,剪切,裁剪,剪视频,竖屏,短视频,比赛,球场,球拍,运动,记录,高光,回放,打球,球友,精彩瞬间,视频编辑,一键成片,特写,慢放,双打,练球,球馆
+```
 
-把手机对着球场，然后专心打球。Ribatto 听击球声找出每一个回合，把空档全部剪掉。30 分钟的比赛，变成几个真正值得看的球，随手就能发。
+**Promotional text** (max 170) — 53 chars
+```
+全新片段编辑器：裁剪、慢动作、制胜球特写、字幕想放哪就放哪，全部免费。无需账号，视频不离开 iPhone。
+```
+
+**Description** — 1000 chars
+```
+已经拍好的比赛视频，一键变成 30 秒集锦。免费，无需订阅。
+
+Ribatto 听击球声找出每一个回合，把空档全部剪掉。90 分钟的比赛，只留下真正值得回看的几分球，竖屏成片，随手就能发。支持网球、匹克球、板式网球和羽毛球。
+
+新功能：真正的片段编辑器，免费
+每个片段都会在一个像专业短视频剪辑 App 那样的编辑器里打开：
+• 中间固定播放头的时间线。拖动预览，双指缩放时间线，就地裁剪和分割。
+• 字幕想放哪就放哪。拖动、缩放，选颜色、字体和样式，并在时间线上对准出现的时刻。
+• 缩放与平移关键帧。平滑推近制胜一球，再拉回来。
+• 速度从 0.5× 慢动作到 2×。
+• 色彩风格、比赛声音（原声/调低/关闭），竖屏可用模糊或黑色背景。
+• 只改这个片段，或一次应用到所有片段。
+• 撤销与重做。预览就是导出的样子。
+
+一键一条成片
+点一下，得到一条 30 秒竖屏集锦：最佳回合放在最前，开头带一句抓人的字幕，适合任何短视频平台。回合按击球数、时长和现场欢呼排序。
 
 不用三脚架，不用架设
-靠声音识别，不靠拍摄角度，手机不必拍到整个球场。放在包上、挂在围网、搁在长椅上都行，只要能放稳。以室外网球为基准调校，也提供其他球拍项目的设置。它靠击球声识别，所以在声音传得清楚的地方最准确。
+靠声音识别，不靠拍摄角度，手机不必拍到整个球场。放在包上、挂在围网、搁在长椅上都行。可以导入已有的视频，也可以在 App 里直接拍。以室外网球为基准调校，每个球拍项目都有对应设置；击球声越清楚，识别越准。
 
-为短视频而做
-每个回合都可以导出竖版，适配 Reels、Shorts 和抖音，也可以导出 4:5 发动态。免费竖版片段会在模糊背景上保留完整画面；有通行证时，智能裁切会跟着回合走。
+各种画幅
+每个回合都可导出竖屏 9:16、动态用 4:5 或横屏 16:9。
 
-只跟着一个人
-有通行证时，先选好自己，之后每个竖版片段都会一直把你放在画面中间，哪怕你在场上跑动。
-
-片段自己会说话
-字幕根据识别结果自动填好——击球数、排名、球场、日期。同一条字幕，在每个回合读起来都不一样。
+自动填好的字幕
+字幕根据识别结果自动填写——击球数、排名、球场、日期。同一条字幕，在每个回合读起来都不一样。
 
 你的赛季
 回合数、球场、最长的一分、每回合击球数，按月记录。
@@ -615,35 +687,40 @@ Rally Clips 回合剪辑
 没有账号，不用注册，也没有 Ribatto 服务器。视频和声音都不会离开手机，在球场上离线也能识别。关于你的比赛，唯一离开手机的是一个发给 Apple 用来查球场名字的坐标，而且只在视频带 GPS 信息时才会发送。免费版会显示 Google AdMob 广告，详见隐私政策。
 
 免费，需要时再开通行证
-Ribatto 免费使用，由广告支持。看完一段短广告，一小时通行证就会开放全部功能：无广告、无水印的原画质、智能竖版裁切、球员追踪。这一小时内做好的片段和短片，之后画质依然保留。
+Ribatto 免费使用，由广告支持，所有剪辑工具都免费。看完一段短广告，一小时通行证会加上：无广告、原画质（横屏 4K、竖屏 1080p）、无水印、跟着回合走的智能竖屏裁切、只跟拍一位球员、批量保存和片段合并。这一小时内做好的片段和短片，之后画质依然保留。
 
 免费版：导入次数不限，720p，带水印。
 ```
 
-**What's New (1.1.1)**
+**What's New (1.2.0)** — 189 chars
 ```
-- 全新设计与应用图标：界面更简洁，最佳回合更醒目，每个片段都有“编辑”按钮。
-- 新增免费编辑：色彩预设、单个片段变速（0.5× 慢动作至 2×）、比赛声音（原声/调低/关闭），竖屏片段可用黑色或模糊背景。
-- 字幕编辑器会显示 Instagram 安全区参考线。
-- 竖屏片段的水印和新字幕会避开 Instagram 和 TikTok 的按钮与文案。
-- 在分析比赛视频时以及重新生成片段前，会告诉你通行证能带来什么（原画质、无水印）。不需要？一切照常免费进行。
-- 删除片段、比赛和短片的确认窗口现在显示在屏幕中央。
-- 修复了撤销、通行证和广告相关的问题。
-```
+片段编辑器全面重做，所有工具都免费。
 
-**What's New (1.0)**
-```
-首个版本。
+- 时间线剪辑：在固定播放头下拖动，双指缩放时间线，就地裁剪和分割。
+- 字幕随处放：拖动、缩放，选颜色、字体和样式，并设定出现时刻。
+- 缩放与平移关键帧：平滑推近制胜一球。
+- 速度 0.5–2×、色彩、比赛声音和竖屏背景，可只改一个片段，也可一次改全部。
+- 撤销与重做，预览与导出完全一致。
+- 全 App 换上更沉稳的中性配色。
 ```
 
 ---
 
 ## 스크린샷 자막 (프레임별)
 
-`ios/Tools/make_screenshots.swift`가 실제로 굽는 문구다. 여기를 고치면 그 파일도 같이 고친다.
+`ios/Tools/make_screenshots.swift`가 실제로 굽는 문구다(9개 언어 전문은 그 파일의 `copy`). 여기를 고치면 그 파일도 같이 고친다.
+설계 이유는 [screenshot-plan.md](screenshot-plan.md). 2번 프레임에만 "NEW" 칩이 붙는다 — 다음 버전에서 뗄 것.
 
 | # | 파일 | 헤드라인 | 보조 문구 |
 |---|---|---|---|
+| 1 | 01_hero | ONE TAP, MATCH TO REEL | Every rally found by its sound and cut vertical, ready to post. |
+| 2 | 02_s5_editor_text | EDIT IT YOUR WAY | Text anywhere, zoom keyframes, slow motion, colour looks. All free. |
+| 3 | 03_s2_session | FOUND BY SOUND | It hears every strike and cuts the dead time. Best rally first. |
+| 4 | 04_s6_editor_zoom | ZOOM IN ON THE WINNER | Zoom and pan keyframes on a real timeline. Slow the last shot to 0.5×. |
+| 5 | 05_s3_reel | 30 SECONDS, BEST FIRST | One tap makes a vertical reel, best rally first. Share it anywhere. |
+| 6 | 06_s4_season | YOUR SEASON, COUNTED | Every rally, every court. Your video never leaves your iPhone. |
+
+---|---|---|---|
 | 1 | 01_hero | ONE TAP, MATCH TO REEL | Every rally found and cut vertical for Reels, Shorts and TikTok. |
 | 2 | 02_s1_library | SKIP THE DEAD TIME | A 30-minute match becomes the rallies worth watching. |
 | 3 | 03_s2_session | FOUND BY SOUND | It listens for the strike. Tuned on tennis. |
