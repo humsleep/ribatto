@@ -138,9 +138,9 @@ let frames: [Frame] = files.enumerated().map { i, f in
 
 func draw(_ f: Frame, index: Int) {
     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(W), pixelsHigh: Int(H),
-                               bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                               bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false,  // App Store rejects alpha
                                isPlanar: false, colorSpaceName: .deviceRGB,
-                               bytesPerRow: 0, bitsPerPixel: 0)!
+                               bytesPerRow: 0, bitsPerPixel: 32)!
     guard let ctx = NSGraphicsContext(bitmapImageRep: rep) else { return }
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = ctx
