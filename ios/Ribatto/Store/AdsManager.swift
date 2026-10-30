@@ -452,6 +452,22 @@ final class AdsManager: NSObject, ObservableObject {
         guard let since = pendingSince else { return }
         pendingSince = nil
         guard Date().timeIntervalSince(since) < Self.pendingLifetime else { return }
+        showInterstitialSoon()
+    }
+
+    /// An owed interstitial that would really show now: loaded and spaced.
+    /// The pass offer goes in front of exactly these, never of an ad that
+    /// the interval or a failed load would have skipped anyway.
+    var interstitialDue: Bool {
+        guard showing, let since = pendingSince,
+              Date().timeIntervalSince(since) < Self.pendingLifetime, interstitial != nil
+        else { return false }
+        return Date().timeIntervalSince(lastInterstitial) >= Self.interstitialInterval
+    }
+
+    /// The interstitial the user chose over the pass ("No thanks · show the
+    /// ad"). Their offer's decline already cleared the debt, so this skips it.
+    func showInterstitialSoon() {
         // The next turn of the run loop: called from a sheet's onDismiss, the
         // presenting controller is still finishing the dismissal, and a
         // present then can be refused or land half-animated.

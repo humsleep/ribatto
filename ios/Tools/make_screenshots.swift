@@ -6,7 +6,7 @@ import Foundation
 //   swift Tools/make_screenshots.swift <shots-dir> <out-dir>
 //
 // Each frame is a headline over a device screen, on the app's own near-black
-// ground with a volt glow. The screens are real captures, not mockups — the
+// ground with a soft neutral glow. The screens are real captures, not mockups — the
 // only thing added is the text a store listing needs, because the first frame
 // is read at thumbnail size in search results and a bare screenshot says
 // nothing there.
@@ -135,12 +135,13 @@ func draw(_ f: Frame, index: Int) {
     NSGraphicsContext.current = ctx
     let g = ctx.cgContext
 
-    // ground + a volt glow behind the headline
+    // ground + a neutral glow behind the headline. Volt at any low alpha
+    // over near-black mixes to olive, the look the 2026-10-30 palette dropped.
     g.setFillColor(ground.cgColor)
     g.fill(CGRect(x: 0, y: 0, width: W, height: H))
     if let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                             colors: [volt.withAlphaComponent(0.16).cgColor,
-                                      volt.withAlphaComponent(0).cgColor] as CFArray,
+                             colors: [NSColor.white.withAlphaComponent(0.09).cgColor,
+                                      NSColor.white.withAlphaComponent(0).cgColor] as CFArray,
                              locations: [0, 1]) {
         g.drawRadialGradient(grad, startCenter: CGPoint(x: W * 0.5, y: H * 0.86),
                              startRadius: 0, endCenter: CGPoint(x: W * 0.5, y: H * 0.86),

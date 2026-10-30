@@ -384,7 +384,16 @@ struct SessionDetailView: View {
                 // Not over the undo bar: a clip deleted in the player owes
                 // its ad to the next result instead.
                 if destination == nil, onScreen, watched, undo == nil {
-                    ads.showPendingInterstitial()
+                    // An ad is coming anyway: offer the rewarded one in its
+                    // place. "No thanks" (or a swipe) shows the ad as before.
+                    if ads.interstitialDue, ads.rewardedReady, !pass.isPro,
+                       let session = self.session {
+                        offer(session, declineKey: "offer_later_ad", title: "offer_ad_title",
+                              message: "offer_ad_msg", passive: true,
+                              granted: {}, declined: { ads.showInterstitialSoon() })
+                    } else {
+                        ads.showPendingInterstitial()
+                    }
                 }
                 return
             }
