@@ -85,6 +85,9 @@ ios/Ribatto/
                            SmartCrop은 의도적으로 시크 유지 — 파일 주석 참고
     HighlightMerger.swift  무재인코딩 병합 우선. 클립 병합·릴스가 쓴다
                            (세션 전체 "하이라이트 합본"은 2026-09-15 삭제 — 릴스와 역할이 겹쳤다. 옛 highlight.mp4는 load가 지운다)
+                           2.0(2026-11-17): "랠리만 이어 보기"(`mergeAllRallies` → rallies.mp4, **무료**)가 세션 화면의 주 버튼, 30초 릴스는 보조.
+                           완성 클립을 경기 순서로 무재인코딩 병합한다(무료는 720p+워터마크 그대로). 비율이 다른 클립은 다수 비율만 남긴다.
+                           근거: 사용자가 직접 요청한 것은 "죽은 시간 뺀 전체 경기"였고 SNS 릴스 요청은 찾지 못했다(메모리 growth-diagnosis)
     VideoProbe.swift       메타데이터 + 포스터
   Store/
     SessionStore.swift     세션 영속화 + 처리 파이프라인 (process → render). 모든 상태의 소유자
