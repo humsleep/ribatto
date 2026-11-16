@@ -63,7 +63,7 @@ struct SessionDetailView: View {
     /// Every modal this screen can show, so a single .sheet drives them all.
     private enum Destination: Identifiable {
         case clip(ClipInfo)
-        case merged(URL, orientation: String?, titleKey: String = "merged")
+        case merged(URL, orientation: String?, titleKey: String = "merged", marks: [Double] = [])
         case pro(feature: String?)
         case caption
         case targetPlayer
@@ -75,7 +75,7 @@ struct SessionDetailView: View {
         var id: String {
             switch self {
             case .clip(let c): return "clip-" + c.id
-            case .merged(let u, _, _): return "merged-" + u.lastPathComponent
+            case .merged(let u, _, _, _): return "merged-" + u.lastPathComponent
             case .pro(let f): return "pro-" + (f ?? "")
             case .caption: return "caption"
             case .targetPlayer: return "target-player"
@@ -410,9 +410,9 @@ struct SessionDetailView: View {
         switch dest {
         case .clip(let clip):
             ClipPlayerSheet(clip: clip)
-        case .merged(let url, let orientation, let titleKey):
+        case .merged(let url, let orientation, let titleKey, let marks):
             HighlightPlayerSheet(url: url, name: L.s(titleKey, lang),
-                                 orientation: orientation)
+                                 orientation: orientation, marks: marks)
         case .pro(let feature):
             ProPassView(feature: feature)
         case .caption:
@@ -1398,8 +1398,9 @@ struct SessionDetailView: View {
     /// Free: the match with only the rallies left, back to back.
     private func playAllRallies(_ session: Session) {
         Task {
-            if let (url, shape) = await store.mergeAllRallies(in: session) {
-                destination = .merged(url, orientation: shape, titleKey: "rallies_only")
+            if let joined = await store.mergeAllRallies(in: session) {
+                destination = .merged(joined.url, orientation: joined.frame,
+                                      titleKey: "rallies_only", marks: joined.starts)
             } else if store.progress[sessionID] == nil {
                 saveMessage = L.s("merge_failed", lang)
             }
