@@ -243,6 +243,7 @@ swift Tools/make_screenshots.swift <캡처폴더> <출력폴더>   # ios/ 에서
 데모 장소명은 앱 데이터의 meta.json `placeName`을 직접 고쳐 넣었다.
 캡처는 영어 UI + Debug Pro(테스트 광고 배너가 안 찍히게) + `simctl status_bar override --time 9:41`. 히어로는 `hero.jpg`로 넣는다.
 2026-10-28부터 9개 언어 세트가 `marketing/screenshots/<locale>/`에 있다(`make_screenshots.swift <캡처> <출력> <locale>`).
+2026-11-17(2.0): 맨 앞에 "랠리만" 프레임(`s7_rallies.png`, 심사 샘플 캡처)을 넣어 7장이 됐다(기존 01~06 → 02~07).
 2026-10-30(1.2.0): 히어로 · 편집기 자막(NEW 칩) · 세션 · 편집기 줌 · 릴스 · 시즌 6장(`screenshot-plan.md`). 히어로는 10-28 캡처 재사용,
 편집기 캡처는 test_import 세션 #1(가로, "MATCH POINT" 자막·줌 키를 meta.json에 직접 넣음)을 17초/21초에 세워 찍었다. 릴스 화면은 재생 중 프레임(영어 훅이 안 보이게).
 데모 데이터: sample2.mov에서 자른 5분짜리 3개를 앱 Documents/seed에 넣고 Debug 빌드를 `-seedDemo`로 띄우면 가져와 감지한다.
