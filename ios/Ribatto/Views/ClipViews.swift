@@ -692,22 +692,25 @@ struct HighlightPlayerSheet: View {
     /// nothing from turning the phone — it would just lie on its side inside
     /// black bars — so the same rule as the clip player applies here.
     var orientation: String? = nil
+    /// Where each rally starts in the file; enables rally-to-rally skipping.
+    var marks: [Double] = []
     /// Built up front rather than in `onAppear`. The video is this screen's
     /// only content, so a nil player left the navigation stack with nothing to
     /// lay out: the sheet came up empty, title bar and all, and stayed empty
     /// even once the player arrived.
     @State private var player: AVPlayer
 
-    init(url: URL, name: String, orientation: String? = nil) {
+    init(url: URL, name: String, orientation: String? = nil, marks: [Double] = []) {
         self.url = url
         self.name = name
         self.orientation = orientation
+        self.marks = marks
         _player = State(initialValue: AVPlayer(url: url))
     }
 
     var body: some View {
         NavigationStack {
-            ZoomableVideo(player: player)
+            ZoomableVideo(player: player, marks: marks)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.black.ignoresSafeArea())
                 .allowsLandscape(!OutputFrame(orientation).isPortrait)

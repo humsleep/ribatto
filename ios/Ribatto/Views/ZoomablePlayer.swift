@@ -39,6 +39,9 @@ struct PlayerLayerView: UIViewRepresentable {
 struct ZoomableVideo: View {
     @AppStorage("rc_lang") private var lang = "en"
     let player: AVPlayer
+    /// Rally start times in the file. Non-empty adds previous/next rally
+    /// buttons and "3 / 12": reviewing a match means jumping point to point.
+    var marks: [Double] = []
 
     @State private var zoom: CGFloat = 1
     @State private var committedZoom: CGFloat = 1
@@ -176,6 +179,7 @@ struct ZoomableVideo: View {
             HStack {
                 Text(fmtPos(time))
                 Spacer()
+                if !marks.isEmpty { skipButton(-1) }
                 Button {
                     playing.toggle()
                     playing ? player.play() : player.pause()
@@ -185,6 +189,7 @@ struct ZoomableVideo: View {
                         .frame(width: 44, height: 34)
                 }
                 .foregroundStyle(Theme.primaryText)
+                if !marks.isEmpty { skipButton(1) }
                 Spacer()
                 Text(fmtPos(duration))
             }
@@ -195,10 +200,40 @@ struct ZoomableVideo: View {
             // small one, and the button keeps a 44pt target regardless.
             .dynamicTypeSize(...DynamicTypeSize.large)
             .foregroundStyle(.secondary)
+            if !marks.isEmpty {
+                Text(String(format: L.s("rally_of_fmt", lang), rallyIndex + 1, marks.count))
+                    .font(.caption.bold().monospacedDigit())
+                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 6)
         .padding(.bottom, 10)
+    }
+
+    /// The rally the playhead is in.
+    private var rallyIndex: Int {
+        max(0, (marks.lastIndex { $0 <= time + 0.05 }) ?? 0)
+    }
+
+    /// Back goes to this rally's start, or the one before when already near it
+    /// — the convention of every track-skip button.
+    private func skipButton(_ step: Int) -> some View {
+        Button {
+            var i = rallyIndex + step
+            if step < 0, time - marks[rallyIndex] > 1.5 { i = rallyIndex }
+            guard marks.indices.contains(i) else { return }
+            time = marks[i]
+            player.seek(to: CMTime(seconds: marks[i], preferredTimescale: 600),
+                        toleranceBefore: .zero, toleranceAfter: .zero)
+        } label: {
+            Image(systemName: step < 0 ? "backward.end.fill" : "forward.end.fill")
+                .font(.body)
+                .frame(width: 44, height: 34)
+        }
+        .foregroundStyle(Theme.primaryText)
+        .accessibilityLabel(L.s(step < 0 ? "prev_rally" : "next_rally", lang))
     }
 
     private func attach() {

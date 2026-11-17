@@ -85,6 +85,11 @@ ios/Ribatto/
                            SmartCrop은 의도적으로 시크 유지 — 파일 주석 참고
     HighlightMerger.swift  무재인코딩 병합 우선. 클립 병합·릴스가 쓴다
                            (세션 전체 "하이라이트 합본"은 2026-09-15 삭제 — 릴스와 역할이 겹쳤다. 옛 highlight.mp4는 load가 지운다)
+                           2.0(2026-11-17): "랠리만 이어 보기"(`mergeAllRallies` → rallies.mp4, **무료**)가 세션 화면의 주 버튼, 30초 릴스는 보조.
+                           완성 클립을 경기 순서로 무재인코딩 병합한다(무료는 720p+워터마크 그대로). 비율이 다른 클립은 다수 비율만 남긴다.
+                           병합기가 클립별 시작 시각을 돌려주고 재생기(`ZoomableVideo(marks:)`)가 이전·다음 랠리와 "랠리 N / M"을 보여 준다.
+                           렌더 중에 원본으로 바로 보여 주는 안은 접었다 — 4K 원본 디코딩이 인코더와 메모리를 다툰다(히어로와 같은 이유)
+                           근거: 사용자가 직접 요청한 것은 "죽은 시간 뺀 전체 경기"였고 SNS 릴스 요청은 찾지 못했다(메모리 growth-diagnosis)
     VideoProbe.swift       메타데이터 + 포스터
   Store/
     SessionStore.swift     세션 영속화 + 처리 파이프라인 (process → render). 모든 상태의 소유자
@@ -238,6 +243,7 @@ swift Tools/make_screenshots.swift <캡처폴더> <출력폴더>   # ios/ 에서
 데모 장소명은 앱 데이터의 meta.json `placeName`을 직접 고쳐 넣었다.
 캡처는 영어 UI + Debug Pro(테스트 광고 배너가 안 찍히게) + `simctl status_bar override --time 9:41`. 히어로는 `hero.jpg`로 넣는다.
 2026-10-28부터 9개 언어 세트가 `marketing/screenshots/<locale>/`에 있다(`make_screenshots.swift <캡처> <출력> <locale>`).
+2026-11-17(2.0): 맨 앞에 "랠리만" 프레임(`s7_rallies.png`, 심사 샘플 캡처)을 넣어 7장이 됐다(기존 01~06 → 02~07).
 2026-10-30(1.2.0): 히어로 · 편집기 자막(NEW 칩) · 세션 · 편집기 줌 · 릴스 · 시즌 6장(`screenshot-plan.md`). 히어로는 10-28 캡처 재사용,
 편집기 캡처는 test_import 세션 #1(가로, "MATCH POINT" 자막·줌 키를 meta.json에 직접 넣음)을 17초/21초에 세워 찍었다. 릴스 화면은 재생 중 프레임(영어 훅이 안 보이게).
 데모 데이터: sample2.mov에서 자른 5분짜리 3개를 앱 Documents/seed에 넣고 Debug 빌드를 `-seedDemo`로 띄우면 가져와 감지한다.

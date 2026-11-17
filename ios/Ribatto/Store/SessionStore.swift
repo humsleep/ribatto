@@ -754,6 +754,7 @@ final class SessionStore: ObservableObject {
         guard !isBusy(s.id), !sourceMissing(s) else { return false }
         try? fm.removeItem(at: clipsDir(s))
         try? fm.removeItem(at: dir(s).appendingPathComponent("merged.mp4"))
+        try? fm.removeItem(at: dir(s).appendingPathComponent("rallies.mp4"))
         // Unrecorded render: Apply offers to make the clips again. The record
         // moves into `partialRender` first, marked cleared, so the screen can
         // say what happened instead of "settings changed" — and Apply, with
@@ -1795,12 +1796,33 @@ final class SessionStore: ObservableObject {
             progress[session.id] = .failed(L.s("merge_mixed_frames", lang))
             return nil
         }
-        let out = dir(session).appendingPathComponent("merged.mp4")
+        return await join(chosen, as: "merged.mp4", in: session)?.url
+    }
+
+    /// Free: every finished rally back to back in match order — the whole match
+    /// without the dead time, for rewatching or sending to a partner or coach.
+    /// Returns the file, the frame it was joined in, and where each rally starts.
+    func mergeAllRallies(in session: Session) async -> (url: URL, frame: String, starts: [Double])? {
+        let ready = clips(of: session).filter(\.isReady)
+        // One track, one frame size: a clip reframed in the editor is left out
+        // rather than squeezed, and the shape most clips share wins.
+        guard let shape = Dictionary(grouping: ready, by: \.orientation)
+                .max(by: { $0.value.count < $1.value.count })?.key else { return nil }
+        let chosen = ready.filter { $0.orientation == shape }
+            .sorted { $0.segment.start < $1.segment.start }
+        guard chosen.count >= 2,
+              let joined = await join(chosen, as: "rallies.mp4", in: session) else { return nil }
+        return (joined.url, shape, joined.starts)
+    }
+
+    private func join(_ chosen: [ClipInfo], as name: String,
+                      in session: Session) async -> (url: URL, starts: [Double])? {
+        let out = dir(session).appendingPathComponent(name)
         progress[session.id] = .merge
         defer { clearProgressUnlessFailed(session.id) }
         do {
-            try await HighlightMerger.merge(clips: chosen.map(\.url), to: out)
-            return out
+            let starts = try await HighlightMerger.merge(clips: chosen.map(\.url), to: out)
+            return (out, starts)
         } catch {
             progress[session.id] = .failed(failureText(error))
             return nil

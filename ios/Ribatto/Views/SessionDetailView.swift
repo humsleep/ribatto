@@ -63,7 +63,7 @@ struct SessionDetailView: View {
     /// Every modal this screen can show, so a single .sheet drives them all.
     private enum Destination: Identifiable {
         case clip(ClipInfo)
-        case merged(URL, orientation: String?)
+        case merged(URL, orientation: String?, titleKey: String = "merged", marks: [Double] = [])
         case pro(feature: String?)
         case caption
         case targetPlayer
@@ -75,7 +75,7 @@ struct SessionDetailView: View {
         var id: String {
             switch self {
             case .clip(let c): return "clip-" + c.id
-            case .merged(let u, _): return "merged-" + u.lastPathComponent
+            case .merged(let u, _, _, _): return "merged-" + u.lastPathComponent
             case .pro(let f): return "pro-" + (f ?? "")
             case .caption: return "caption"
             case .targetPlayer: return "target-player"
@@ -410,9 +410,9 @@ struct SessionDetailView: View {
         switch dest {
         case .clip(let clip):
             ClipPlayerSheet(clip: clip)
-        case .merged(let url, let orientation):
-            HighlightPlayerSheet(url: url, name: L.s("merged", lang),
-                                 orientation: orientation)
+        case .merged(let url, let orientation, let titleKey, let marks):
+            HighlightPlayerSheet(url: url, name: L.s(titleKey, lang),
+                                 orientation: orientation, marks: marks)
         case .pro(let feature):
             ProPassView(feature: feature)
         case .caption:
@@ -1395,7 +1395,19 @@ struct SessionDetailView: View {
         }
     }
 
-    /// Joining clips is a Pro capability.
+    /// Free: the match with only the rallies left, back to back.
+    private func playAllRallies(_ session: Session) {
+        Task {
+            if let joined = await store.mergeAllRallies(in: session) {
+                destination = .merged(joined.url, orientation: joined.frame,
+                                      titleKey: "rallies_only", marks: joined.starts)
+            } else if store.progress[sessionID] == nil {
+                saveMessage = L.s("merge_failed", lang)
+            }
+        }
+    }
+
+    /// Joining chosen clips is a Pro capability.
     private func mergeBtn(_ session: Session, _ canMerge: Bool) -> some View {
         Button {
             guard pass.isPro else { offer(session) { mergeSelection(session) }; return }
@@ -1529,30 +1541,45 @@ struct SessionDetailView: View {
                     .padding(.horizontal, 16)
                     .background(Theme.surface, in: Capsule())
                     .accessibilityElement(children: .combine)
-            } else {
-                Button {
-                    let picked = reelPicks(preferringSingleRallies(ready))
-                    guard !picked.isEmpty else { return }
-                    // The rest of the match comes along switched off, so Edit
-                    // can add a rally the automatic pick left out.
-                    let taken = Set(picked.map(\.id))
-                    let rest = ready.filter { !taken.contains($0.id) }
-                        .sorted { $0.index < $1.index }
-                    destination = .reel(ReelRequest(pairs: picked.map { (session, $0) },
-                                                    pace: .hook, keepOrder: true,
-                                                    extras: rest.map { (session, $0) }))
-                } label: {
-                    // Full width, and wrapping rather than clipping to "Make a R…" on a
-                    // 4.7" screen at accessibility sizes.
-                    Label(L.s("reel_30s", lang),
-                          systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity)
+            } else if ready.count >= 2 {
+                // Leads: rewatching or sending the match without the dead time is
+                // what players asked for; the reel is the extra for social.
+                VStack(spacing: 10) {
+                    Button { playAllRallies(session) } label: {
+                        Label(L.s("rallies_only", lang), systemImage: "forward.end.alt")
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .rcPrimary()
+                    reelButton(session, ready).rcSecondary()
                 }
-                .rcPrimary()
-                .disabled(ready.isEmpty)
+            } else {
+                reelButton(session, ready).rcPrimary().disabled(ready.isEmpty)
             }
+        }
+    }
+
+    private func reelButton(_ session: Session, _ ready: [ClipInfo]) -> some View {
+        Button {
+            let picked = reelPicks(preferringSingleRallies(ready))
+            guard !picked.isEmpty else { return }
+            // The rest of the match comes along switched off, so Edit
+            // can add a rally the automatic pick left out.
+            let taken = Set(picked.map(\.id))
+            let rest = ready.filter { !taken.contains($0.id) }
+                .sorted { $0.index < $1.index }
+            destination = .reel(ReelRequest(pairs: picked.map { (session, $0) },
+                                            pace: .hook, keepOrder: true,
+                                            extras: rest.map { (session, $0) }))
+        } label: {
+            // Full width, and wrapping rather than clipping to "Make a R…" on a
+            // 4.7" screen at accessibility sizes.
+            Label(L.s("reel_30s", lang),
+                  systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
         }
     }
 

@@ -5,7 +5,9 @@ import AVFoundation
 /// falls back to a re-encode if the formats differ.
 enum HighlightMerger {
 
-    static func merge(clips: [URL], to output: URL) async throws {
+    /// Returns where each clip starts in the joined file, in seconds.
+    @discardableResult
+    static func merge(clips: [URL], to output: URL) async throws -> [Double] {
         precondition(!clips.isEmpty)
         let comp = AVMutableComposition()
         guard let vTrack = comp.addMutableTrack(
@@ -16,7 +18,9 @@ enum HighlightMerger {
         }
 
         var cursor = CMTime.zero
+        var starts: [Double] = []
         for url in clips {
+            starts.append(cursor.seconds)
             let asset = AVURLAsset(url: url)
             let duration = try await asset.load(.duration)
             let range = CMTimeRange(start: .zero, duration: duration)
@@ -43,7 +47,7 @@ enum HighlightMerger {
                 try await ClipExporter.export(session: session, to: staging)
                 try? FileManager.default.removeItem(at: output)
                 try FileManager.default.moveItem(at: staging, to: output)
-                return
+                return starts
             } catch {
                 try? FileManager.default.removeItem(at: staging)
                 continue
