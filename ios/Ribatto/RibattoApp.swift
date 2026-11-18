@@ -40,12 +40,8 @@ struct RibattoApp: App {
                                 Label(L.s("library", lang), systemImage: "rectangle.stack")
                             }
                             .tag(0)
-                        // Three tabs. An "All Clips" tab repeated what each
-                        // match already shows, filtered six ways, and was the
-                        // tab testers opened once and never again (removed
-                        // 2026-10-11). The reels the user built sit between
-                        // the matches and the numbers: they are what the app
-                        // is for.
+                        // The reels the user built sit between the matches and
+                        // the numbers: they are what the app is for.
                         ReelsView(openLibrary: { tab = 0 })
                             .tint(Theme.primaryText)
                             .tabItem {
@@ -53,6 +49,16 @@ struct RibattoApp: App {
                                       systemImage: "rectangle.portrait.on.rectangle.portrait.angled")
                             }
                             .tag(1)
+                        // Not the old "All Clips" grid (removed 2026-10-11:
+                        // it repeated each match's own grid). Monthly goals
+                        // from the user's own matches; the rallies behind
+                        // them play in a swipe feed, for watching, not managing.
+                        ChallengesView(openLibrary: { tab = 0 })
+                            .tint(Theme.primaryText)
+                            .tabItem {
+                                Label(L.s("ch_tab", lang), systemImage: "target")
+                            }
+                            .tag(3)
                         StatsView(openLibrary: { tab = 0 })
                             .tint(Theme.primaryText)
                             .tabItem {
@@ -98,6 +104,7 @@ struct RibattoApp: App {
                 store.resolveMissingPlaceNames()
                 store.backfillCaptureDates()
                 #if DEBUG
+                Challenges.selfCheck()
                 if CommandLine.arguments.contains("-diagRender") {
                     await store.runDiagnostics()
                 }
