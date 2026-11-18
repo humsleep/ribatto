@@ -135,12 +135,26 @@ var copy: [String: [[String]]] = [
               ["30 SEGUNDOS,", "O MELHOR PRIMEIRO", "Um toque cria um reel vertical com o melhor ponto primeiro. Partilhe."],
               ["A SUA ÉPOCA,", "EM NÚMEROS", "Cada ponto, cada campo. O seu vídeo nunca sai do seu iPhone."]],
 ]
+// 2.1: the Challenges tab, before the season frame.
+let challenge: [String: [String]] = [
+    "en": ["BEAT YOUR", "LAST MONTH", "Monthly goals set from your own matches. Tap one to replay the rallies behind it."],
+    "ko": ["지난달의 나를", "넘어서기", "내 경기 기록으로 매달 도전이 생깁니다. 누르면 그 랠리를 바로 봅니다."],
+    "ja": ["先月の自分を", "超える", "自分の試合記録から毎月チャレンジが生まれます。タップでそのラリーを再生。"],
+    "es": ["SUPERA TU", "MES PASADO", "Retos mensuales a partir de tus propios partidos. Toca uno para ver esos puntos."],
+    "pt": ["SUPERE SEU", "MÊS PASSADO", "Desafios mensais a partir das suas partidas. Toque em um para rever os pontos."],
+    "de": ["SCHLAG DEINEN", "LETZTEN MONAT", "Monatsziele aus deinen eigenen Matches. Tippe eins an und sieh die Ballwechsel dazu."],
+    "fr": ["BATTEZ VOTRE", "MOIS DERNIER", "Des défis mensuels tirés de vos propres matchs. Touchez-en un pour revoir les échanges."],
+    "it": ["BATTI IL TUO", "MESE SCORSO", "Sfide mensili create dalle tue partite. Toccane una per rivedere gli scambi."],
+    "zh-Hans": ["超越", "上个月的自己", "每月挑战来自你自己的比赛记录。轻点即可回看对应的回合。"],
+    "pt-PT": ["SUPERE O SEU", "MÊS PASSADO", "Desafios mensais a partir dos seus jogos. Toque num para rever os pontos."],
+]
+for (k, v) in challenge { copy[k]?.insert(v, at: 6) }
 // Storefront variants: British spelling for UK/Australia/Canada, Latin American
 // words for Mexico and the US Spanish index.
 copy["en-GB"] = copy["en"]!.map { $0.map { $0.replacingOccurrences(of: "color", with: "colour") } }
 copy["es-MX"] = copy["es"]!.map { $0.map { $0.replacingOccurrences(of: "vídeo", with: "video")
                                               .replacingOccurrences(of: "pista", with: "cancha") } }
-let files = ["s7_rallies.png", "hero.jpg", "s5_editor_text.png", "s2_session.png", "s6_editor_zoom.png", "s3_reel.png", "s4_season.png"]
+let files = ["s7_rallies.png", "hero.jpg", "s5_editor_text.png", "s2_session.png", "s6_editor_zoom.png", "s3_reel.png", "s8_challenges.png", "s4_season.png"]
 let frames: [Frame] = files.enumerated().map { i, f in
     let c = (copy[locale] ?? copy["en"]!)[i]
     return Frame(file: f, headline: [c[0], c[1]], sub: c[2], full: f == "hero.jpg")

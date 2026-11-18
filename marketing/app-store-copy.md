@@ -1,10 +1,11 @@
-# Ribatto — App Store listing copy (2.0)
+# Ribatto — App Store listing copy (2.1)
 
 Character limits are Apple's. Counts (Python `len()`, Unicode characters) are given so you can edit safely.
 Name, subtitle and keywords change only with a new version submission; promotional text can change any time.
 
 ## ASO rationale
 
+- **2.1 adds the Challenges tab; the lead does not change** (2026-11-18). "Just the rallies" stays line 1 and the promo text: it is what brings a new user in. Challenges are a reason to come back, so they get a description section (before the season one), What's New and screenshot 7. Copied from what SwingVision kept expanding in 2026 (monthly challenges, weekly goals); nothing public says how well they work.
 - **2.0 leads with "just the rallies"** (2026-11-17). The only user-written requests found were for the whole match with the dead time cut, for self-review or a coach; no one asked for social reels. Line 1 of every description and the promo text now sell that job; the reel and the editor follow. Name, subtitle and keywords are unchanged (search rank was not the bottleneck).
 - **The name carries the head term.** `Rally Clips` was a phrase nobody searches. Each name now says the sport plus what people type: "tennis highlights" (EN/DE), "테니스 영상" (KO), "テニス動画" (JA), "pádel/padel" first where it outsells tennis in search (ES, IT), "网球视频集锦" (ZH).
 - **Tennis leads; pickleball/padel are "also works"** (2026-10-30 owner decision: only tennis is measured, so ES/IT names now put tennis first and subtitles/descriptions say the paddle sports work too; badminton stays a keyword only).
@@ -42,7 +43,7 @@ Not repeated: tennis, highlights, pickleball, padel, rally, clips (name/subtitle
 New: Just the rallies. Your whole match with the dead time cut, point after point, ready to send to your partner or coach. Free, and your video never leaves your iPhone.
 ```
 
-**Description** (max 4000) — 2641 chars
+**Description** (max 4000) — 2958 chars
 ```
 90 minutes filmed. Only the rallies kept.
 Free. No subscription.
@@ -71,6 +72,9 @@ Export each rally vertical 9:16, 4:5 for the feed, or landscape 16:9.
 CAPTIONS THAT WRITE THEMSELVES
 Auto captions fill in what was detected: shot count, rank, court and date. One caption reads differently on every rally.
 
+BEAT YOUR LAST MONTH
+A Challenges tab sets this month's goals from your own matches: how many to film, how many long rallies, your longest rally to beat, minutes of rally time. No setup, no streak to lose. Tap a goal to replay the rallies behind it, or swipe through every rally you have, one full screen at a time.
+
 YOUR SEASON
 Rallies, courts, longest point and shots per rally, month by month.
 
@@ -83,14 +87,14 @@ Ribatto is free and supported by ads. Every editing tool is free. Watch one shor
 Free: unlimited imports, 720p, watermark.
 ```
 
-**What's New (2.0)** — 320 chars
+**What's New (2.1)** — 381 chars
 ```
-Watch the whole match, minus the waiting.
+Beat your last month.
 
-- Just the rallies: every rally back to back, in match order. Free.
-- Skip to the previous or next rally while you watch, with "Rally 3 of 12" on screen.
-- Send the whole match to your doubles partner or coach in one share.
-- The 30-second highlight reel is still one tap away.
+- New Challenges tab: this month's goals, set from your own matches. Matches filmed, long rallies, your longest rally to beat, minutes of rally time.
+- Tap a challenge to replay the rallies behind it.
+- Highlights: swipe through every rally from every match, one full screen at a time. The ones you haven't seen come first.
+- No setup, and no streak to lose.
 ```
 
 ---
@@ -119,7 +123,7 @@ Ribatto: 테니스 영상 하이라이트
 새 기능 '랠리만 이어 보기': 빈 시간을 뺀 경기 전체를 포인트별로 넘겨 보고, 파트너·코치에게 바로 보내세요. 무료이고, 영상은 아이폰 밖으로 나가지 않습니다.
 ```
 
-**설명** (4000자) — 1475 chars
+**설명** (4000자) — 1639 chars
 ```
 90분 경기, 랠리만 남겼습니다.
 무료, 구독 없음.
@@ -148,6 +152,9 @@ Ribatto가 타구음을 듣고 랠리를 모두 찾아, 공 줍고 걸어가고 
 알아서 채워지는 자막
 감지된 정보로 자막이 채워집니다 — 타구 수, 순위, 코트, 날짜. 자막 하나가 랠리마다 다르게 읽힙니다.
 
+지난달의 나를 넘어서기
+도전 탭이 내 경기 기록으로 이번 달 목표를 만듭니다. 찍을 경기 수, 긴 랠리 개수, 넘어설 최장 랠리, 랠리 시간. 설정할 것도, 끊길 연속 기록도 없습니다. 목표를 누르면 그 랠리를 바로 다시 보고, 모든 경기의 랠리를 한 화면에 하나씩 넘겨 볼 수도 있습니다.
+
 시즌 기록
 랠리 수, 코트, 최장 랠리, 랠리당 타구 수가 달마다 쌓입니다.
 
@@ -160,14 +167,14 @@ Ribatto는 광고로 운영되는 무료 앱이고, 편집 기능은 전부 무�
 무료: 가져오기 무제한, 720p, 워터마크.
 ```
 
-**새로운 기능 (2.0)** — 168 chars
+**새로운 기능 (2.1)** — 185 chars
 ```
-기다리는 시간 없이 경기 전체를 다시 보세요.
+지난달의 나를 넘어 보세요.
 
-- 랠리만 이어 보기: 모든 랠리를 경기 순서대로 이어서 봐요. 무료예요.
-- 보는 중에 이전·다음 랠리로 건너뛰기, 화면에 '랠리 3 / 12'.
-- 경기 전체를 복식 파트너나 코치에게 한 번에 보내기.
-- 30초 하이라이트 릴스도 그대로 탭 한 번.
+- 새 '도전' 탭: 내 경기 기록으로 이번 달 목표가 생겨요. 경기 수, 긴 랠리, 최장 랠리 넘기, 랠리 시간.
+- 도전을 누르면 그 랠리를 바로 다시 봐요.
+- 하이라이트: 모든 경기의 랠리를 한 화면에 하나씩 넘겨 봐요. 안 본 랠리가 먼저 나와요.
+- 설정할 것도, 끊길 연속 기록도 없어요.
 ```
 
 ---
@@ -195,7 +202,7 @@ Ribatto: テニス動画ハイライト
 新機能「ラリーだけ通して見る」:待ち時間を抜いた試合全体をポイントごとに見返し、パートナーやコーチにすぐ送れます。無料、動画はiPhoneから出ません。
 ```
 
-**Description** — 1332 chars
+**Description** — 1482 chars
 ```
 90分撮った試合から、ラリーだけを残す。
 無料、サブスクなし。
@@ -224,6 +231,9 @@ Ribattoは打球音を聞き取ってラリーをすべて見つけ、ボール�
 自動で埋まる字幕
 検出した内容から字幕が埋まります — 打数、順位、コート、日付。ひとつの字幕がラリーごとに違う文になります。
 
+先月の自分を超える
+「チャレンジ」タブが、自分の試合記録から今月の目標を作ります。撮る試合数、長いラリーの本数、超えたい最長ラリー、ラリー時間。設定は不要で、途切れる連続記録もありません。目標をタップするとそのラリーをすぐ見返せて、すべての試合のラリーを1画面ずつスワイプして見ることもできます。
+
 シーズンの記録
 ラリー数、コート、最長ポイント、ラリーあたりの打数を月ごとに。
 
@@ -236,14 +246,14 @@ Ribattoは広告で運営される無料アプリで、編集機能はすべて�
 無料: 取り込み無制限、720p、ウォーターマークあり。
 ```
 
-**What's New (2.0)** — 151 chars
+**What's New (2.1)** — 169 chars
 ```
-待ち時間なしで、試合全体を見返せます。
+先月の自分を超えよう。
 
-- ラリーだけ通して見る:すべてのラリーを試合の順につなげて再生。無料です。
-- 再生中に前後のラリーへスキップ、画面に「ラリー 3 / 12」。
-- 試合全体をダブルスのパートナーやコーチにまとめて送信。
-- 30秒ハイライトリールもこれまで通りワンタップ。
+- 新しい「チャレンジ」タブ:自分の試合記録から今月の目標が生まれます。試合数、長いラリー、最長ラリー更新、ラリー時間。
+- チャレンジをタップすると、そのラリーをすぐ再生。
+- ハイライト:すべての試合のラリーを1画面ずつスワイプ。まだ見ていないラリーが先に出ます。
+- 設定も、途切れる連続記録もありません。
 ```
 
 ---
@@ -270,7 +280,7 @@ bádminton,pickleball,resumen,mejores,cámara,lenta,zoom,subtítulos,cortar,part
 Nuevo: Solo los puntos. Tu partido entero sin tiempos muertos, punto a punto, listo para enviar a tu pareja o entrenador. Gratis, y tu vídeo no sale del iPhone.
 ```
 
-**Description** — 2836 chars
+**Description** — 3165 chars
 ```
 90 minutos grabados. Solo quedan los puntos.
 Gratis y sin suscripción, con el vídeo que ya grabaste.
@@ -299,6 +309,9 @@ Cada punto en vertical 9:16, 4:5 para el feed u horizontal 16:9.
 SUBTÍTULOS QUE SE ESCRIBEN SOLOS
 Se rellenan con lo detectado: golpes, posición, pista y fecha. Un mismo subtítulo se lee distinto en cada punto.
 
+SUPERA TU MES PASADO
+La pestaña Retos fija los objetivos del mes a partir de tus propios partidos: cuántos grabar, cuántos puntos largos, tu punto más largo por superar y minutos de juego. Sin configurar nada y sin rachas que perder. Toca un reto para volver a ver esos puntos, o desliza por todos tus puntos, uno por pantalla.
+
 TU TEMPORADA
 Puntos, pistas, el punto más largo y golpes por punto, mes a mes.
 
@@ -311,14 +324,14 @@ Ribatto es gratis y se financia con anuncios. Todas las herramientas de edición
 Gratis: importaciones ilimitadas, 720p, marca de agua.
 ```
 
-**What's New (2.0)** — 333 chars
+**What's New (2.1)** — 394 chars
 ```
-Vuelve a ver el partido entero, sin esperas.
+Supera tu mes pasado.
 
-- Solo los puntos: todos los puntos seguidos, en el orden del partido. Gratis.
-- Salta al punto anterior o siguiente mientras lo ves, con «Punto 3 de 12» en pantalla.
-- Envía el partido entero a tu pareja de dobles o a tu entrenador de una vez.
-- El reel de 30 segundos sigue a un toque.
+- Nueva pestaña Retos: los objetivos del mes salen de tus propios partidos. Partidos grabados, puntos largos, tu punto más largo por superar y minutos de juego.
+- Toca un reto para volver a ver esos puntos.
+- Destacados: desliza por todos los puntos de todos tus partidos, uno por pantalla. Los que no has visto van primero.
+- Sin configurar nada y sin rachas que perder.
 ```
 
 ---
@@ -346,7 +359,7 @@ badminton,pickleball,melhores,momentos,lances,câmera,lenta,zoom,legenda,cortar,
 Novo: Só os pontos. Sua partida inteira sem tempo morto, ponto a ponto, pronta para mandar para sua dupla ou professor. Grátis, e seu vídeo não sai do iPhone.
 ```
 
-**Description** — 2787 chars
+**Description** — 3122 chars
 ```
 90 minutos gravados. Só os pontos ficam.
 Grátis, sem assinatura, com o vídeo que você já gravou.
@@ -375,6 +388,9 @@ Cada rally na vertical 9:16, 4:5 para o feed ou horizontal 16:9.
 LEGENDAS QUE SE ESCREVEM SOZINHAS
 Preenchidas com o que foi detectado: batidas, posição, quadra e data. Uma legenda só se lê diferente em cada rally.
 
+SUPERE SEU MÊS PASSADO
+A aba Desafios define as metas do mês a partir das suas próprias partidas: quantas gravar, quantos pontos longos, seu ponto mais longo para superar e minutos de jogo. Sem configurar nada e sem sequência para perder. Toque em um desafio para rever esses pontos, ou deslize por todos os seus pontos, um por tela.
+
 SUA TEMPORADA
 Rallies, quadras, ponto mais longo e batidas por rally, mês a mês.
 
@@ -387,14 +403,14 @@ O Ribatto é grátis e mantido por anúncios. Todas as ferramentas de edição s
 Grátis: importações ilimitadas, 720p, marca d'água.
 ```
 
-**What's New (2.0)** — 316 chars
+**What's New (2.1)** — 395 chars
 ```
-Reveja a partida inteira, sem espera.
+Supere seu mês passado.
 
-- Só os pontos: todos os pontos em sequência, na ordem da partida. Grátis.
-- Pule para o ponto anterior ou seguinte enquanto assiste, com "Ponto 3 de 12" na tela.
-- Mande a partida inteira para sua dupla ou seu professor de uma vez.
-- O reel de 30 segundos continua a um toque.
+- Nova aba Desafios: as metas do mês saem das suas próprias partidas. Partidas gravadas, pontos longos, seu ponto mais longo para superar e minutos de jogo.
+- Toque em um desafio para rever esses pontos.
+- Destaques: deslize por todos os pontos de todas as partidas, um por tela. Os que você ainda não viu vêm primeiro.
+- Sem configurar nada e sem sequência para perder.
 ```
 
 ---
@@ -421,7 +437,7 @@ padel,pickleball,badminton,zeitlupe,zoom,untertitel,text,schneiden,kürzen,match
 Neu: Nur die Ballwechsel. Dein ganzes Match ohne Leerlauf, Punkt für Punkt, bereit für deinen Partner oder Trainer. Kostenlos, und dein Video bleibt auf dem iPhone.
 ```
 
-**Description** — 2951 chars
+**Description** — 3334 chars
 ```
 90 Minuten gefilmt. Nur die Ballwechsel bleiben.
 Kostenlos, kein Abo.
@@ -450,6 +466,9 @@ Jeder Ballwechsel hochkant 9:16, 4:5 für den Feed oder quer 16:9.
 UNTERTITEL, DIE SICH SELBST SCHREIBEN
 Sie füllen sich mit dem Erkannten: Schlagzahl, Platzierung, Platz und Datum. Ein Untertitel liest sich bei jedem Ballwechsel anders.
 
+SCHLAG DEINEN LETZTEN MONAT
+Der Tab „Challenges“ setzt die Ziele des Monats aus deinen eigenen Matches: wie viele du filmst, wie viele lange Ballwechsel, dein längster Ballwechsel zum Schlagen und Minuten Ballwechsel. Nichts einzurichten, keine Serie, die reißen kann. Tippe ein Ziel an und sieh die Ballwechsel dazu, oder wische durch alle deine Ballwechsel, einer pro Bildschirm.
+
 DEINE SAISON
 Ballwechsel, Plätze, längster Punkt und Schläge pro Ballwechsel, Monat für Monat.
 
@@ -462,14 +481,14 @@ Ribatto ist kostenlos und finanziert sich über Werbung. Alle Bearbeitungswerkze
 Kostenlos: unbegrenzt importieren, 720p, Wasserzeichen.
 ```
 
-**What's New (2.0)** — 367 chars
+**What's New (2.1)** — 438 chars
 ```
-Das ganze Match noch mal ansehen, ohne Warten.
+Schlag deinen letzten Monat.
 
-- Nur die Ballwechsel: alle Ballwechsel am Stück, in Spielreihenfolge. Kostenlos.
-- Beim Ansehen zum vorherigen oder nächsten Ballwechsel springen, mit „Ballwechsel 3 von 12“ im Bild.
-- Das ganze Match mit einem Teilen an Doppelpartner oder Trainer schicken.
-- Das 30-Sekunden-Highlight-Reel bleibt einen Tipp entfernt.
+- Neuer Tab „Challenges“: Die Ziele des Monats entstehen aus deinen eigenen Matches. Gefilmte Matches, lange Ballwechsel, dein längster Ballwechsel zum Schlagen, Minuten Ballwechsel.
+- Tippe eine Challenge an und sieh die Ballwechsel dazu.
+- Highlights: Wische durch alle Ballwechsel aus allen Matches, einer pro Bildschirm. Die ungesehenen kommen zuerst.
+- Nichts einzurichten, keine Serie, die reißen kann.
 ```
 
 ---
@@ -496,7 +515,7 @@ pickleball,badminton,temps,forts,meilleurs,points,ralenti,zoom,sous-titres,coupe
 Nouveau : Uniquement les échanges. Tout votre match sans temps morts, point par point, prêt à envoyer à votre partenaire. Gratuit, et votre vidéo reste sur l'iPhone.
 ```
 
-**Description** — 3092 chars
+**Description** — 3441 chars
 ```
 90 minutes filmées. Il ne reste que les échanges.
 Gratuit, sans abonnement, avec la vidéo que vous avez déjà.
@@ -525,6 +544,9 @@ Chaque échange en vertical 9:16, en 4:5 pour le fil ou en horizontal 16:9.
 DES SOUS-TITRES QUI S'ÉCRIVENT TOUT SEULS
 Ils se remplissent avec ce qui a été détecté : frappes, classement, court et date. Un même sous-titre se lit différemment à chaque échange.
 
+BATTEZ VOTRE MOIS DERNIER
+L'onglet Défis fixe les objectifs du mois à partir de vos propres matchs : combien en filmer, combien de longs échanges, votre plus long échange à battre et les minutes d'échanges. Rien à régler, aucune série à perdre. Touchez un défi pour revoir les échanges concernés, ou faites défiler tous vos échanges, un par écran.
+
 VOTRE SAISON
 Échanges, courts, point le plus long et frappes par échange, mois par mois.
 
@@ -537,14 +559,14 @@ Ribatto est gratuit et financé par la publicité. Tous les outils de montage so
 Gratuit : imports illimités, 720p, filigrane.
 ```
 
-**What's New (2.0)** — 359 chars
+**What's New (2.1)** — 416 chars
 ```
-Revoyez tout le match, sans attendre.
+Battez votre mois dernier.
 
-- Uniquement les échanges : tous les échanges d'affilée, dans l'ordre du match. Gratuit.
-- Passez à l'échange précédent ou suivant pendant la lecture, avec « Échange 3 sur 12 » à l'écran.
-- Envoyez tout le match à votre partenaire de double ou à votre coach en un seul partage.
-- Le reel de 30 secondes reste à un geste.
+- Nouvel onglet Défis : les objectifs du mois viennent de vos propres matchs. Matchs filmés, longs échanges, votre plus long échange à battre, minutes d'échanges.
+- Touchez un défi pour revoir les échanges concernés.
+- Temps forts : faites défiler tous les échanges de tous vos matchs, un par écran. Ceux que vous n'avez pas vus passent en premier.
+- Rien à régler, aucune série à perdre.
 ```
 
 ---
@@ -571,7 +593,7 @@ pickleball,badminton,highlights,migliori,punti,rallentatore,zoom,sottotitoli,tag
 Novità: Solo gli scambi. Tutta la partita senza tempi morti, punto per punto, pronta da mandare al compagno o al maestro. Gratis, e il video resta sull'iPhone.
 ```
 
-**Description** — 2952 chars
+**Description** — 3295 chars
 ```
 90 minuti filmati. Restano solo gli scambi.
 Gratis, senza abbonamento, dal video che hai già girato.
@@ -600,6 +622,9 @@ Ogni scambio in verticale 9:16, 4:5 per il feed o orizzontale 16:9.
 SOTTOTITOLI CHE SI SCRIVONO DA SOLI
 Si riempiono con quello che è stato rilevato: colpi, posizione, campo e data. Un solo sottotitolo si legge diverso a ogni scambio.
 
+BATTI IL TUO MESE SCORSO
+La scheda Sfide fissa gli obiettivi del mese a partire dalle tue partite: quante filmarne, quanti scambi lunghi, il tuo scambio più lungo da battere e i minuti di scambi. Niente da impostare e nessuna serie da perdere. Tocca una sfida per rivedere quegli scambi, oppure scorri tutti i tuoi scambi, uno per schermata.
+
 LA TUA STAGIONE
 Scambi, campi, punto più lungo e colpi per scambio, mese per mese.
 
@@ -612,14 +637,14 @@ Ribatto è gratis e si sostiene con la pubblicità. Tutti gli strumenti di modif
 Gratis: importazioni illimitate, 720p, filigrana.
 ```
 
-**What's New (2.0)** — 336 chars
+**What's New (2.1)** — 398 chars
 ```
-Rivedi tutta la partita, senza attese.
+Batti il tuo mese scorso.
 
-- Solo gli scambi: tutti gli scambi di fila, nell'ordine della partita. Gratis.
-- Salta allo scambio precedente o successivo mentre guardi, con «Scambio 3 di 12» sullo schermo.
-- Manda tutta la partita al tuo compagno di doppio o al maestro in una volta.
-- Il reel da 30 secondi resta a un tocco.
+- Nuova scheda Sfide: gli obiettivi del mese nascono dalle tue partite. Partite filmate, scambi lunghi, il tuo scambio più lungo da battere, minuti di scambi.
+- Tocca una sfida per rivedere quegli scambi.
+- Highlight: scorri tutti gli scambi di tutte le partite, uno per schermata. Quelli che non hai visto vengono prima.
+- Niente da impostare e nessuna serie da perdere.
 ```
 
 ---
@@ -646,7 +671,7 @@ Ribatto: 网球视频集锦剪辑
 新功能「只看回合」：去掉空档的整场比赛，一分一分地回看，直接发给搭档或教练。免费，视频不离开 iPhone。
 ```
 
-**Description** — 1007 chars
+**Description** — 1116 chars
 ```
 拍了 90 分钟，只留下回合。
 免费，无需订阅。
@@ -675,6 +700,9 @@ Ribatto 听击球声找出每一个回合，把走位、捡球和换边的时间
 自动填好的字幕
 字幕根据识别结果自动填写——击球数、排名、球场、日期。同一条字幕，在每个回合读起来都不一样。
 
+超越上个月的自己
+「挑战」标签页根据你自己的比赛记录生成本月目标：拍几场比赛、几个长回合、要打破的最长回合、回合时间。无需设置，也没有会中断的连续记录。轻点目标即可回看对应的回合，也可以一屏一个地滑动浏览所有回合。
+
 你的赛季
 回合数、球场、最长的一分、每回合击球数，按月记录。
 
@@ -687,14 +715,14 @@ Ribatto 免费使用，由广告支持，所有剪辑工具都免费。看完一
 免费版：导入次数不限，720p，带水印。
 ```
 
-**What's New (2.0)** — 110 chars
+**What's New (2.1)** — 127 chars
 ```
-不用等，整场比赛直接回看。
+超越上个月的自己。
 
-- 只看回合：所有回合按比赛顺序连着播放。免费。
-- 观看时跳到上一个或下一个回合，画面显示「第 3 / 12 回合」。
-- 整场比赛一次发给双打搭档或教练。
-- 30 秒集锦仍然一键生成。
+- 全新「挑战」标签页：本月目标来自你自己的比赛记录。比赛场数、长回合、打破最长回合、回合时间。
+- 轻点挑战，回看对应的回合。
+- 高光：一屏一个地滑动浏览所有比赛的回合，没看过的排在前面。
+- 无需设置，也没有会中断的连续记录。
 ```
 
 ---
@@ -711,7 +739,7 @@ Ribatto 免费使用，由广告支持，所有剪辑工具都免费。看完一
 
 이름·부제·키워드·프로모션 텍스트는 English (primary)와 같다. 설명과 새로운 기능만 영국식 철자로 아래 것을 쓴다.
 
-**Description** — 2643 chars
+**Description** — 2960 chars
 ```
 90 minutes filmed. Only the rallies kept.
 Free. No subscription.
@@ -740,6 +768,9 @@ Export each rally vertical 9:16, 4:5 for the feed, or landscape 16:9.
 CAPTIONS THAT WRITE THEMSELVES
 Auto captions fill in what was detected: shot count, rank, court and date. One caption reads differently on every rally.
 
+BEAT YOUR LAST MONTH
+A Challenges tab sets this month's goals from your own matches: how many to film, how many long rallies, your longest rally to beat, minutes of rally time. No setup, no streak to lose. Tap a goal to replay the rallies behind it, or swipe through every rally you have, one full screen at a time.
+
 YOUR SEASON
 Rallies, courts, longest point and shots per rally, month by month.
 
@@ -752,14 +783,14 @@ Ribatto is free and supported by ads. Every editing tool is free. Watch one shor
 Free: unlimited imports, 720p, watermark.
 ```
 
-**What's New (2.0)** — 320 chars
+**What's New (2.1)** — 381 chars
 ```
-Watch the whole match, minus the waiting.
+Beat your last month.
 
-- Just the rallies: every rally back to back, in match order. Free.
-- Skip to the previous or next rally while you watch, with "Rally 3 of 12" on screen.
-- Send the whole match to your doubles partner or coach in one share.
-- The 30-second highlight reel is still one tap away.
+- New Challenges tab: this month's goals, set from your own matches. Matches filmed, long rallies, your longest rally to beat, minutes of rally time.
+- Tap a challenge to replay the rallies behind it.
+- Highlights: swipe through every rally from every match, one full screen at a time. The ones you haven't seen come first.
+- No setup, and no streak to lose.
 ```
 
 ### Español (México)
@@ -786,7 +817,7 @@ pádel,padel,bádminton,resumen,cámara,lenta,zoom,subtítulos,recortar,editor,p
 Nuevo: Solo los puntos. Tu partido entero sin tiempos muertos, punto a punto, listo para enviar a tu pareja o entrenador. Gratis, y tu video no sale del iPhone.
 ```
 
-**Description** — 2844 chars
+**Description** — 3173 chars
 ```
 90 minutos grabados. Solo quedan los puntos.
 Gratis y sin suscripción, con el video que ya grabaste.
@@ -815,6 +846,9 @@ Cada punto en vertical 9:16, 4:5 para el feed u horizontal 16:9.
 SUBTÍTULOS QUE SE ESCRIBEN SOLOS
 Se rellenan con lo detectado: golpes, posición, cancha y fecha. Un mismo subtítulo se lee distinto en cada punto.
 
+SUPERA TU MES PASADO
+La pestaña Retos fija los objetivos del mes a partir de tus propios partidos: cuántos grabar, cuántos puntos largos, tu punto más largo por superar y minutos de juego. Sin configurar nada y sin rachas que perder. Toca un reto para volver a ver esos puntos, o desliza por todos tus puntos, uno por pantalla.
+
 TU TEMPORADA
 Puntos, canchas, el punto más largo y golpes por punto, mes a mes.
 
@@ -827,14 +861,14 @@ Ribatto es gratis y se financia con anuncios. Todas las herramientas de edición
 Gratis: importaciones ilimitadas, 720p, marca de agua.
 ```
 
-**What's New (2.0)** — 333 chars
+**What's New (2.1)** — 394 chars
 ```
-Vuelve a ver el partido entero, sin esperas.
+Supera tu mes pasado.
 
-- Solo los puntos: todos los puntos seguidos, en el orden del partido. Gratis.
-- Salta al punto anterior o siguiente mientras lo ves, con «Punto 3 de 12» en pantalla.
-- Envía el partido entero a tu pareja de dobles o a tu entrenador de una vez.
-- El reel de 30 segundos sigue a un toque.
+- Nueva pestaña Retos: los objetivos del mes salen de tus propios partidos. Partidos grabados, puntos largos, tu punto más largo por superar y minutos de juego.
+- Toca un reto para volver a ver esos puntos.
+- Destacados: desliza por todos los puntos de todos tus partidos, uno por pantalla. Los que no has visto van primero.
+- Sin configurar nada y sin rachas que perder.
 ```
 
 ### Português (Portugal)
@@ -859,7 +893,7 @@ badminton,pickleball,melhores,momentos,resumo,câmara,lenta,zoom,legendas,cortar
 Novo: Só os pontos. O seu jogo inteiro sem tempos mortos, ponto a ponto, pronto a enviar ao seu parceiro ou treinador. Grátis, e o seu vídeo não sai do iPhone.
 ```
 
-**Description** — 2806 chars
+**Description** — 3151 chars
 ```
 90 minutos gravados. Só ficam os pontos.
 Grátis, sem subscrição, com o vídeo que já gravou.
@@ -888,6 +922,9 @@ Cada ponto na vertical 9:16, 4:5 para o feed ou na horizontal 16:9.
 LEGENDAS QUE SE ESCREVEM SOZINHAS
 Preenchidas com o que foi detetado: pancadas, posição, campo e data. A mesma legenda lê-se de forma diferente em cada ponto.
 
+SUPERE O SEU MÊS PASSADO
+O separador Desafios define os objetivos do mês a partir dos seus próprios jogos: quantos gravar, quantos pontos longos, o seu ponto mais longo para superar e minutos de jogo. Sem configurar nada e sem sequências para perder. Toque num desafio para rever esses pontos, ou deslize por todos os seus pontos, um por ecrã.
+
 A SUA ÉPOCA
 Pontos, campos, ponto mais longo e pancadas por ponto, mês a mês.
 
@@ -900,14 +937,14 @@ O Ribatto é grátis e suportado por anúncios. Todas as ferramentas de edição
 Grátis: importações ilimitadas, 720p, marca de água.
 ```
 
-**What's New (2.0)** — 311 chars
+**What's New (2.1)** — 399 chars
 ```
-Reveja o jogo inteiro, sem esperas.
+Supere o seu mês passado.
 
-- Só os pontos: todos os pontos seguidos, pela ordem do jogo. Grátis.
-- Salte para o ponto anterior ou seguinte enquanto vê, com "Ponto 3 de 12" no ecrã.
-- Envie o jogo inteiro ao seu parceiro de pares ou treinador de uma só vez.
-- O reel de 30 segundos continua a um toque.
+- Novo separador Desafios: os objetivos do mês saem dos seus próprios jogos. Jogos gravados, pontos longos, o seu ponto mais longo para superar e minutos de jogo.
+- Toque num desafio para rever esses pontos.
+- Destaques: deslize por todos os pontos de todos os jogos, um por ecrã. Os que ainda não viu aparecem primeiro.
+- Sem configurar nada e sem sequências para perder.
 ```
 
 ### Français (Canada)
@@ -945,7 +982,12 @@ pt-PT·es-MX·en-GB는 pt·es·en 화면 캡처에 각자의 문구를 얹었다
 | 4 | 04_s2_session | FOUND BY SOUND | It hears every strike and cuts the dead time. Best rally first. |
 | 5 | 05_s6_editor_zoom | ZOOM IN ON THE WINNER | Zoom and pan keyframes on a real timeline. Slow the last shot to 0.5×. |
 | 6 | 06_s3_reel | 30 SECONDS, BEST FIRST | One tap makes a vertical reel, best rally first. Share it anywhere. |
-| 7 | 07_s4_season | YOUR SEASON, COUNTED | Every rally, every court. Your video never leaves your iPhone. |
+| 7 | 07_s8_challenges | BEAT YOUR LAST MONTH | Monthly goals set from your own matches. Tap one to replay the rallies behind it. |
+| 8 | 08_s4_season | YOUR SEASON, COUNTED | Every rally, every court. Your video never leaves your iPhone. |
+
+2.1(2026-11-18): 7번에 도전 탭 프레임을 넣어 8장이 됐다(시즌 07 → 08). 캡처는 데모용으로 만든 경기 기록(9~11월 8경기, meta.json만)을
+시뮬레이터에 넣어 찍고 지웠다 — 실제 사용자 데이터가 아니다. NEW 칩은 붙이지 않았다(1·3번에 이미 있다).
+4번(세션)·8번(시즌) 프레임은 다시 찍지 않았다. 아래 끝에 탭 바 윗부분이 3탭으로 살짝 걸려 있다 — 데모 경기를 다시 만들 때 같이 찍을 것.
 
 ---|---|---|---|
 | 1 | 01_hero | ONE TAP, MATCH TO REEL | Every rally found and cut vertical for Reels, Shorts and TikTok. |
