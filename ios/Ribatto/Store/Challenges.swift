@@ -27,8 +27,6 @@ struct Challenge: Identifiable {
 /// wrong when the next court is audible. Nothing is taken away for a quiet
 /// month; there is no streak to break.
 enum Challenges {
-    static let longCount = 5.0
-
     static func month(_ sessions: [Session], containing date: Date,
                       cal: Calendar = .current) -> [Challenge] {
         guard let now = cal.dateInterval(of: .month, for: date),
@@ -63,7 +61,12 @@ enum Challenges {
             threshold = min(max((lengths[lengths.count * 3 / 4] / 5).rounded() * 5, 10), 40)
         }
         let long = mine.filter { $0.seconds >= threshold }
-        out.append(Challenge(kind: .longRallies, target: longCount, value: Double(long.count),
+        // As many as last month, in fives. A fixed five was over in the first
+        // match: a quarter of anyone's rallies clear their own top-quarter bar.
+        let lastLong = Double(rallies(last).filter { $0.seconds >= threshold }.count)
+        out.append(Challenge(kind: .longRallies,
+                             target: min(max((lastLong / 5).rounded(.up) * 5, 5), 50),
+                             value: Double(long.count),
                              threshold: threshold, rallies: long.map(\.id)))
 
         // Only with a record to beat: a first month has nothing to compare to.
@@ -110,12 +113,17 @@ enum Challenges {
         assert(first.map(\.kind) == [.matches, .longRallies, .playTime], "\(first.map(\.kind))")
         assert(first[0].target == 2 && first[0].value == 1 && !first[0].done)
         assert(first[1].value == 1 && first[1].threshold == 15, "70 s block is not a rally")
+        assert(first[1].target == 5, "no last month: the floor")
         assert(first[2].target == 10)
         // With an October behind it: three matches to match, 30 s to beat.
         let oct = ["2026-10-05", "2026-10-12", "2026-10-19"].map { session($0, [30, 12]) }
         let nov = [session("2026-11-03", [31, 20]), session("2026-11-10", [9])]
         let second = month(oct + nov, containing: now, cal: cal)
         assert(second[0].target == 3 && second[0].value == 2)
+        // Seven 16 s rallies last month → ten to reach, not five.
+        let busy = month([session("2026-10-05", Array(repeating: 16, count: 7))] + nov,
+                         containing: now, cal: cal)
+        assert(busy[1].target == 10 && busy[1].value == 2, "\(busy[1].target)")
         let beat = second.first { $0.kind == .beatLongest }
         assert(beat?.target == 30 && beat?.done == true && beat?.rallies.count == 1)
         // Matching the record is not beating it.
