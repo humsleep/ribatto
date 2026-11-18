@@ -19,7 +19,7 @@
 
 ```
 ios/Ribatto/
-  RibattoApp.swift        진입점 · 온보딩 분기 · 3탭(라이브러리/릴스/시즌). "모든 클립" 탭은 2026-10-11 삭제(세션 격자와 겹쳤다)
+  RibattoApp.swift        진입점 · 온보딩 분기 · 4탭(라이브러리/릴스/도전/시즌, 태그 0/1/3/2). "모든 클립" 탭은 2026-10-11 삭제(세션 격자와 겹쳤다)
   Models.swift             Sport·Sensitivity·AspectSetting·Session·RallySegment·CaptionSettings
   L10n.swift               인앱 다국어 9종 (en 기본 / ko ja es pt de fr it zh-Hans) — 문자열은 9곳 모두 추가
                            s()는 없는 키를 영어로 폴백한다. 키 누락 검사는 세션 기록의 파서 스크립트 참고
@@ -92,6 +92,12 @@ ios/Ribatto/
                            근거: 사용자가 직접 요청한 것은 "죽은 시간 뺀 전체 경기"였고 SNS 릴스 요청은 찾지 못했다(메모리 growth-diagnosis)
     VideoProbe.swift       메타데이터 + 포스터
   Store/
+    Challenges.swift       도전 탭 로직(2.1, 2026-11-18): 내 기록에서 뽑는 이번 달 도전 3~4개 — 경기 수(지난달만큼, 2~8) · 긴 랠리 5개
+                           (기준은 과거 랠리 길이 상위 25%, 5초 단위 10~40초, 기록 20개 미만이면 15초) · 최장 랠리 넘기(이전 기록이 있을 때만) ·
+                           랠리 시간(지난달 분, 10~120분). 저장하는 것이 없다 — 지난 달 결과도 같은 함수를 그 달에 돌린 값이다.
+                           타구 수는 쓰지 않는다(옆 코트 소리로 틀린다). 시즌 탭과 같은 모집단: `playedAt`, 60초 넘는 구간 제외.
+                           연속 기록·"놓쳤어요" 없음. 지난 달 목록은 하나라도 달성한 달만 보인다("0 / 3"은 꾸중이다).
+                           Debug 실행마다 `selfCheck()` 단언. 접은 안("다음 경기" 일정·알림 탭)은 ios/PLAN_2.1_NEXT_TAB.md, 채택 근거는 ios/PLAN_2.1_CHALLENGES_TAB.md
     SessionStore.swift     세션 영속화 + 처리 파이프라인 (process → render). 모든 상태의 소유자
                            클립이 이미 있으면 재렌더는 clips.staging에 만들고 전부 끝난 뒤에 바꿔치기한다(`swapInStaged`).
                            감지 결과도 그때 함께 기록된다 — 중간에 실패하면 옛 클립과 옛 랠리가 그대로 남는다
@@ -159,6 +165,12 @@ ios/Ribatto/
                            60초 넘는 구간은 `RallySegment.looksMerged`(여러 랠리가 붙은 것) — "긴 구간" 배지, 히어로·베스트·30초 릴스 후보에서 제외(전부 길면 예외)
                            AddRallySheet(놓친 랠리 수동 추가) · PrivacyView(앱 내 개인정보 설명 — 코드 동작과 항상 일치시킬 것)
                            ReelsView: 완성된 릴스 보관함. 파일은 sessions/reels/ 에 id.mp4 + id.jpg + id.json(ReelInfo)
+                           ChallengesView(도전 탭): 요약("1 / 3 달성 · N일 남음") → 도전 행(진행 막대는 `court`, 달성은 흰 체크) → 하이라이트 버튼 → 지난 달.
+                           행을 누르면 그 숫자를 만든 랠리만 HighlightsView로 재생한다(랠리가 없는 행은 `allowsHitTesting(false)` — `.disabled`는 카드를 통째로 흐리게 한다)
+                           HighlightsView(전체 화면 cover): 완성 클립을 한 화면에 하나씩 넘겨 보는 피드. 안 본 랠리 먼저(`rc_hl_seen`), 무음 반복·탭하면 소리(`rc_hl_muted`).
+                           플레이어 하나를 보이는 쪽으로 옮긴다. 원본은 재생하지 않는다(히어로와 같은 이유). 페이지는 하단 안전영역까지 채운다 — 안 채우면 다음 장 윗부분이 비친다.
+                           "경기" 버튼은 피드를 닫고 도전 탭의 스택에 세션을 민다. cover 안에서 SessionDetailView를 밀면 그 배너 슬롯이 공용 배너를 가져가고,
+                           cover가 닫혀도 아래 탭 슬롯은 창을 떠난 적이 없어 되찾지 못한다(빈 띠가 남는다, 2026-11-18 시뮬레이터)
                            OrientationGate.swift: 세로 고정 + 재생 화면만 가로 허용
 ```
 
