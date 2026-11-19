@@ -12,7 +12,12 @@ struct EditorTimeline: View {
     @State private var handleBase: Double?
     @State private var barBase: (Double, Double)?
     @State private var keyBase: Double?
+    @State private var spanBase: (Double, Double)?
     @State private var fitted = false
+
+    private let fxH: CGFloat = 24
+    /// The effects lane appears with the first effect.
+    private var hasFX: Bool { !m.draft.spans.isEmpty || m.draft.replay != nil || m.draft.voice != nil }
 
     private let rulerH: CGFloat = 22
     private let textH: CGFloat = 30
@@ -27,6 +32,7 @@ struct EditorTimeline: View {
                 ruler(w).frame(height: rulerH)
                 textTrack(w).frame(height: textTrackHeight)
                 keyTrack(w).frame(height: keyH)
+                if hasFX { fxTrack(w).frame(height: fxH) }
                 videoTrack(w).frame(height: videoH)
             }
             .frame(width: w, alignment: .leading)
@@ -42,7 +48,7 @@ struct EditorTimeline: View {
                 m.pxPerSec = min(max(w * 0.75 / max(m.draft.end - m.draft.start, 1), 20), 400)
             }
         }
-        .frame(height: rulerH + textTrackHeight + keyH + videoH + 18)
+        .frame(height: rulerH + textTrackHeight + keyH + videoH + 18 + (hasFX ? fxH + 6 : 0))
         // One adjustable element: the parts below are reachable from the
         // panels (steppers, lists), which VoiceOver can operate.
         .accessibilityElement()
@@ -96,7 +102,7 @@ struct EditorTimeline: View {
                 let t = m.draft.start + Double(k) * sourceStep
                 let inside = t >= m.draft.start - 0.001 && t <= m.draft.end + 0.001
                 VStack(spacing: 3) {
-                    Text(k >= 0 ? timecode(Double(k) * step) : "")
+                    Text(k >= 0 && t <= m.draft.end + 0.001 ? timecode(m.clock(t)) : "")
                         .font(.caption2.monospacedDigit())
                         .foregroundStyle(inside ? Theme.secondaryText : Theme.tertiaryText.opacity(0.5))
                         .fixedSize()
@@ -271,6 +277,79 @@ struct EditorTimeline: View {
                     .offset(x: x(k.time, w) - 22)
             }
         }
+    }
+
+    // MARK: Effects
+
+    /// Slow stretches as bars, holds as pause chips, the replay as a flag
+    /// after the out point, and the added sound as a line along the bottom.
+    private func fxTrack(_ w: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
+            if let v = m.draft.voice {
+                let from = x(max(v.start, m.draft.start), w)
+                Capsule().fill(Theme.court)
+                    .frame(width: max(x(m.draft.end, w) - from, 0), height: 3)
+                    .offset(x: from, y: fxH - 3)
+                    .allowsHitTesting(false)
+            }
+            ForEach(m.draft.spans) { s in
+                let selected = m.selection == .span(s.id)
+                let hold = s.hold != nil
+                let x0 = x(s.start, w)
+                HStack(spacing: 3) {
+                    Image(systemName: hold ? "pause.fill" : "tortoise.fill").font(.system(size: 10))
+                    if !hold { Text(String(format: "%g×", s.rate)).font(.caption2.weight(.semibold)).lineLimit(1) }
+                }
+                .foregroundStyle(selected ? Theme.onAccent : Theme.primaryText)
+                .frame(width: hold ? 28 : max(x(s.end, w) - x0, 28), height: fxH - 4)
+                .background(selected ? Theme.accent : Theme.raised2, in: RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    m.selection = .span(s.id)
+                    m.tool = .fx
+                    m.scrub(to: s.start, exact: true)
+                }
+                .gesture(moveSpan(s.id))
+                .offset(x: hold ? x0 - 14 : x0, y: 0)
+            }
+            if m.draft.replay != nil {
+                Label("0.5×", systemImage: "arrow.counterclockwise")
+                    .font(.caption2.weight(.semibold)).foregroundStyle(Theme.primaryText)
+                    .padding(.horizontal, 6).frame(height: fxH - 4)
+                    .background(Theme.raised2, in: RoundedRectangle(cornerRadius: 6))
+                    .fixedSize()
+                    .offset(x: x(m.draft.end, w) + 20)
+                    .allowsHitTesting(false)
+            }
+        }
+        // The whole lane, so the offsets above are from its top-left corner:
+        // sized to its children, the sound line sat under the video strip.
+        .frame(width: w, height: fxH, alignment: .topLeading)
+        .dynamicTypeSize(...DynamicTypeSize.large)
+    }
+
+    /// Slides a slow stretch or a hold along the clip; a hold's ring goes with it.
+    private func moveSpan(_ id: UUID) -> some Gesture {
+        DragGesture(minimumDistance: 3)
+            .onChanged { v in
+                guard let i = m.draft.spans.firstIndex(where: { $0.id == id }) else { return }
+                m.pause()
+                let s = m.draft.spans[i]
+                let base = spanBase ?? (s.start, s.end)
+                spanBase = base
+                let len = base.1 - base.0
+                let start = min(max(base.0 + Double(v.translation.width / m.pxPerSec), m.draft.start),
+                                m.draft.end - max(len, 0.05))
+                for k in m.draft.marks.indices where abs(m.draft.marks[k].start - s.start) < 0.001 && s.hold != nil {
+                    m.draft.marks[k].end += start - s.start
+                    m.draft.marks[k].start = start
+                }
+                m.draft.spans[i].start = start
+                m.draft.spans[i].end = start + len
+                m.selection = .span(id)
+                m.peek(start)
+            }
+            .onEnded { _ in spanBase = nil; m.checkpoint() }
     }
 
     // MARK: Video

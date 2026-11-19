@@ -205,6 +205,199 @@ struct RallySegment: Codable, Equatable {
     /// This clip's own output shape (`OutputFrame` raw value), set in the
     /// editor. nil follows the match. Clips only: a reel keeps its own frame.
     var frame: String? = nil
+    /// Stretches played at their own rate, and moments held still. Source
+    /// seconds. Clips only, like `speed`.
+    var spans: [SpeedSpan]? = nil
+    /// Source time of a strike shown again, slowly, after the clip ends.
+    var replay: Double? = nil
+    /// Rings and arrows drawn over the picture. Source seconds.
+    var marks: [Mark]? = nil
+    /// A recorded voiceover or an imported sound, mixed over the match sound.
+    var voice: AudioClip? = nil
+    /// Pictures from the user's library laid over the clip.
+    var images: [ImageLayer]? = nil
+
+    /// Files in the session folder this rally points at.
+    var mediaFiles: Set<String> {
+        var out = Set((images ?? []).flatMap { [$0.file] + ($0.original.map { [$0] } ?? []) })
+        if let v = voice?.file { out.insert(v) }
+        return out
+    }
+}
+
+/// A picture over the clip, from `start` to `end` in source seconds. `file`
+/// is a name inside the session folder; with the background cut away,
+/// `original` keeps the picture as it was picked so the cut can be undone.
+struct ImageLayer: Codable, Equatable, Identifiable {
+    var id = UUID()
+    var file: String
+    var original: String? = nil
+    var start: Double
+    var end: Double
+    /// centre, normalized in the frame, y from the top
+    var x: Double = 0.5
+    var y: Double = 0.35
+    /// 1 is a long side of 30% of the frame's short side
+    var size: Double = 1
+    static let share: CGFloat = 0.3
+}
+
+/// A stretch of a clip played at `rate`, or — with `hold` — the frame at
+/// `start` held for that many seconds.
+struct SpeedSpan: Codable, Equatable, Identifiable {
+    var id = UUID()
+    var start: Double
+    var end: Double
+    var rate: Double = 0.5
+    var hold: Double? = nil
+}
+
+/// A ring or an arrow pointing at something, from `start` to `end`.
+struct Mark: Codable, Equatable, Identifiable {
+    enum Kind: String, Codable, CaseIterable { case ring, arrow }
+    var id = UUID()
+    var kind: Kind = .ring
+    var start: Double
+    var end: Double
+    /// centre, normalized in the frame, y from the top
+    var x: Double = 0.5
+    var y: Double = 0.5
+    /// 1 is 18% of the frame's short side
+    var size: Double = 1
+}
+
+/// Sound laid over a clip. `file` is a name inside the session's folder;
+/// `start` is the source second it begins on, so a trim keeps it in place.
+struct AudioClip: Codable, Equatable {
+    var file: String
+    var start: Double
+    var volume: Double = 1
+}
+
+/// How a line of text arrives and leaves.
+enum TextAnim: String, Codable, CaseIterable, Identifiable {
+    case fade, pop, slide
+    var id: String { rawValue }
+    /// Seconds the move in or out takes.
+    static let seconds = 0.25
+
+    /// How the line looks `sinceIn` seconds after it appears and `untilOut`
+    /// before it leaves: opacity, scale, and how far below its place it sits
+    /// as a share of its own height. One function for the encoder and the
+    /// editor's preview.
+    func state(sinceIn: Double, untilOut: Double) -> (alpha: Double, scale: Double, drop: Double) {
+        let u = min(max(min(sinceIn, untilOut) / Self.seconds, 0), 1)
+        let e = u * u * (3 - 2 * u)
+        switch self {
+        case .fade: return (e, 1, 0)
+        case .pop: return (e, 0.6 + 0.4 * e, 0)
+        case .slide: return (e, 1, (1 - e) * 0.6)
+        }
+    }
+}
+
+/// A clip's own clock: which stretch of the source plays when, and how fast.
+/// Built before encoding, so slow motion, held frames and the replay are all
+/// one composition and the encoder never knows.
+struct TimeMap: Equatable, Sendable {
+    struct Piece: Equatable, Sendable {
+        var from: Double, to: Double
+        /// Seconds this piece lasts in the finished clip.
+        var out: Double
+        /// A replay or a held frame carries no sound.
+        var silent = false
+        var isFreeze: Bool { to <= from }
+        var rate: Double { isFreeze ? 0 : (to - from) / out }
+    }
+    var pieces: [Piece] = []
+    /// Index of the replay piece, which repeats source time already shown.
+    var replayIndex: Int?
+
+    static let replayHalfSpan = 0.8
+    static let replayRate = 0.5
+
+    init(start: Double, end: Double, speed: Double = 1,
+         spans: [SpeedSpan] = [], replay: Double? = nil) {
+        let speed = min(max(speed, 0.1), 4)
+        var cursor = start
+        func play(_ a: Double, _ b: Double, _ rate: Double, silent: Bool = false) {
+            guard b - a > 0.01 else { return }
+            pieces.append(Piece(from: a, to: b, out: (b - a) / min(max(rate, 0.1), 4), silent: silent))
+        }
+        // A span the trim left outside the clip does nothing; a hold must
+        // not slide to the new in point.
+        let inside = spans.filter { $0.hold != nil ? $0.start >= start : $0.end > start }
+        for span in inside.sorted(by: { $0.start < $1.start }) {
+            let s = max(span.start, cursor)
+            guard s < end - 0.01 else { break }
+            play(cursor, s, speed)
+            cursor = s
+            if let hold = span.hold {
+                pieces.append(Piece(from: s, to: s, out: min(max(hold, 0.2), 5), silent: true))
+            } else {
+                let e = min(span.end, end)
+                guard e > s else { continue }
+                play(s, e, span.rate)
+                cursor = e
+            }
+        }
+        play(cursor, end, speed)
+        if let replay, replay >= start, replay <= end {
+            let a = max(start, replay - Self.replayHalfSpan), b = min(end, replay + Self.replayHalfSpan)
+            if b - a > 0.4 {
+                replayIndex = pieces.count
+                play(a, b, Self.replayRate, silent: true)
+            }
+        }
+    }
+
+    var duration: Double { pieces.reduce(0) { $0 + $1.out } }
+    /// One stretch at one rate: the encoder's own path handles that.
+    var isPlain: Bool { pieces.count <= 1 }
+
+    /// The source second showing at `t` seconds into the finished clip.
+    func source(at t: Double) -> Double {
+        var acc = 0.0
+        for p in pieces {
+            if t < acc + p.out || p == pieces.last {
+                let u = p.out > 0 ? min(max((t - acc) / p.out, 0), 1) : 0
+                return p.from + (p.to - p.from) * u
+            }
+            acc += p.out
+        }
+        return pieces.last?.to ?? 0
+    }
+
+    /// Where source second `s` first shows in the finished clip.
+    func out(at s: Double) -> Double {
+        var acc = 0.0
+        for (i, p) in pieces.enumerated() where i != replayIndex {
+            if !p.isFreeze, s < p.to { return acc + max(0, s - p.from) / p.rate }
+            acc += p.out
+        }
+        return acc
+    }
+
+    #if DEBUG
+    static func selfCheck() {
+        let plain = TimeMap(start: 10, end: 20, speed: 2)
+        assert(plain.isPlain && plain.duration == 5 && plain.source(at: 2.5) == 15)
+        // 10–14 at 1×, 14–15 at 0.5× (2 s), held 1.5 s at 16, replay of 18.
+        let m = TimeMap(start: 10, end: 20,
+                        spans: [SpeedSpan(start: 16, end: 16, hold: 1.5),
+                                SpeedSpan(start: 14, end: 15, rate: 0.5)], replay: 18)
+        assert(m.pieces.count == 6, "\(m.pieces.count)")
+        assert(abs(m.duration - (4 + 2 + 1 + 1.5 + 4 + 3.2)) < 1e-9, "\(m.duration)")
+        assert(abs(m.source(at: 5) - 14.5) < 1e-9 && m.source(at: 7.5) == 16)
+        assert(abs(m.out(at: 14.5) - 5) < 1e-9 && abs(m.out(at: 17) - 9.5) < 1e-9)
+        assert(abs(m.source(at: 12.5 + 1.6) - 18) < 1e-9, "replay middle is the strike")
+        assert(TimeMap(start: 10, end: 20, spans: [SpeedSpan(start: 5, end: 5, hold: 1),
+                                                   SpeedSpan(start: 6, end: 8)]).isPlain)
+        // Overlapping spans do not run time backwards.
+        let o = TimeMap(start: 0, end: 10, spans: [SpeedSpan(start: 2, end: 6), SpeedSpan(start: 4, end: 8)])
+        assert(zip(o.pieces, o.pieces.dropFirst()).allSatisfy { $0.to <= $1.from + 1e-9 })
+    }
+    #endif
 }
 
 /// One line of text on a clip, from `start` to `end` in source seconds.
@@ -213,6 +406,8 @@ struct Subtitle: Codable, Equatable, Identifiable {
     var start: Double
     var end: Double
     var caption: CaptionSettings
+    /// nil appears and leaves on a cut.
+    var anim: TextAnim? = nil
 }
 
 /// A framing at one moment of a clip. Between two keys the frame eases from
@@ -266,6 +461,17 @@ struct ClipEdit: Codable, Equatable {
     var backdrop: Backdrop = .blur
     /// Match sound: 1 as recorded, 0 silent.
     var volume: Double = 1
+    /// Manual adjustments on top of the preset, each −1…1 with 0 unchanged.
+    var brightness: Double = 0
+    var contrast: Double = 0
+    var saturation: Double = 0
+    var warmth: Double = 0
+    /// Mirrored left to right.
+    var flip: Bool = false
+
+    var adjusted: Bool { brightness != 0 || contrast != 0 || saturation != 0 || warmth != 0 }
+    /// Whether the frame needs a pass of its own for the look.
+    var changesPicture: Bool { filter != .original || adjusted || flip }
 
     init() {}
 
@@ -275,6 +481,11 @@ struct ClipEdit: Codable, Equatable {
         filter = (try? c.decodeIfPresent(ClipFilter.self, forKey: .filter)) ?? .original
         backdrop = (try? c.decodeIfPresent(Backdrop.self, forKey: .backdrop)) ?? .blur
         volume = (try? c.decodeIfPresent(Double.self, forKey: .volume)) ?? 1
+        brightness = (try? c.decodeIfPresent(Double.self, forKey: .brightness)) ?? 0
+        contrast = (try? c.decodeIfPresent(Double.self, forKey: .contrast)) ?? 0
+        saturation = (try? c.decodeIfPresent(Double.self, forKey: .saturation)) ?? 0
+        warmth = (try? c.decodeIfPresent(Double.self, forKey: .warmth)) ?? 0
+        flip = (try? c.decodeIfPresent(Bool.self, forKey: .flip)) ?? false
     }
 }
 
@@ -710,6 +921,8 @@ struct ReelInfo: Codable, Identifiable, Equatable {
     /// nil on reels made before either existed: rebuilt without them.
     var hook: Bool? = nil
     var replay: Bool? = nil
+    /// Dissolves between rallies, kept for the same reason.
+    var crossfade: Bool? = nil
     /// Each session's colour, background and sound as built, by session id,
     /// so a caption-only rebuild does not pick up a later change. nil on reels
     /// from before: rebuilt with the sessions' current settings.

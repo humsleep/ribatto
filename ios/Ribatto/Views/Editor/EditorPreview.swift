@@ -25,6 +25,8 @@ struct EditorPreview: View {
                 // Where Instagram's and Shorts' own buttons and captions sit,
                 // while text is being placed: text there is hidden once posted.
                 if m.tool == .text && m.frame == .vertical { safeZone }
+                ForEach(m.draft.images.filter { visible($0) }) { pic in pictureView(pic, in: box) }
+                ForEach(visibleMarks) { mark in markView(mark, in: box) }
                 ForEach(visibleSubtitles) { sub in subtitle(sub, in: box) }
                 if snapped {
                     Rectangle().fill(.white.opacity(0.6)).frame(width: 1)
@@ -66,9 +68,15 @@ struct EditorPreview: View {
     @ViewBuilder private func subtitle(_ sub: Subtitle, in box: CGSize) -> some View {
         if let (image, r) = m.captionLayer(sub), let i = m.draft.subtitles.firstIndex(where: { $0.id == sub.id }) {
             let selected = m.selection == .subtitle(sub.id)
+            // Arriving and leaving as the encoder draws it; whole while edited.
+            let st = selected ? nil : sub.anim?.state(sinceIn: m.time - sub.start,
+                                                      untilOut: sub.end - m.time)
             Image(decorative: image, scale: 1)
                 .resizable()
                 .frame(width: r.width * box.width, height: r.height * box.height)
+                .scaleEffect(st?.scale ?? 1)
+                .offset(y: (st?.drop ?? 0) * r.height * box.height)
+                .opacity(st?.alpha ?? 1)
                 .overlay {
                     if selected {
                         RoundedRectangle(cornerRadius: 4)
@@ -83,6 +91,96 @@ struct EditorPreview: View {
                     if selected { m.tool = .text } else { m.selection = .subtitle(sub.id); m.tool = .text }
                 }
                 .accessibilityLabel(sub.caption.text)
+                .accessibilityAddTraits(.isButton)
+        }
+    }
+
+    private func visible(_ l: ImageLayer) -> Bool {
+        (m.time >= l.start - 0.02 && m.time < l.end) || m.selection == .image(l.id)
+    }
+
+    /// A picture as the encoder places it: long side a share of the frame's
+    /// short side, centred on (x, y). Dragged and pinched like text.
+    @ViewBuilder private func pictureView(_ l: ImageLayer, in box: CGSize) -> some View {
+        if let image = m.picture(l.file), let i = m.draft.images.firstIndex(where: { $0.id == l.id }) {
+            let long = min(box.width, box.height) * ImageLayer.share * CGFloat(l.size)
+            let a = image.size.width / max(image.size.height, 1)
+            let w = a >= 1 ? long : long * a, h = a >= 1 ? long / a : long
+            let selected = m.selection == .image(l.id)
+            Image(uiImage: image)
+                .resizable()
+                .frame(width: w, height: h)
+                .overlay {
+                    if selected {
+                        RoundedRectangle(cornerRadius: 4).strokeBorder(.white, lineWidth: 1.5).padding(-4)
+                    }
+                }
+                .contentShape(Rectangle())
+                .position(x: l.x * box.width, y: l.y * box.height)
+                .gesture(DragGesture(minimumDistance: 2)
+                    .onChanged { v in
+                        guard m.draft.images.indices.contains(i) else { return }
+                        m.pause()
+                        m.selection = .image(l.id)
+                        let base = dragBase ?? (m.draft.images[i].x, m.draft.images[i].y)
+                        dragBase = base
+                        m.draft.images[i].x = min(max(base.x + v.translation.width / box.width, 0.02), 0.98)
+                        m.draft.images[i].y = min(max(base.y + v.translation.height / box.height, 0.02), 0.98)
+                    }
+                    .onEnded { _ in dragBase = nil; m.checkpoint() },
+                         including: m.tool == .zoom ? .none : .all)
+                .simultaneousGesture(MagnifyGesture()
+                    .onChanged { v in
+                        guard m.draft.images.indices.contains(i) else { return }
+                        let base = sizeBase ?? m.draft.images[i].size
+                        sizeBase = base
+                        m.draft.images[i].size = min(max(base * v.magnification, 0.3), 3)
+                    }
+                    .onEnded { _ in sizeBase = nil; m.checkpoint() },
+                                     including: m.tool == .zoom ? .none : .all)
+                .onTapGesture { m.selection = .image(l.id); m.tool = .text }
+                .accessibilityLabel(L.s("text_photo", lang))
+                .accessibilityAddTraits(.isButton)
+        }
+    }
+
+    /// Marks showing at the playhead, and the selected one always.
+    private var visibleMarks: [Mark] {
+        m.draft.marks.filter { mark in
+            (m.time >= mark.start - 0.02 && m.time < mark.end) || m.selection == .mark(mark.id)
+        }
+    }
+
+    @ViewBuilder private func markView(_ mark: Mark, in box: CGSize) -> some View {
+        if let (image, r) = m.markLayer(mark), let i = m.draft.marks.firstIndex(where: { $0.id == mark.id }) {
+            Image(decorative: image, scale: 1)
+                .resizable()
+                .frame(width: r.width * box.width, height: r.height * box.height)
+                .contentShape(Rectangle())
+                .position(x: r.midX * box.width, y: r.midY * box.height)
+                .gesture(DragGesture(minimumDistance: 2)
+                    .onChanged { v in
+                        guard m.draft.marks.indices.contains(i) else { return }
+                        m.pause()
+                        m.selection = .mark(mark.id)
+                        let base = dragBase ?? (m.draft.marks[i].x, m.draft.marks[i].y)
+                        dragBase = base
+                        m.draft.marks[i].x = min(max(base.x + v.translation.width / box.width, 0.02), 0.98)
+                        m.draft.marks[i].y = min(max(base.y + v.translation.height / box.height, 0.02), 0.98)
+                    }
+                    .onEnded { _ in dragBase = nil; m.checkpoint() },
+                         including: m.tool == .zoom ? .none : .all)
+                .simultaneousGesture(MagnifyGesture()
+                    .onChanged { v in
+                        guard m.draft.marks.indices.contains(i) else { return }
+                        let base = sizeBase ?? m.draft.marks[i].size
+                        sizeBase = base
+                        m.draft.marks[i].size = min(max(base * v.magnification, 0.5), 2.5)
+                    }
+                    .onEnded { _ in sizeBase = nil; m.checkpoint() },
+                                     including: m.tool == .zoom ? .none : .all)
+                .onTapGesture { m.selection = .mark(mark.id); m.tool = .fx }
+                .accessibilityLabel(L.s(mark.kind == .ring ? "fx_ring" : "fx_arrow", lang))
                 .accessibilityAddTraits(.isButton)
         }
     }
@@ -116,7 +214,7 @@ struct EditorPreview: View {
                 guard m.draft.subtitles.indices.contains(i) else { return }
                 let base = sizeBase ?? m.draft.subtitles[i].caption.size
                 sizeBase = base
-                m.draft.subtitles[i].caption.size = min(max(base * v.magnification, 0.6), 1.8)
+                m.draft.subtitles[i].caption.size = min(max(base * v.magnification, 0.6), 3)
             }
             .onEnded { _ in sizeBase = nil; m.checkpoint() }
     }

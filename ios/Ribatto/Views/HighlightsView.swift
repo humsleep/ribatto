@@ -196,7 +196,7 @@ struct HighlightsView: View {
                     .foregroundStyle(fav ? Theme.accent : .white)
             }
             .accessibilityAddTraits(fav ? .isSelected : [])
-            ShareLink(item: item.clip.url) {
+            ShareLink(item: item.clip.url, message: Text(L.shareMessage(lang))) {
                 action("square.and.arrow.up", L.s("share", lang))
             }
             Button { openMatch(item.session.id) } label: {

@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import UniformTypeIdentifiers
 
 /// The tool's controls, in place of the tool bar. The timeline stays visible
 /// above, so every change is seen against the clip.
@@ -9,8 +11,11 @@ struct EditorPanel: View {
     let tool: EditorTool
     let session: Session?
     var onError: (String) -> Void
-    var onDone: () -> Void
+    /// "Use on every clip": the host saves what is pending, then applies.
+    var onApplyAll: () -> Void
     @FocusState private var typing: Bool
+    @State private var importing = false
+    @State private var photo: PhotosPickerItem?
     @State private var contentHeight: CGFloat = 120
 
     var body: some View {
@@ -55,16 +60,14 @@ struct EditorPanel: View {
 
     @ViewBuilder private var content: some View {
         switch tool {
+        case .fx: fxPanel
         case .text: textPanel
         case .trim: trimPanel
         case .frame: framePanel
         case .speed: speedPanel
         case .look: lookPanel
         case .zoom: zoomPanel
-        case .sound:
-            EditorSegmented(selection: binding(\.look.volume),
-                            options: [(1.0, L.s("sound_full", lang)), (0.4, L.s("sound_low", lang)),
-                                      (0.0, L.s("sound_off", lang))])
+        case .sound: soundPanel
         case .background:
             EditorSegmented(selection: binding(\.look.backdrop),
                             options: [(Backdrop.blur, L.s("backdrop_blur", lang)),
@@ -82,16 +85,46 @@ struct EditorPanel: View {
     // MARK: Text
 
     @ViewBuilder private var textPanel: some View {
-        if let i = m.selectedSubtitle {
+        if let i = m.selectedImage {
+            let pic = Binding(get: { m.draft.images[min(i, m.draft.images.count - 1)] },
+                              set: { if m.draft.images.indices.contains(i) { m.draft.images[i] = $0 } })
+            VStack(alignment: .leading, spacing: 12) {
+                fxBack("text_photo")
+                HStack(spacing: 10) {
+                    Image(systemName: "photo").foregroundStyle(Theme.secondaryText)
+                    Slider(value: pic.size, in: 0.3...3) { editing in if !editing { m.checkpoint() } }
+                        .tint(.white)
+                        .accessibilityLabel(L.s("size", lang))
+                    Image(systemName: "photo.fill").foregroundStyle(Theme.secondaryText)
+                }
+                Button {
+                    Task { if !(await m.toggleCutout()) { onError(L.s("cutout_failed", lang)) } }
+                } label: {
+                    HStack(spacing: 8) {
+                        if m.cutting { ProgressView().tint(.white) }
+                        else { Image(systemName: "person.crop.rectangle.badge.plus") }
+                        Text(L.s("photo_cutout", lang))
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .chip(active: pic.wrappedValue.original != nil)
+                }
+                .buttonStyle(.plain)
+                .disabled(m.cutting)
+                .accessibilityAddTraits(pic.wrappedValue.original != nil ? .isSelected : [])
+                Text(L.s("photo_hint", lang)).font(.caption).foregroundStyle(Theme.tertiaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } else if let i = m.selectedSubtitle {
             let sub = Binding(get: { m.draft.subtitles[min(i, m.draft.subtitles.count - 1)] },
                               set: { if m.draft.subtitles.indices.contains(i) { m.draft.subtitles[i] = $0 } })
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 10) {
-                    TextField(L.s("ed_type_here", lang), text: sub.caption.text)
+                    // Vertical, so Return starts a second line.
+                    TextField(L.s("ed_type_here", lang), text: sub.caption.text, axis: .vertical)
+                        .lineLimit(1...3)
                         .focused($typing)
-                        .submitLabel(.done)
-                        .onSubmit { m.checkpoint() }
-                        .padding(.horizontal, 12).frame(height: 40)
+                        .onChange(of: typing) { _, on in if !on { m.checkpoint() } }
+                        .padding(.horizontal, 12).padding(.vertical, 9).frame(minHeight: 40)
                         .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 10))
                     Button(role: .destructive) { m.deleteSelection() } label: {
                         Image(systemName: "trash").frame(width: 40, height: 40)
@@ -129,9 +162,15 @@ struct EditorPanel: View {
                                           (.bar, L.s("style_bar", lang)),
                                           (.accent, L.s("style_accent", lang)),
                                           (.outline, L.s("style_outline", lang))])
+                EditorSegmented(selection: sub.anim.onSet { m.checkpoint() },
+                                options: [(TextAnim?.none, L.s("anim_none", lang)),
+                                          (.fade, L.s("anim_fade", lang)),
+                                          (.pop, L.s("anim_pop", lang)),
+                                          (.slide, L.s("anim_slide", lang))])
+                    .accessibilityLabel(L.s("anim_title", lang))
                 HStack(spacing: 10) {
                     Image(systemName: "textformat.size.smaller").foregroundStyle(Theme.secondaryText)
-                    Slider(value: sub.caption.size, in: 0.6...1.8) { editing in
+                    Slider(value: sub.caption.size, in: 0.6...3) { editing in
                         if !editing { m.checkpoint() }
                     }
                     .tint(.white)
@@ -148,7 +187,61 @@ struct EditorPanel: View {
             }
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                addButton(L.s("subs_add", lang), "plus") { m.addSubtitle(placeholder: L.s("ed_type_here", lang)) }
+                HStack(spacing: 8) {
+                    addButton(L.s("subs_add", lang), "plus") { m.addSubtitle(placeholder: L.s("ed_type_here", lang)) }
+                    addButton(L.s("text_name", lang), "person.text.rectangle") {
+                        m.addNameTag(placeholder: L.s("ed_type_here", lang))
+                    }
+                }
+                HStack(spacing: 8) {
+                    PhotosPicker(selection: $photo, matching: .images) {
+                        Label(L.s("text_photo", lang), systemImage: "photo.badge.plus")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 24)
+                    }
+                    .rcSecondary()
+                    Button {
+                        Task {
+                            do { _ = try await m.autoCaptions(lang: lang) } catch {
+                                switch error as? AutoCaptions.Failure {
+                                case .denied: onError(L.s("auto_denied", lang))
+                                case .unavailable: onError(L.s("auto_unavailable", lang))
+                                case .nothingHeard: onError(L.s("auto_none", lang))
+                                default: onError(L.s("auto_failed", lang))
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if m.captioning { ProgressView().tint(.white) }
+                            else { Image(systemName: "captions.bubble") }
+                            Text(L.s("auto_captions", lang))
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 24)
+                    }
+                    .rcSecondary()
+                    .disabled(m.captioning)
+                }
+                .onChange(of: photo) { _, item in
+                    guard let item else { return }
+                    photo = nil
+                    Task {
+                        let data = try? await item.loadTransferable(type: Data.self)
+                        if !(data.map { m.addPicture($0) } ?? false) { onError(L.s("photo_failed", lang)) }
+                    }
+                }
+                Text(L.s("auto_note", lang)).font(.caption).foregroundStyle(Theme.tertiaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                row(L.s("text_sticker", lang)) {
+                    ForEach(["🔥", "👏", "💪", "🎯", "💥", "⭐️", "😂", "😱", "🎾", "🏸", "🏓"], id: \.self) { e in
+                        Button { m.addSticker(e) } label: {
+                            Text(e).font(.title2).frame(width: 44, height: 44)
+                                .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
                 // The way in for VoiceOver, where the bars cannot be tapped.
                 ForEach(m.draft.subtitles) { s in
                     Button {
@@ -296,19 +389,223 @@ struct EditorPanel: View {
                 }
             }
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-            Button {
-                guard let session else { return }
-                if store.isBusy(session.id) { onError(L.s("busy_wait", lang)); return }
-                Task {
-                    if await store.useLookForAll(session, m.draft.look) { onDone() }
-                    else { onError(L.s("render_failed", lang)) }
+            adjust("adj_brightness", "sun.max", \.look.brightness)
+            adjust("adj_contrast", "circle.lefthalf.filled", \.look.contrast)
+            adjust("adj_saturation", "drop", \.look.saturation)
+            adjust("adj_warmth", "thermometer.medium", \.look.warmth)
+            HStack(spacing: 8) {
+                Button { binding(\.look.flip).wrappedValue.toggle() } label: {
+                    Label(L.s("adj_flip", lang), systemImage: "arrow.left.and.right.righttriangle.left.righttriangle.right")
+                        .font(.subheadline.weight(.semibold))
+                        .chip(active: m.draft.look.flip)
                 }
-            } label: {
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(m.draft.look.flip ? .isSelected : [])
+                if m.draft.look.adjusted {
+                    Button {
+                        m.draft.look.brightness = 0; m.draft.look.contrast = 0
+                        m.draft.look.saturation = 0; m.draft.look.warmth = 0
+                        m.checkpoint()
+                    } label: {
+                        Text(L.s("reset", lang)).font(.subheadline.weight(.semibold)).chip(active: false)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            Button(action: onApplyAll) {
                 Label(L.s("look_apply_all", lang), systemImage: "square.stack.3d.down.right")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.primaryText)
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    /// One manual adjustment, −1…1 around the preset.
+    private func adjust(_ title: String, _ icon: String,
+                        _ key: WritableKeyPath<EditDraft, Double>) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).foregroundStyle(Theme.secondaryText).frame(width: 22)
+                .accessibilityHidden(true)
+            Slider(value: Binding(get: { m.draft[keyPath: key] },
+                                  set: { m.draft[keyPath: key] = abs($0) < 0.04 ? 0 : $0 }),
+                   in: -1...1) { editing in if !editing { m.checkpoint() } }
+                .tint(.white)
+                .accessibilityLabel(L.s(title, lang))
+            Text(String(format: "%+.0f", m.draft[keyPath: key] * 100))
+                .font(.caption.monospacedDigit()).foregroundStyle(Theme.secondaryText)
+                .frame(width: 38, alignment: .trailing)
+                .accessibilityHidden(true)
+        }
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+    }
+
+    // MARK: Effects
+
+    /// One-tap moves aimed at the strike nearest the playhead; a move that is
+    /// selected shows its own controls instead.
+    @ViewBuilder private var fxPanel: some View {
+        if let i = m.selectedSpan {
+            let span = Binding(get: { m.draft.spans[min(i, m.draft.spans.count - 1)] },
+                               set: { if m.draft.spans.indices.contains(i) { m.draft.spans[i] = $0; m.checkpoint() } })
+            VStack(alignment: .leading, spacing: 12) {
+                fxBack(span.wrappedValue.hold != nil ? "fx_freeze" : "fx_slow")
+                if span.wrappedValue.hold != nil {
+                    EditorSegmented(selection: Binding(get: { span.wrappedValue.hold ?? 1.5 },
+                                                       set: { span.wrappedValue.hold = $0 }),
+                                    options: [1.0, 1.5, 2.0, 3.0].map { ($0, String(format: "%g s", $0)) })
+                        .accessibilityLabel(L.s("fx_hold", lang))
+                } else {
+                    EditorSegmented(selection: span.rate,
+                                    options: [(0.25, "0.25×"), (0.5, "0.5×"), (0.75, "0.75×")])
+                    Text(L.s("speed_hint", lang)).font(.caption).foregroundStyle(Theme.tertiaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        } else if let i = m.selectedMark {
+            let mark = Binding(get: { m.draft.marks[min(i, m.draft.marks.count - 1)] },
+                               set: { if m.draft.marks.indices.contains(i) { m.draft.marks[i] = $0 } })
+            VStack(alignment: .leading, spacing: 12) {
+                fxBack("fx_freeze")
+                EditorSegmented(selection: mark.kind.onSet { m.checkpoint() },
+                                options: [(Mark.Kind.ring, L.s("fx_ring", lang)),
+                                          (.arrow, L.s("fx_arrow", lang))])
+                HStack(spacing: 10) {
+                    Image(systemName: "circle.dotted").foregroundStyle(Theme.secondaryText)
+                    Slider(value: mark.size, in: 0.5...2.5) { editing in if !editing { m.checkpoint() } }
+                        .tint(.white)
+                        .accessibilityLabel(L.s("size", lang))
+                    Image(systemName: "circle").foregroundStyle(Theme.secondaryText)
+                }
+                Text(L.s("fx_drag_hint", lang)).font(.caption).foregroundStyle(Theme.tertiaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible())], spacing: 8) {
+                    fxButton("fx_punch", "plus.magnifyingglass", on: false) { m.addPunchIn() }
+                    fxButton("fx_slow", "tortoise", on: false) { m.addSlowMo() }
+                    fxButton("fx_freeze", "pause.circle", on: false) { m.addFreeze() }
+                    fxButton("fx_replay", "arrow.counterclockwise", on: m.draft.replay != nil) { m.toggleReplay() }
+                }
+                Text(L.s("fx_hint", lang)).font(.caption).foregroundStyle(Theme.tertiaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                // What is on the clip, for VoiceOver and for finding it again.
+                ForEach(m.draft.spans) { s in
+                    Button {
+                        m.selection = .span(s.id)
+                        m.scrub(to: s.start, exact: true)
+                    } label: {
+                        HStack {
+                            Image(systemName: s.hold != nil ? "pause.circle" : "tortoise")
+                            Text(L.s(s.hold != nil ? "fx_freeze" : "fx_slow", lang))
+                                .foregroundStyle(Theme.primaryText).lineLimit(1)
+                            Spacer()
+                            Text(timecode(m.clock(s.start))).monospacedDigit()
+                                .foregroundStyle(Theme.tertiaryText)
+                        }
+                        .foregroundStyle(Theme.secondaryText)
+                        .padding(.horizontal, 12).frame(minHeight: 40)
+                        .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func fxButton(_ title: String, _ icon: String, on: Bool,
+                          action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon).font(.system(size: 17))
+                    .foregroundStyle(on ? Theme.accent : Theme.primaryText)
+                Text(L.s(title, lang)).font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.primaryText)
+                    .lineLimit(2).multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if on { Image(systemName: "checkmark").font(.caption.weight(.bold)).foregroundStyle(Theme.accent) }
+            }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+            .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    /// Back to the list of moves, and the selected one's bin.
+    private func fxBack(_ title: String) -> some View {
+        HStack {
+            Button { m.selection = nil } label: {
+                Label(L.s(title, lang), systemImage: "chevron.left")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.primaryText)
+                    .frame(minHeight: 40)
+            }
+            .buttonStyle(.plain)
+            Spacer()
+            Button(role: .destructive) { m.deleteSelection() } label: {
+                Image(systemName: "trash").frame(width: 40, height: 40)
+                    .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .foregroundStyle(Theme.danger)
+            .accessibilityLabel(L.s("delete", lang))
+        }
+    }
+
+    // MARK: Sound
+
+    /// The match's own level, and one added sound: a voiceover recorded over
+    /// the clip, or a file.
+    private var soundPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            EditorSegmented(selection: binding(\.look.volume),
+                            options: [(1.0, L.s("sound_full", lang)), (0.4, L.s("sound_low", lang)),
+                                      (0.0, L.s("sound_off", lang))])
+            if m.recording {
+                Button { m.stopRecording() } label: {
+                    Label(L.s("voice_stop", lang), systemImage: "stop.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.danger)
+                        .frame(maxWidth: .infinity, minHeight: 24)
+                }
+                .rcSecondary()
+            } else if m.draft.voice != nil {
+                HStack(spacing: 10) {
+                    Image(systemName: "waveform").foregroundStyle(Theme.secondaryText)
+                    Slider(value: Binding(get: { m.draft.voice?.volume ?? 1 },
+                                          set: { m.draft.voice?.volume = $0 }),
+                           in: 0...1.5) { editing in if !editing { m.checkpoint() } }
+                        .tint(.white)
+                        .accessibilityLabel(L.s("voice_volume", lang))
+                    Button(role: .destructive) {
+                        m.pause()
+                        m.draft.voice = nil
+                        m.checkpoint()
+                    } label: {
+                        Image(systemName: "trash").frame(width: 40, height: 40)
+                            .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .foregroundStyle(Theme.danger)
+                    .accessibilityLabel(L.s("delete", lang))
+                }
+            } else {
+                HStack(spacing: 8) {
+                    addButton(L.s("voice_record", lang), "mic") {
+                        Task { if !(await m.startRecording()) { onError(L.s("voice_denied", lang)) } }
+                    }
+                    addButton(L.s("voice_import", lang), "waveform.badge.plus") { importing = true }
+                }
+                Text(L.s("voice_note", lang)).font(.caption).foregroundStyle(Theme.tertiaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.audio]) { result in
+            if case .success(let url) = result, !m.importAudio(url) {
+                onError(L.s("voice_failed", lang))
+            }
         }
     }
 
