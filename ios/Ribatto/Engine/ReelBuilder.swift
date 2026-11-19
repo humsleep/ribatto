@@ -172,6 +172,8 @@ struct ReelItem {
     var hookTitle: (line1: String, line2: String?)? = nil
     /// The session's colour, background and sound.
     var edit = ClipEdit()
+    /// The session's folder, where the clip's pictures live.
+    var folder: URL? = nil
 }
 
 /// What actually made it in, so the UI can be honest about a cap that bit.
@@ -262,6 +264,8 @@ enum ReelBuilder {
                       pro: Bool,
                       hook: Bool = false,
                       replay: Bool = false,
+                      /// Dissolve between rallies instead of cutting.
+                      crossfade: Bool = false,
                       to output: URL,
                       reload: ((UUID) async -> AVAsset?)? = nil,
                       waitUntilActive: (@MainActor () async -> Void)? = nil,
@@ -317,6 +321,7 @@ enum ReelBuilder {
             // a line written on clip #3 has to show in the reel too.
             seg.subtitles = entry.item.segment.subtitles
             seg.zoomKeys = entry.item.segment.zoomKeys
+            seg.images = entry.item.segment.images
             let part = work.appendingPathComponent(String(format: "part_%03d.mp4", i))
             let sid = entry.item.sessionID
             func attempt(_ asset: AVAsset) async throws {
@@ -330,7 +335,8 @@ enum ReelBuilder {
                                               thumbURL: nil,
                                               targetPlayer: entry.item.targetPlayer,
                                               hook: partHook,
-                                              edit: entry.item.edit)
+                                              edit: entry.item.edit,
+                                              mediaDir: entry.item.folder)
             }
             let asset = sid.flatMap { fresh[$0] } ?? entry.item.asset
             // Encoding is GPU work iOS refuses in the background. Each piece
@@ -388,7 +394,14 @@ enum ReelBuilder {
         if parts.count == 1 {
             try FileManager.default.moveItem(at: parts[0], to: output)
         } else {
-            try await HighlightMerger.merge(clips: parts, to: output)
+            // Never fatal: a reel with hard cuts beats no reel.
+            await waitUntilActive?()
+            if crossfade, let length = try? await ClipExporter.crossfaded(parts: parts, pro: pro, to: output) {
+                result.duration = length
+            } else {
+                try? FileManager.default.removeItem(at: output)
+                try await HighlightMerger.merge(clips: parts, to: output)
+            }
         }
         return result
     }

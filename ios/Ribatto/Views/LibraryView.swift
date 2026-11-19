@@ -574,13 +574,12 @@ struct LibraryView: View {
         }
     }
 
-    /// Pro while a pass runs, with the minutes left; otherwise the way in.
+    /// PRO when bought, "PASS · 1" while a pass waits; otherwise the way in.
     /// Debug builds also open the tier switch on a long press.
     private var entitlementPill: some View {
         Group {
             if pass.isPro {
-                Text(pass.active ? String(format: L.s("pass_pill_fmt", lang), pass.minutesLeft)
-                                 : L.s("pro", lang))
+                Text(pass.owned || !pass.active ? L.s("pro", lang) : L.s("pass_pill_ready", lang))
                     .font(.caption2.bold())
                     .fixedSize()      // the toolbar squeezes this to nothing otherwise
                     .padding(.horizontal, 8).padding(.vertical, 3)
@@ -615,8 +614,8 @@ struct LibraryView: View {
         } onPressingChanged: { _ in }
 #endif
         .onTapGesture {
-            // A running pass opens the sheet too — that is where it is extended.
-            if !pass.isPro || pass.active { showPro = true }
+            // Always: a buyer manages the plan there, a pass holder sees what it opens.
+            showPro = true
         }
     }
 

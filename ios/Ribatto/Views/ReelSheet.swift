@@ -70,6 +70,7 @@ struct ReelSheet: View {
     @State private var hookOn = true
     /// The last rally's winning shot again at half speed.
     @State private var replayOn = true
+    @State private var crossfadeOn = false
     @State private var building = false
     /// The automatic first build has been started. `onAppear`-style hooks fire
     /// again when a sheet over this one closes, and a second build would
@@ -126,7 +127,7 @@ struct ReelSheet: View {
     private var currentRecipe: String {
         chosen.map(\.id).joined(separator: ",") + "|" + pace.rawValue + "|"
             + frame.rawValue + "|" + String(captionOn) + "|" + String(hookOn)
-            + "|" + String(replayOn) + "|" + edited
+            + "|" + String(replayOn) + "|" + String(crossfadeOn) + "|" + edited
     }
     private var changed: Bool { builtWith != currentRecipe }
 
@@ -476,6 +477,9 @@ struct ReelSheet: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                Toggle(isOn: $crossfadeOn) {
+                    Text(L.s("reel_crossfade", lang)).font(.subheadline)
+                }
             }
             .tint(Theme.accent)
             .padding(14)
@@ -760,6 +764,7 @@ struct ReelSheet: View {
                                               preset: nil,
                                               caption: captionOn ? nil : CaptionSettings(),
                                               hook: hookOn, replay: replayOn,
+                                              crossfade: crossfadeOn,
                                               edits: [:])
         else {
             failure = pairs.first(where: { store.sourceMissing($0.session) })
@@ -863,7 +868,7 @@ struct ReelSheet: View {
     }
 
     private var showsFirstReelCard: Bool {
-        !firstCardDone && !builtOnPass && !pass.isPro && ads.showing
+        !firstCardDone && !builtOnPass && pass.canEarn && ads.showing
     }
 
     /// The first free reel only: the same reel, made again with a PASS, one
@@ -1015,7 +1020,7 @@ struct ReelResultActions: View {
         }
         .rcSecondary()
         .accessibilityValue(saved ? L.s("reel_saved", lang) : "")
-        ShareLink(item: url) { item(L.s("share", lang), "square.and.arrow.up") }
+        ShareLink(item: url, message: Text(L.shareMessage(lang))) { item(L.s("share", lang), "square.and.arrow.up") }
             .rcSecondary()
         if let edit {
             Button(action: edit.action) { item(edit.title, edit.icon) }

@@ -386,7 +386,7 @@ struct SessionDetailView: View {
                 if destination == nil, onScreen, watched, undo == nil {
                     // An ad is coming anyway: offer the rewarded one in its
                     // place. "No thanks" (or a swipe) shows the ad as before.
-                    if ads.interstitialDue, ads.rewardedReady, !pass.isPro,
+                    if ads.interstitialDue, ads.rewardedReady, pass.canEarn,
                        let session = self.session {
                         offer(session, declineKey: "offer_later_ad", title: "offer_ad_title",
                               message: "offer_ad_msg", passive: true,
@@ -1372,6 +1372,8 @@ struct SessionDetailView: View {
     }
 
     private func saveSelection(_ session: Session) {
+        // Several at once is the Pro job; one clip is always free.
+        if selection.count > 1 { pass.consume() }
         Task {
             if let saved = await store.saveClipsToPhotos(session, ids: selection) {
                 saveMessage = String(format: L.s(saved == 1 ? "saved_one_fmt" : "saved_n_fmt", lang), saved)
@@ -1382,6 +1384,7 @@ struct SessionDetailView: View {
     }
 
     private func mergeSelection(_ session: Session) {
+        pass.consume()
         Task {
             if let url = await store.mergeClips(selection, in: session) {
                 // The clips' own shape: one set in the editor may differ from the match.

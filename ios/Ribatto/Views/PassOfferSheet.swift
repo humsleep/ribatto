@@ -47,7 +47,7 @@ enum PassOfferGate {
     /// opens with `passive: true`. A non-modal line is neither capped nor
     /// counted. Without a loaded ad an offer is a button that spins.
     static func allowsPassive(pass: ProPass, ads: AdsManager) -> Bool {
-        !pass.isPro && ads.showing && ads.rewardedReady && allowsPassive
+        pass.canEarn && ads.showing && ads.rewardedReady && allowsPassive
             && Date().timeIntervalSince(ads.lastInterstitialAt) > 60
     }
 
@@ -167,6 +167,12 @@ struct PassOfferSheet: View {
         // Closed only once the rewarded ad has gone: dismissing under a
         // full-screen ad raced its own dismissal. Covers a pass opened from
         // the full sheet linked below as well.
+        // Bought from the plans sheet linked below: as good as a pass.
+        .onChange(of: pass.owned) { _, owned in
+            guard owned else { return }
+            outcome = .granted
+            dismiss()
+        }
         .onChange(of: ads.rewardedClosed) { _, _ in
             guard pass.isPro else { return }
             outcome = .granted
@@ -328,7 +334,18 @@ struct PassOfferSheet: View {
     /// The same states as the full pass sheet: watch, loading, retry after
     /// failed loads, or no ads on this build at all.
     @ViewBuilder private var primary: some View {
-        if ads.showing && ads.rewardedFailed && !ads.rewardedReady {
+        if !pass.canEarn && !pass.isPro {
+            // Today's ads are spent: Pro is the way on, "later" still works.
+            Text(L.s("pass_used_up", lang))
+                .font(.subheadline).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button { showFull = true } label: {
+                Text(L.s("pass_get", lang)).font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .rcPrimary()
+        } else if ads.showing && ads.rewardedFailed && !ads.rewardedReady {
             Button { ads.retryRewarded() } label: {
                 Label(L.s("pass_retry", lang), systemImage: "arrow.clockwise")
                     .font(.headline)
@@ -366,16 +383,12 @@ struct PassOfferSheet: View {
 
 // MARK: - "PASS is on" toast
 
-/// "PASS on · until 15:42", in the user's language and clock. Said once the
-/// reward has landed and before the interrupted action carries on, so the
-/// user knows why the next thing looks different.
+/// "PASS ready · your next job is full quality". Said once the reward has
+/// landed and before the interrupted action carries on, so the user knows why
+/// the next thing looks different.
 @MainActor
 func passOpenedText(_ pass: ProPass, _ lang: String) -> String {
-    let f = DateFormatter()
-    f.locale = L.locale(lang)
-    f.timeStyle = .short
-    f.dateStyle = .none
-    return String(format: L.s("pass_opened_fmt", lang), f.string(from: pass.until ?? Date()))
+    L.s("pass_opened", lang)
 }
 
 /// A capsule that slides in at the top for a couple of seconds.

@@ -19,8 +19,11 @@ struct DebugProSheet: View {
                 Section {
                     Button("Grant a pass") { pass.grant() }
                     Button("End pass", role: .destructive) { pass.endPass() }
+                    Button("Reset today's ad count") { pass.resetDay() }
                 } footer: {
-                    Text(pass.active ? "Pass: \(pass.minutesLeft) min left" : "No pass")
+                    Text((pass.active ? "Pass waiting" : "No pass")
+                         + " · \(pass.remainingToday) of \(ProPass.dailyLimit) ads left today"
+                         + (pass.owned ? " · bought" : ""))
                 }
             }
             .navigationTitle("Debug · Pro")

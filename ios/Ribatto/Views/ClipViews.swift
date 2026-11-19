@@ -579,7 +579,7 @@ struct ClipPlayerSheet: View {
                 // Share hands out the clip file; a preview has none.
                 if !preview {
                     ToolbarItem(placement: .topBarTrailing) {
-                        ShareLink(item: clip.url) {
+                        ShareLink(item: clip.url, message: Text(L.shareMessage(lang))) {
                             Image(systemName: "square.and.arrow.up")
                         }
                         .tint(.primary)
@@ -686,6 +686,7 @@ enum RallyPreview {
 }
 
 struct HighlightPlayerSheet: View {
+    @AppStorage("rc_lang") private var lang = "en"
     let url: URL
     let name: String
     /// The frame the session was rendered to. A vertical highlight gains
@@ -699,6 +700,13 @@ struct HighlightPlayerSheet: View {
     /// lay out: the sheet came up empty, title bar and all, and stayed empty
     /// even once the player arrived.
     @State private var player: AVPlayer
+
+    /// The file's size, said under the button: a whole match can be larger
+    /// than a messenger accepts, and the user should know before choosing one.
+    private var size: String? {
+        guard let bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize else { return nil }
+        return ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+    }
 
     init(url: URL, name: String, orientation: String? = nil, marks: [Double] = []) {
         self.url = url
@@ -716,10 +724,23 @@ struct HighlightPlayerSheet: View {
                 .allowsLandscape(!OutputFrame(orientation).isPortrait)
                 .navigationTitle("✨ \(name)")
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }
+                // Sending the match to the people in it is what this video is
+                // for, so it is a button under the picture, not an icon.
+                .safeAreaInset(edge: .bottom) {
+                    VStack(spacing: 6) {
+                        ShareLink(item: url, message: Text(L.shareMessage(lang))) {
+                            Label(L.s("share_partners", lang), systemImage: "paperplane.fill")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 50)
+                        }
+                        .rcPrimary()
+                        if let size {
+                            Text(String(format: L.s("share_size_fmt", lang), size))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
+                    .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 6)
+                    .background(Color.black.ignoresSafeArea())
                 }
         }
         .preferredColorScheme(.dark)

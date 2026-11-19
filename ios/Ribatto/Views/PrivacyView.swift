@@ -7,6 +7,7 @@ import SwiftUI
 /// it is written to match what the code actually does — including the one
 /// thing that does leave the device, the coordinate sent to Apple's geocoder
 /// in `PlaceLookup`, and the ad SDK in `AdsManager` that the free tier runs.
+/// Auto captions (`AutoCaptions`) are on-device only — `requiresOnDeviceRecognition`.
 /// If either ever changes, this screen changes with it.
 struct PrivacyView: View {
     @AppStorage("rc_lang") private var lang = "en"
@@ -14,6 +15,7 @@ struct PrivacyView: View {
 
     private static let sections = [
         ("iphone.gen3", "p_video_t", "p_video_d"),
+        ("waveform", "p_speech_t", "p_speech_d"),
         ("person.crop.circle.badge.xmark", "p_account_t", "p_account_d"),
         ("mappin.and.ellipse", "p_place_t", "p_place_d"),
         ("rectangle.badge.plus", "p_ads_t", "p_ads_d"),

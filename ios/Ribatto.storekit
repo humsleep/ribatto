@@ -1,0 +1,97 @@
+{
+  "identifier": "RIBATTO1",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "49.99",
+      "familyShareable": false,
+      "internalID": "RCLIFE01",
+      "localizations": [
+        {
+          "description": "Pro for good: no ads, original quality, no watermark, smart crop, player tracking.",
+          "displayName": "Ribatto Pro Lifetime",
+          "locale": "en_US"
+        },
+        {
+          "description": "평생 Pro: 광고 없음, 원본 화질, 워터마크 없음, 스마트 크롭, 선수 추적.",
+          "displayName": "Ribatto Pro Lifetime",
+          "locale": "ko"
+        }
+      ],
+      "productID": "com.ribatto.pro.lifetime",
+      "referenceName": "Ribatto Pro Lifetime",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "RCGRP001",
+      "localizations": [],
+      "name": "Ribatto Pro",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "2.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "RCMON001",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "No ads, original quality, no watermark, smart crop, player tracking. Renews monthly.",
+              "displayName": "Ribatto Pro Monthly",
+              "locale": "en_US"
+            },
+            {
+              "description": "광고 없음, 원본 화질, 워터마크 없음, 스마트 크롭, 선수 추적. 매월 갱신.",
+              "displayName": "Ribatto Pro Monthly",
+              "locale": "ko"
+            }
+          ],
+          "productID": "com.ribatto.pro.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Ribatto Pro Monthly",
+          "subscriptionGroupID": "RCGRP001",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "19.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "RCYEA001",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "No ads, original quality, no watermark, smart crop, player tracking. Renews yearly.",
+              "displayName": "Ribatto Pro Yearly",
+              "locale": "en_US"
+            },
+            {
+              "description": "광고 없음, 원본 화질, 워터마크 없음, 스마트 크롭, 선수 추적. 매년 갱신.",
+              "displayName": "Ribatto Pro Yearly",
+              "locale": "ko"
+            }
+          ],
+          "productID": "com.ribatto.pro.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Ribatto Pro Yearly",
+          "subscriptionGroupID": "RCGRP001",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

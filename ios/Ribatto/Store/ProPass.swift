@@ -1,25 +1,36 @@
 import Foundation
 
-/// Whether Pro is open right now.
+/// Whether Pro is open right now: bought, or one job opened by an ad.
 ///
-/// Pro is not sold. Watching a rewarded ad to the end (`AdsManager.showRewarded`)
-/// opens every Pro feature for `duration`, and nothing else does. Renders bake
-/// the tier at their start, so a pass ending mid-render changes nothing, and
-/// clips made inside the hour keep their quality after it.
+/// Buying (`PurchaseManager`) opens everything for good. Without it, a
+/// rewarded ad played to the end (`AdsManager.showRewarded`) opens Pro for the
+/// **next job** — one match render, one reel, one batch save or one merge —
+/// up to `dailyLimit` ads a day. The job takes the pass when it starts
+/// (`consume`), and renders bake the tier at their start, so what it made
+/// keeps its quality after.
 ///
-/// The end time is persisted so a relaunch inside the hour keeps Pro. It lives
-/// in UserDefaults on purpose: an hour of a free app is not worth a server
-/// round-trip to protect.
+/// It was an hour of everything until 2026-11-19. A player brings one match a
+/// day, and an hour covers it, so three hours a day was no limit at all and
+/// nobody ever reached the point where buying made sense.
+///
+/// State lives in UserDefaults on purpose: one job of a free app is not worth
+/// a server round-trip to protect.
 @MainActor
 final class ProPass: ObservableObject {
-    /// One hour covers an import, a review and a reel for a normal match; a
-    /// longer video means a second ad.
-    static let duration: TimeInterval = 60 * 60
+    /// Ads a day that can open a job, counted when the ad is watched.
+    static let dailyLimit = 3
+    /// An unused pass lapses after this, so it is not a standing ad-free mode.
+    static let lifetime: TimeInterval = 24 * 60 * 60
     private static let untilKey = "rc_pro_pass_until"
+    private static let dayKey = "rc_pass_day"
+    private static let countKey = "rc_pass_day_count"
 
-    /// End of the current pass, if one was earned.
+    /// When an unused pass lapses; nil when there is none.
     @Published private(set) var until: Date?
     @Published private(set) var isPro = false
+    /// Bought Pro, as `PurchaseManager` last reported it.
+    @Published var owned = false { didSet { if owned != oldValue { recompute() } } }
+    @Published private(set) var usedToday = 0
     private var expiry: Task<Void, Never>?
 
 #if DEBUG
@@ -31,27 +42,51 @@ final class ProPass: ObservableObject {
 
     init() {
         until = UserDefaults.standard.object(forKey: Self.untilKey) as? Date
+        usedToday = Self.count()
         recompute()
     }
 
+    /// A pass is waiting for the next job.
     var active: Bool { until.map { $0 > Date() } ?? false }
+    var remainingToday: Int { max(0, Self.dailyLimit - usedToday) }
+    /// Another ad can open a job: none waiting and today's ads not used up.
+    var canEarn: Bool { !owned && !active && remainingToday > 0 }
 
-    /// Whole minutes left, never below one while the pass is active, so the
-    /// label does not read "0 min left" for the last 59 seconds.
-    var minutesLeft: Int {
-        guard let until else { return 0 }
-        return max(1, Int((until.timeIntervalSinceNow / 60).rounded(.up)))
+    /// Start of today in the user's calendar, as a number: a formatted date
+    /// string drifted with the formatter's locale and calendar.
+    private static var today: Double { Calendar.current.startOfDay(for: Date()).timeIntervalSince1970 }
+
+    private static func count() -> Int {
+        let d = UserDefaults.standard
+        return d.double(forKey: dayKey) == today ? d.integer(forKey: countKey) : 0
     }
 
-    /// Called once the rewarded ad has played to the end. A second ad inside
-    /// the hour extends from the current end, so watching early never throws
-    /// minutes away.
+    /// Called once the rewarded ad has played to the end. A second ad while a
+    /// pass waits is not counted again: it opens nothing more.
     func grant() {
-        let from = max(Date(), until ?? Date())
-        until = from.addingTimeInterval(Self.duration)
-        UserDefaults.standard.set(until, forKey: Self.untilKey)
+        guard !active else { return }
+        usedToday = Self.count() + 1
+        let d = UserDefaults.standard
+        d.set(Self.today, forKey: Self.dayKey)
+        d.set(usedToday, forKey: Self.countKey)
+        until = Date().addingTimeInterval(Self.lifetime)
+        d.set(until, forKey: Self.untilKey)
         recompute()
     }
+
+    /// A Pro job has started on the pass. Bought Pro has nothing to take.
+    func consume() {
+        guard active, !owned else { return }
+#if DEBUG
+        if debugPro { return }
+#endif
+        until = nil
+        UserDefaults.standard.removeObject(forKey: Self.untilKey)
+        recompute()
+    }
+
+    /// The count rolls over at midnight; called whenever the sheet that shows it opens.
+    func refreshDay() { usedToday = Self.count() }
 
 #if DEBUG
     func setDebugPro(_ on: Bool) {
@@ -65,12 +100,17 @@ final class ProPass: ObservableObject {
         UserDefaults.standard.removeObject(forKey: Self.untilKey)
         recompute()
     }
+
+    func resetDay() {
+        UserDefaults.standard.set(0, forKey: Self.countKey)
+        usedToday = 0
+    }
 #endif
 
-    /// The one place `isPro` is derived. The expiry task re-runs it so the tier
-    /// drops the minute the hour is up, without a relaunch.
+    /// The one place `isPro` is derived. The expiry task re-runs it so an
+    /// unused pass drops the moment it lapses, without a relaunch.
     private func recompute() {
-        var pro = active
+        var pro = owned || active
 #if DEBUG
         if debugPro { pro = true }
 #endif

@@ -224,14 +224,56 @@ enum ClipExporter {
                        hook: ReelHook? = nil,
                        liteZoom: Bool = true,
                        edit: ClipEdit = ClipEdit(),
-                       speed: Double = 1) async throws {
+                       speed: Double = 1,
+                       /// The session's folder, where a clip's voice and picture files live.
+                       mediaDir: URL? = nil,
+                       /// Set by this function for its own second call: seconds
+                       /// into the prepared composition → source seconds.
+                       clock: (@Sendable (Double) -> Double)? = nil,
+                       /// With `clock`: the original's frame rate. A composition
+                       /// scaled in time reports an average that is not a rate.
+                       sourceFPS: Float? = nil) async throws {
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
             throw NSError(domain: "Ribatto", code: 10,
                           userInfo: [NSLocalizedDescriptionKey: "No video track"])
         }
+        // Slow motion, a held frame, the replay and a voice track are all made
+        // here, before the encoder: the source is rebuilt on the clip's own
+        // clock and exported like any other source. Text, zoom and marks stay
+        // in source seconds and are read through `clock`.
+        if clock == nil {
+            let total = try await asset.load(.duration).seconds
+            let map = TimeMap(start: max(0, segment.start), end: min(segment.end, total),
+                              speed: speed, spans: segment.spans ?? [], replay: segment.replay)
+            let voice = segment.voice.flatMap { v in
+                mediaDir.map { ($0.appendingPathComponent(v.file), v) }
+            }.flatMap { FileManager.default.fileExists(atPath: $0.0.path) ? $0 : nil }
+            if (!map.isPlain || voice != nil), map.duration > 0.05 {
+                let voiceAt = voice.map { $0.1.start >= segment.start
+                    ? map.out(at: $0.1.start) : $0.1.start - segment.start }
+                let comp = try await timeMapped(asset, map: map,
+                                                voice: voice.map { ($0.0, voiceAt ?? 0) })
+                var seg = segment
+                seg.start = 0
+                seg.end = map.duration
+                seg.spans = nil
+                seg.replay = nil
+                seg.hitTimes = segment.hitTimes?.map { map.out(at: $0) }
+                var target = targetPlayer
+                if let at = targetPlayer?.pickedAt { target?.pickedAt = map.out(at: at) }
+                try await export(source: comp, segment: seg, orientation: orientation, pro: pro,
+                                 caption: caption, smartCrop: smartCrop, clipURL: clipURL,
+                                 thumbURL: thumbURL, targetPlayer: target, hook: hook,
+                                 liteZoom: liteZoom, edit: edit, speed: 1, mediaDir: mediaDir,
+                                 clock: { map.source(at: $0) },
+                                 sourceFPS: try await track.load(.nominalFrameRate))
+                return
+            }
+        }
         let t = try await track.load(.preferredTransform)
         let natural = try await track.load(.naturalSize)
-        let fpsRaw = try await track.load(.nominalFrameRate)
+        let trackFPS = try await track.load(.nominalFrameRate)
+        let fpsRaw = sourceFPS ?? trackFPS
         let assetDuration = try await asset.load(.duration)
 
         let rect = CGRect(origin: .zero, size: natural).applying(t)
@@ -400,7 +442,8 @@ enum ClipExporter {
         comp.instructions = [inst]
 
         var audioMix: AVMutableAudioMix?
-        if let atrack = try await asset.loadTracks(withMediaType: .audio).first {
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        if let atrack = audioTracks.first {
             let ap = AVMutableAudioMixInputParameters(track: atrack)
             // Court-side audio comes off a camera's AGC quiet and flat, and on
             // a feed full of loud posts it just disappears. Lift the whole clip
@@ -417,7 +460,13 @@ enum ClipExporter {
             ap.setVolumeRamp(fromStartVolume: gain, toEndVolume: 0,
                              timeRange: CMTimeRange(start: segEnd - declickT, duration: declickT))
             let mix = AVMutableAudioMix()
-            mix.inputParameters = [ap]
+            // shortcut: a source with no sound of its own makes the voice the
+            // first track, and it takes the match's gain. Handle if it comes up.
+            mix.inputParameters = [ap] + audioTracks.dropFirst().map { extra in
+                let p = AVMutableAudioMixInputParameters(track: extra)
+                p.setVolume(Float(segment.voice?.volume ?? 1), at: .zero)
+                return p
+            }
             audioMix = mix
         }
 
@@ -439,9 +488,9 @@ enum ClipExporter {
                 : { image in ClipExporter.blurFilled(image, out: size) }
         }
         // Graded after the fill, under the watermark and caption.
-        if edit.filter != .original {
-            let filled = compose, filter = edit.filter
-            compose = { image in ClipExporter.graded(filled?(image) ?? image, filter) }
+        if edit.changesPicture {
+            let filled = compose, look = edit
+            compose = { image in ClipExporter.looked(filled?(image) ?? image, look) }
         }
         // A reel's opening title, over the first seconds only.
         var timed: Timed?
@@ -452,22 +501,39 @@ enum ClipExporter {
                 timed = hookLayer(image, startsAt: hook.startsAt)
             }
         }
-        // The user's own lines, each over its stretch. Clip clock, like the hook.
+        // The user's own lines and marks, each over its stretch — in source
+        // seconds, read through the clip's clock.
         let base = segStart.seconds
-        let lines: [(Double, Double, CIImage)] = (segment.subtitles ?? []).compactMap { sub in
+        let src: @Sendable (Double) -> Double = clock ?? { $0 + base }
+        let lines: [(Double, Double, CIImage, TextAnim?)] = (segment.subtitles ?? []).compactMap { sub in
             var c = sub.caption
             c.enabled = true
             guard c.isVisible, let image = captionImage(c, in: out) else { return nil }
-            return (sub.start - base, sub.end - base, image)
+            return (sub.start, sub.end, image, sub.anim)
         }
-        if !lines.isEmpty {
+        var marks: [(Double, Double, CIImage)] = (segment.marks ?? []).compactMap { m in
+            markImage(m, in: out).map { (m.start, m.end, $0) }
+        }
+        // Pictures sit under the rings: a ring is drawn to point at something.
+        if let mediaDir {
+            marks = (segment.images ?? []).compactMap { l in
+                pictureImage(l, file: mediaDir.appendingPathComponent(l.file), in: out)
+                    .map { (l.start, l.end, $0) }
+            } + marks
+        }
+        if !lines.isEmpty || !marks.isEmpty {
             let hookLayer = timed
             // A reel's opening title owns the screen: lines wait until it fades.
             let hookEnd = hook.map { hookShown + hookFade - $0.startsAt } ?? -.infinity
             timed = { t in
                 var layer = hookLayer?(t)
-                for (a, b, image) in lines where t >= max(a, hookEnd) && t < b {
+                let s = src(t)
+                for (a, b, image) in marks where s >= a && s < b {
                     layer = layer.map { image.composited(over: $0) } ?? image
+                }
+                for (a, b, image, anim) in lines where s >= a && s < b && t >= hookEnd {
+                    let shown = animated(image, anim, sinceIn: s - a, untilOut: b - s)
+                    layer = layer.map { shown.composited(over: $0) } ?? shown
                 }
                 return layer
             }
@@ -475,7 +541,7 @@ enum ClipExporter {
         // Keyframed zoom moves the picture only: watermark and text stay put.
         var move: Moved?
         if let keys = segment.zoomKeys, !keys.isEmpty {
-            move = { image, t in ZoomKey.at(t + base, in: keys).map { zoomed(image, $0) } ?? image }
+            move = { image, t in ZoomKey.at(src(t), in: keys).map { zoomed(image, $0) } ?? image }
         }
         do {
             try await encode(asset: asset, composition: comp, audioMix: audioMix,
@@ -539,6 +605,230 @@ enum ClipExporter {
         }
     }
 
+    // MARK: - Time map
+
+    /// The clip's source rebuilt on its own clock: each piece of the original
+    /// at its rate, a held frame as one frame stretched, the replay, and the
+    /// voice beside them at 1×.
+    private static func timeMapped(_ asset: AVAsset, map: TimeMap,
+                                   voice: (url: URL, at: Double)?) async throws -> AVMutableComposition {
+        let comp = AVMutableComposition()
+        guard let vSrc = try await asset.loadTracks(withMediaType: .video).first,
+              let v = comp.addMutableTrack(withMediaType: .video,
+                                           preferredTrackID: kCMPersistentTrackID_Invalid) else {
+            throw NSError(domain: "Ribatto", code: 10,
+                          userInfo: [NSLocalizedDescriptionKey: "No video track"])
+        }
+        v.preferredTransform = try await vSrc.load(.preferredTransform)
+        let aSrc = try await asset.loadTracks(withMediaType: .audio).first
+        let a = aSrc == nil ? nil : comp.addMutableTrack(withMediaType: .audio,
+                                                         preferredTrackID: kCMPersistentTrackID_Invalid)
+        let fps = try await vSrc.load(.nominalFrameRate)
+        // A fine timescale: at the frame rate's own, a quarter or half frame rounds away.
+        let frame = CMTime(seconds: 1 / Double(fps > 0 ? fps : 30), preferredTimescale: 60_000)
+        let total = try await asset.load(.duration)
+        func time(_ s: Double) -> CMTime { CMTime(seconds: s, preferredTimescale: 600) }
+        var cursor = CMTime.zero
+        for p in map.pieces {
+            let length = time(p.out)
+            // A hold is the middle half of ONE source frame, stretched. A whole
+            // frame's worth from an arbitrary time straddles two frames, and
+            // the picture jumps partway through the hold.
+            let held = CMTimeMultiply(frame, multiplier: Int32((p.from / frame.seconds).rounded(.down)))
+                + CMTimeMultiplyByFloat64(frame, multiplier: 0.25)
+            let src = p.isFreeze
+                ? CMTimeRange(start: min(held, total - frame),
+                              duration: CMTimeMultiplyByFloat64(frame, multiplier: 0.5))
+                : CMTimeRange(start: time(p.from), end: min(time(p.to), total))
+            guard src.duration > .zero, length > .zero else { continue }
+            try v.insertTimeRange(src, of: vSrc, at: cursor)
+            v.scaleTimeRange(CMTimeRange(start: cursor, duration: src.duration), toDuration: length)
+            if let a, let aSrc {
+                if p.silent {
+                    // Silence, not a hole: a sound track with gaps stalled the
+                    // writer in the simulator until the watchdog fired.
+                    a.insertEmptyTimeRange(CMTimeRange(start: cursor, duration: length))
+                } else {
+                    try? a.insertTimeRange(src, of: aSrc, at: cursor)
+                    a.scaleTimeRange(CMTimeRange(start: cursor, duration: src.duration), toDuration: length)
+                }
+            }
+            cursor = cursor + length
+        }
+        if let voice {
+            let va = AVURLAsset(url: voice.url)
+            if let src = try await va.loadTracks(withMediaType: .audio).first,
+               let track = comp.addMutableTrack(withMediaType: .audio,
+                                                preferredTrackID: kCMPersistentTrackID_Invalid) {
+                // A voice that began before the in point plays from where the
+                // clip now starts.
+                let skip = time(max(0, -voice.at)), at = time(max(0, voice.at))
+                let length = min(try await va.load(.duration) - skip, cursor - at)
+                if length > .zero {
+                    try? track.insertTimeRange(CMTimeRange(start: skip, duration: length), of: src, at: at)
+                }
+            }
+        }
+        return comp
+    }
+
+    /// A line of text partway through arriving or leaving.
+    static func animated(_ image: CIImage, _ anim: TextAnim?,
+                         sinceIn: Double, untilOut: Double) -> CIImage {
+        guard let anim else { return image }
+        let st = anim.state(sinceIn: sinceIn, untilOut: untilOut)
+        guard st.alpha < 0.999 else { return image }
+        let r = image.extent
+        var out = image
+        if st.scale != 1 {
+            out = out.transformed(by: CGAffineTransform(translationX: -r.midX, y: -r.midY)
+                .concatenating(CGAffineTransform(scaleX: st.scale, y: st.scale))
+                .concatenating(CGAffineTransform(translationX: r.midX, y: r.midY)))
+        }
+        if st.drop != 0 {
+            out = out.transformed(by: CGAffineTransform(translationX: 0, y: -st.drop * r.height))
+        }
+        return out.applyingFilter("CIColorMatrix", parameters: [
+            "inputRVector": CIVector(x: CGFloat(st.alpha), y: 0, z: 0, w: 0),
+            "inputGVector": CIVector(x: 0, y: CGFloat(st.alpha), z: 0, w: 0),
+            "inputBVector": CIVector(x: 0, y: 0, z: CGFloat(st.alpha), w: 0),
+            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(st.alpha)),
+        ])
+    }
+
+    /// A picture at its place and size. Decoded straight to the size it is
+    /// drawn at, so a 12-megapixel photo is never held whole.
+    static func pictureImage(_ l: ImageLayer, file: URL, in size: CGSize) -> CIImage? {
+        let long = min(size.width, size.height) * ImageLayer.share * CGFloat(min(max(l.size, 0.2), 4))
+        guard let src = CGImageSourceCreateWithURL(file as CFURL, nil),
+              let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: max(8, Int(long.rounded())),
+              ] as CFDictionary) else { return nil }
+        let w = CGFloat(cg.width), h = CGFloat(cg.height)
+        return CIImage(cgImage: cg).transformed(by: CGAffineTransform(
+            translationX: CGFloat(l.x) * size.width - w / 2,
+            y: (1 - CGFloat(l.y)) * size.height - h / 2))
+    }
+
+    /// A ring around, or an arrow pointing at, (x, y). Sun yellow with a dark
+    /// edge: it has to read on a green court and on a white sky.
+    static func markImage(_ m: Mark, in size: CGSize) -> CIImage? {
+        let d = min(size.width, size.height) * 0.18 * CGFloat(min(max(m.size, 0.4), 3))
+        let line = max(3, d * 0.08)
+        let side = Int((d * 1.6 + line * 4).rounded())
+        guard side > 0, let ctx = CGContext(data: nil, width: side, height: side,
+                                            bitsPerComponent: 8, bytesPerRow: 0,
+                                            space: CGColorSpaceCreateDeviceRGB(),
+                                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        let c = CGFloat(side) / 2
+        let path = CGMutablePath()
+        switch m.kind {
+        case .ring:
+            path.addEllipse(in: CGRect(x: c - d / 2, y: c - d / 2, width: d, height: d))
+        case .arrow:
+            // From the upper right down to the point, which is the centre.
+            let tail = CGPoint(x: c + d * 0.7, y: c + d * 0.7), head = d * 0.32
+            path.move(to: tail)
+            path.addLine(to: CGPoint(x: c, y: c))
+            path.move(to: CGPoint(x: c + head, y: c))
+            path.addLine(to: CGPoint(x: c, y: c))
+            path.addLine(to: CGPoint(x: c, y: c + head))
+        }
+        ctx.setLineCap(.round)
+        ctx.setLineJoin(.round)
+        for (width, color) in [(line + max(2, line * 0.5), CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.7)),
+                               (line, CGColor(srgbRed: 1, green: 0.78, blue: 0.2, alpha: 1))] {
+            ctx.addPath(path)
+            ctx.setLineWidth(width)
+            ctx.setStrokeColor(color)
+            ctx.strokePath()
+        }
+        guard let image = ctx.makeImage() else { return nil }
+        return CIImage(cgImage: image).transformed(by: CGAffineTransform(
+            translationX: CGFloat(m.x) * size.width - c,
+            y: (1 - CGFloat(m.y)) * size.height - c))
+    }
+
+    // MARK: - Dissolve
+
+    /// Joins finished parts with a dissolve between each pair and returns the
+    /// length. A re-encode: two parts overlap for `overlap` seconds, which a
+    /// passthrough merge cannot do.
+    static func crossfaded(parts: [URL], overlap: Double = 0.4, pro: Bool,
+                           to output: URL) async throws -> Double {
+        let comp = AVMutableComposition()
+        let none = kCMPersistentTrackID_Invalid
+        guard let vA = comp.addMutableTrack(withMediaType: .video, preferredTrackID: none),
+              let vB = comp.addMutableTrack(withMediaType: .video, preferredTrackID: none),
+              let aA = comp.addMutableTrack(withMediaType: .audio, preferredTrackID: none),
+              let aB = comp.addMutableTrack(withMediaType: .audio, preferredTrackID: none) else {
+            throw NSError(domain: "Ribatto", code: 20)
+        }
+        let lap = CMTime(seconds: overlap, preferredTimescale: 600)
+        var cursor = CMTime.zero
+        var size = CGSize.zero
+        var fps: Float = 30
+        // Parts alternate between the two tracks so neighbours can overlap.
+        var placed: [(onA: Bool, range: CMTimeRange)] = []
+        for url in parts {
+            let asset = AVURLAsset(url: url)
+            let length = try await asset.load(.duration)
+            guard let v = try await asset.loadTracks(withMediaType: .video).first else { continue }
+            if placed.isEmpty {
+                size = try await v.load(.naturalSize)
+                fps = try await v.load(.nominalFrameRate)
+            }
+            let onA = placed.count % 2 == 0
+            let range = CMTimeRange(start: .zero, duration: length)
+            try (onA ? vA : vB).insertTimeRange(range, of: v, at: cursor)
+            if let a = try await asset.loadTracks(withMediaType: .audio).first {
+                try? (onA ? aA : aB).insertTimeRange(range, of: a, at: cursor)
+            }
+            placed.append((onA, CMTimeRange(start: cursor, duration: length)))
+            cursor = cursor + length - lap
+        }
+        guard placed.count > 1, size.width > 0 else {
+            throw NSError(domain: "Ribatto", code: 21,
+                          userInfo: [NSLocalizedDescriptionKey: "Nothing to dissolve"])
+        }
+        let total = cursor + lap
+        // Track A is drawn over B, so only A's opacity moves: out as a B part
+        // arrives under it, in as it arrives over one. Sound fades on both.
+        let top = AVMutableVideoCompositionLayerInstruction(assetTrack: vA)
+        let soundA = AVMutableAudioMixInputParameters(track: aA)
+        let soundB = AVMutableAudioMixInputParameters(track: aB)
+        for (i, part) in placed.enumerated() {
+            let head = CMTimeRange(start: part.range.start, duration: lap)
+            let tail = CMTimeRange(start: part.range.end - lap, duration: lap)
+            let sound = part.onA ? soundA : soundB
+            if i > 0 {
+                if part.onA { top.setOpacityRamp(fromStartOpacity: 0, toEndOpacity: 1, timeRange: head) }
+                sound.setVolumeRamp(fromStartVolume: 0, toEndVolume: 1, timeRange: head)
+            }
+            if i < placed.count - 1 {
+                if part.onA { top.setOpacityRamp(fromStartOpacity: 1, toEndOpacity: 0, timeRange: tail) }
+                sound.setVolumeRamp(fromStartVolume: 1, toEndVolume: 0, timeRange: tail)
+            }
+        }
+        let inst = AVMutableVideoCompositionInstruction()
+        inst.timeRange = CMTimeRange(start: .zero, duration: total)
+        inst.layerInstructions = [top, AVMutableVideoCompositionLayerInstruction(assetTrack: vB)]
+        let video = AVMutableVideoComposition()
+        video.renderSize = size
+        video.frameDuration = CMTime(value: 1, timescale: CMTimeScale(max(1, Int(fps.rounded()))))
+        video.instructions = [inst]
+        let mix = AVMutableAudioMix()
+        mix.inputParameters = [soundA, soundB]
+        try? FileManager.default.removeItem(at: output)
+        try await encode(asset: comp, composition: video, audioMix: mix,
+                         timeRange: CMTimeRange(start: .zero, duration: total),
+                         out: size, fps: fps, pro: pro, overlay: nil, to: output)
+        return total.seconds
+    }
+
     // MARK: - Speed
 
     /// Plays a finished clip at `speed`. A second pass over the encoded file, so
@@ -593,6 +883,34 @@ enum ClipExporter {
             return image.applyingFilter("CIColorControls", parameters: [
                 kCIInputSaturationKey: 0, kCIInputContrastKey: 1.12])
         }
+    }
+
+    /// The whole look: the preset, the manual adjustments on top of it, and
+    /// the mirror. Shared by the encoder and the editor's preview.
+    static func looked(_ image: CIImage, _ e: ClipEdit) -> CIImage {
+        var out = graded(image, e.filter)
+        if e.adjusted {
+            // Half-range sliders: ±1 is a strong change, not a ruined frame.
+            out = out.applyingFilter("CIColorControls", parameters: [
+                kCIInputBrightnessKey: e.brightness * 0.25,
+                kCIInputContrastKey: 1 + e.contrast * 0.35,
+                kCIInputSaturationKey: 1 + e.saturation * 0.8,
+            ])
+            if e.warmth != 0 {
+                let w = CGFloat(e.warmth) * 0.12
+                out = out.applyingFilter("CIColorMatrix", parameters: [
+                    "inputRVector": CIVector(x: 1 + w, y: 0, z: 0, w: 0),
+                    "inputBVector": CIVector(x: 0, y: 0, z: 1 - w, w: 0),
+                ])
+            }
+        }
+        if e.flip {
+            let r = out.extent
+            guard !r.isInfinite else { return out }
+            out = out.transformed(by: CGAffineTransform(scaleX: -1, y: 1)
+                .concatenating(CGAffineTransform(translationX: r.minX + r.maxX, y: 0)))
+        }
+        return out
     }
 
     /// `blurFilled`'s layout over plain black.
@@ -1066,8 +1384,13 @@ enum ClipExporter {
         // ramps live in `audioMix`), and re-encoded to AAC.
         var audioOut: AVAssetReaderAudioMixOutput?
         var audioIn: AVAssetWriterInput?
-        if let track = try await asset.loadTracks(withMediaType: .audio).first {
-            let out = AVAssetReaderAudioMixOutput(audioTracks: [track], audioSettings: [
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        if !audioTracks.isEmpty {
+            // Every track of a composition this file built (match + voice);
+            // only the first of a camera file, whose second track is the same
+            // sound again in another layout.
+            let read = asset is AVComposition ? audioTracks : Array(audioTracks.prefix(1))
+            let out = AVAssetReaderAudioMixOutput(audioTracks: read, audioSettings: [
                 AVFormatIDKey: kAudioFormatLinearPCM,
                 AVLinearPCMBitDepthKey: 32,
                 AVLinearPCMIsFloatKey: true,
@@ -1159,7 +1482,7 @@ enum ClipExporter {
                 let time = CMSampleBufferGetPresentationTimeStamp(sample)
                 // Nothing to draw: the composition's own buffer goes straight
                 // through, untouched and uncopied.
-                guard overlay != nil || compose != nil || timed != nil else {
+                guard overlay != nil || compose != nil || move != nil || timed != nil else {
                     if videoIn.append(sample) { return true }
                     abort(writer.error ?? NSError(domain: "Ribatto", code: 23))
                     return false
@@ -1580,15 +1903,25 @@ enum ClipExporter {
             attrs[kCTStrokeColorAttributeName] = edge
         }
         if tracking != 0 { attrs[kCTKernAttributeName] = tracking }
-        guard let attributed = CFAttributedStringCreate(
-                nil, text as CFString, attrs as CFDictionary) else { return nil }
-        let line = CTLineCreateWithAttributedString(attributed)
-        var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
-        let textW = CGFloat(CTLineGetTypographicBounds(line, &ascent, &descent, &leading))
+        // One CTLine per line of the text, centred on each other.
+        let lines: [CTLine] = text.split(separator: "\n", omittingEmptySubsequences: false).compactMap {
+            CFAttributedStringCreate(nil, String($0) as CFString, attrs as CFDictionary)
+                .map(CTLineCreateWithAttributedString)
+        }
+        guard !lines.isEmpty else { return nil }
+        var ascent: CGFloat = 0, descent: CGFloat = 0
+        let widths: [CGFloat] = lines.map {
+            var a: CGFloat = 0, d: CGFloat = 0, l: CGFloat = 0
+            let w = CGFloat(CTLineGetTypographicBounds($0, &a, &d, &l))
+            ascent = max(ascent, a); descent = max(descent, d)
+            return w
+        }
+        let textW = widths.max() ?? 0
+        let lineH = ascent + descent, gap = fontSize * 0.12
         let padX = fontSize * (bar == nil ? 0.5 : 0.72)
         let padY = fontSize * (bar == nil ? 0.5 : 0.40)
         let boxW = Int((textW + padX * 2).rounded())
-        let boxH = Int((ascent + descent + padY * 2).rounded())
+        let boxH = Int((lineH * CGFloat(lines.count) + gap * CGFloat(lines.count - 1) + padY * 2).rounded())
         guard boxW > 0, boxH > 0,
               let ctx = CGContext(data: nil, width: boxW, height: boxH,
                                   bitsPerComponent: 8, bytesPerRow: 0,
@@ -1597,7 +1930,8 @@ enum ClipExporter {
         else { return nil }
 
         if let bar {
-            let radius = CGFloat(boxH) / 2.6
+            // One line's pill radius, however many lines there are.
+            let radius = (lineH + padY * 2).rounded() / 2.6
             ctx.addPath(CGPath(roundedRect: CGRect(x: 0, y: 0, width: boxW, height: boxH),
                                cornerWidth: radius, cornerHeight: radius, transform: nil))
             ctx.setFillColor(bar)
@@ -1606,8 +1940,12 @@ enum ClipExporter {
             ctx.setShadow(offset: .zero, blur: fontSize * 0.35,
                           color: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.85))
         }
-        ctx.textPosition = CGPoint(x: padX, y: padY + descent)
-        CTLineDraw(line, ctx)
+        for (i, line) in lines.enumerated() {
+            let fromTop = padY + ascent + (lineH + gap) * CGFloat(i)
+            ctx.textPosition = CGPoint(x: padX + (textW - widths[i]) / 2,
+                                       y: CGFloat(boxH) - fromTop)
+            CTLineDraw(line, ctx)
+        }
         return ctx.makeImage()
     }
 

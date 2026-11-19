@@ -48,6 +48,8 @@ final class SessionStore: ObservableObject {
     @Published private(set) var rendersInBackground = false
     /// Mirrored from ProPass so the export path knows the tier.
     @Published var isPro = false
+    /// Told when a job starts on the tier, so a one-job pass is spent then.
+    var onProJob: (@MainActor () -> Void)?
     /// The last delete, split or added rally, for the session screen.
     @Published var lastEdit: RallyEdit?
     /// Live progress, envelope and found rallies while a match is analysed.
@@ -1009,6 +1011,17 @@ final class SessionStore: ObservableObject {
         second.zoomKeys = seg.zoomKeys
         first.frame = seg.frame
         second.frame = seg.frame
+        // Source seconds, like the text: each half keeps what falls in it.
+        first.spans = seg.spans
+        second.spans = seg.spans
+        first.marks = seg.marks
+        second.marks = seg.marks
+        first.replay = seg.replay.flatMap { $0 < time ? $0 : nil }
+        second.replay = seg.replay.flatMap { $0 >= time ? $0 : nil }
+        first.voice = seg.voice
+        second.voice = seg.voice
+        first.images = seg.images
+        second.images = seg.images
         // The first half keeps the rally's number; the second is new.
         first.number = seg.number
         second.number = segments.nextNumber
@@ -1363,6 +1376,7 @@ final class SessionStore: ObservableObject {
         }
         let orient = s.effectiveOrientation
         let pro = isPro
+        if pro { onProJob?() }
         let caption = s.caption
         let edit = s.renderEdit
         let useSmartCrop = isPro && s.effectiveSmartCrop
@@ -1435,7 +1449,8 @@ final class SessionStore: ObservableObject {
                             // stretch to hold it.
                             thumbURL: cdir.appendingPathComponent("\(base).jpg"),
                             targetPlayer: useSmartCrop ? (perClip[String(i)] ?? target) : nil,
-                            edit: seg.edit ?? edit, speed: seg.speed ?? 1)
+                            edit: seg.edit ?? edit, speed: seg.speed ?? 1,
+                            mediaDir: dir(s))
                         #if DEBUG
                         DebugLog.write("clip \(i + 1) done state=\(UIApplication.shared.applicationState.rawValue)")
                         #endif
@@ -1546,7 +1561,10 @@ final class SessionStore: ObservableObject {
     /// `edit` is the clip's own look; nil follows the match.
     func trimClip(_ clip: ClipInfo, start: Double, end: Double, speed: Double? = nil,
                   edit: ClipEdit?, subtitles: [Subtitle]? = nil,
-                  zoomKeys: [ZoomKey]? = nil, frame: String?? = nil) async -> Bool {
+                  zoomKeys: [ZoomKey]? = nil, frame: String?? = nil,
+                  spans: [SpeedSpan]? = nil, replay: Double? = nil,
+                  marks: [Mark]? = nil, voice: AudioClip? = nil,
+                  images: [ImageLayer]? = nil) async -> Bool {
         guard let session = sessions.first(where: { $0.id == clip.sessionID }),
               var segments = session.segments,
               clip.index < segments.count,
@@ -1560,6 +1578,12 @@ final class SessionStore: ObservableObject {
         segments[clip.index].subtitles = subtitles?.isEmpty == false ? subtitles : nil
         segments[clip.index].zoomKeys = zoomKeys?.isEmpty == false ? zoomKeys : nil
         if let frame { segments[clip.index].frame = frame }
+        segments[clip.index].spans = spans?.isEmpty == false ? spans : nil
+        segments[clip.index].replay = replay
+        segments[clip.index].marks = marks?.isEmpty == false ? marks : nil
+        let oldFiles = segments[clip.index].mediaFiles
+        segments[clip.index].voice = voice
+        segments[clip.index].images = images?.isEmpty == false ? images : nil
         let segment = segments[clip.index]
         mutate(session.id) {
             $0.segments = segments
@@ -1569,7 +1593,15 @@ final class SessionStore: ObservableObject {
         // still on disk. Put the old in/out points back with it — keeping the
         // new ones showed times the video did not match, and nothing flagged
         // the clip for Apply to fix.
-        if await rerenderClip(session, segments: segments, index: clip.index) { return true }
+        if await rerenderClip(session, segments: segments, index: clip.index) {
+            // A replaced or removed voice or picture has nothing pointing at
+            // it now. A deleted rally keeps its files: undo brings it back.
+            let inUse = segments.reduce(into: Set<String>()) { $0.formUnion($1.mediaFiles) }
+            for file in oldFiles.subtracting(inUse) {
+                try? fm.removeItem(at: dir(session).appendingPathComponent(file))
+            }
+            return true
+        }
         let old = session.segments?[clip.index]
         mutate(session.id) {
             guard let old, $0.segments?[safe: clip.index] == segment else { return }
@@ -1636,7 +1668,8 @@ final class SessionStore: ObservableObject {
                 edit: segment.edit
                     ?? (session.renderedOrientation != nil ? session.renderedEdit : partial?.edit)
                     ?? ClipEdit(),
-                speed: segment.speed ?? 1)
+                speed: segment.speed ?? 1,
+                mediaDir: self.dir(session))
             syncPartialStamp(session.id)
             objectWillChange.send()
             return true
@@ -1886,6 +1919,7 @@ final class SessionStore: ObservableObject {
                    caption: CaptionSettings? = nil,
                    hook: Bool = false,
                    replay: Bool = false,
+                   crossfade: Bool = false,
                    edits: [UUID: ClipEdit] = [:],
                    createdAt: Date? = nil) async -> (url: URL, plan: ReelPlan)? {
         // The order is the caller's. ReelSheet seeds it by timeline and lets
@@ -1911,6 +1945,7 @@ final class SessionStore: ObservableObject {
         // Read once, before the first await: a pass that ends while the
         // originals load must not make half the reel Pro and half free.
         let pro = isPro
+        if pro { onProJob?() }
 
         // one asset load per session, however many clips it contributes
         var assets: [UUID: AVAsset] = [:]
@@ -1942,7 +1977,8 @@ final class SessionStore: ObservableObject {
                                       ? pair.session.target(forClip: pair.clip.index) : nil,
                                   sessionID: sid,
                                   hookTitle: hook ? hookTitle(for: pair) : nil,
-                                  edit: pair.clip.segment.edit ?? edits[sid] ?? pair.session.effectiveEdit))
+                                  edit: pair.clip.segment.edit ?? edits[sid] ?? pair.session.effectiveEdit,
+                                  folder: dir(pair.session)))
         }
         guard !items.isEmpty else {
             progress[key] = .failed(missingMessage(key))
@@ -1969,12 +2005,12 @@ final class SessionStore: ObservableObject {
                                        preset: preset?.rawValue, rallies: 0, duration: 0,
                                        place: ordered.first?.session.placeName,
                                        sources: sources, caption: caption,
-                                       hook: hook, replay: replay)
+                                       hook: hook, replay: replay, crossfade: crossfade)
             try? JSONEncoder().encode(placeholder)
                 .write(to: reelsDir.appendingPathComponent(id + ".json"), options: .atomic)
             let plan = try await ReelBuilder.build(
                 items: items, target: target, frame: frame, pace: pace,
-                pro: pro, hook: hook, replay: replay, to: out,
+                pro: pro, hook: hook, replay: replay, crossfade: crossfade, to: out,
                 reload: { [weak self] sid in
                     guard let self,
                           let s = self.sessions.first(where: { $0.id == sid }) else { return nil }
@@ -2002,6 +2038,7 @@ final class SessionStore: ObservableObject {
                                 // skipped (slow footage, a failure) is off, so
                                 // the toggle and a rebuild match the video.
                                 hook: hook, replay: replay && plan.replayed,
+                                crossfade: crossfade,
                                 edits: Dictionary(items.compactMap { i in
                                     i.sessionID.map { ($0.uuidString, i.edit) } },
                                                   uniquingKeysWith: { a, _ in a }))
@@ -2151,6 +2188,7 @@ final class SessionStore: ObservableObject {
                               caption: caption,
                               hook: reel.hook ?? false,
                               replay: reel.replay ?? false,
+                              crossfade: reel.crossfade ?? false,
                               edits: Dictionary((reel.edits ?? [:]).compactMap { k, v in
                                   UUID(uuidString: k).map { ($0, v) } },
                                                 uniquingKeysWith: { a, _ in a }),

@@ -1,5 +1,8 @@
 import AVFoundation
 import CoreImage
+import ImageIO
+import UniformTypeIdentifiers
+import Vision
 import SwiftUI
 
 /// The edit as it stands before Done. One value, so undo is a stack of them.
@@ -13,13 +16,19 @@ struct EditDraft: Equatable {
     var zoomKeys: [ZoomKey]
     /// This clip's own shape; nil follows the match.
     var frame: String?
+    var spans: [SpeedSpan] = []
+    var replay: Double?
+    var marks: [Mark] = []
+    var voice: AudioClip?
+    var images: [ImageLayer] = []
 }
 
 enum EditorTool: String, CaseIterable, Identifiable {
-    case text, trim, frame, speed, look, zoom, sound, background, split
+    case fx, text, trim, frame, speed, look, zoom, sound, background, split
     var id: String { rawValue }
     var icon: String {
         switch self {
+        case .fx: return "wand.and.stars"
         case .text: return "textformat"
         case .trim: return "timeline.selection"
         case .frame: return "aspectratio"
@@ -33,6 +42,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
     }
     var label: String {
         switch self {
+        case .fx: return "edit_fx"
         case .text: return "edit_text"
         case .trim: return "edit_trim"
         case .frame: return "edit_frame"
@@ -46,7 +56,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
     }
 }
 
-enum EditorSelection: Equatable { case subtitle(UUID), key(UUID) }
+enum EditorSelection: Equatable { case subtitle(UUID), key(UUID), span(UUID), mark(UUID), image(UUID) }
 
 /// What the preview's composition handler reads each frame. Written on the
 /// main actor and read on the video thread, so a change needs no new
@@ -100,9 +110,13 @@ final class EditorModel: ObservableObject {
         didSet {
             if draft.frame != oldValue.frame { reshape() }
             if draft.look != oldValue.look || draft.zoomKeys != oldValue.zoomKeys { pushPreview() }
-            if draft.speed != oldValue.speed || draft.look.volume != oldValue.look.volume { applyPlayback() }
+            if draft.speed != oldValue.speed || draft.look.volume != oldValue.look.volume
+                || draft.spans != oldValue.spans { applyPlayback() }
+            if draft.voice?.file != oldValue.voice?.file { loadVoice() }
+            else if let v = draft.voice { voicePlayer?.volume = Float(v.volume) }
         }
     }
+    @Published private(set) var recording = false
     @Published var time: Double
     @Published var playing = false
     @Published var tool: EditorTool?
@@ -125,6 +139,25 @@ final class EditorModel: ObservableObject {
     private var seeking = false
     private var pendingSeek: (Double, Bool)?
     private var captionCache: [UUID: (CaptionSettings, CGImage, CGRect)] = [:]
+    private var markCache: [String: CGImage] = [:]
+    // Playback of the clip's own clock: a hold in progress, the replay, and
+    // the last source time a tick saw, so a hold is taken once as it passes.
+    private var holding = false
+    private var replaying = false
+    private var lastTick = 0.0
+    private var holdTask: Task<Void, Never>?
+    // The added sound: its player, the recorder, and the files this editing
+    // session made, removed on the way out unless the clip kept one.
+    private var voicePlayer: AVAudioPlayer?
+    private var recorder: AVAudioRecorder?
+    private var recordedAt = 0.0
+    private var folder: URL?
+    private var madeFiles: [String] = []
+    /// Files the stored clip points at, which leaving must not remove.
+    private var kept: Set<String> = []
+    private var pictures: [String: UIImage] = [:]
+    @Published private(set) var cutting = false
+    @Published private(set) var captioning = false
     static let thumbCount = 24
 
     init(clip: ClipInfo, session: Session?, minClip: Double) {
@@ -145,7 +178,8 @@ final class EditorModel: ObservableObject {
         let d = EditDraft(start: seg.start, end: seg.end, speed: seg.speed ?? 1,
                           look: seg.edit ?? (session?.effectiveEdit ?? ClipEdit()),
                           subtitles: seg.subtitles ?? [], zoomKeys: seg.zoomKeys ?? [],
-                          frame: seg.frame)
+                          frame: seg.frame, spans: seg.spans ?? [], replay: seg.replay,
+                          marks: seg.marks ?? [], voice: seg.voice, images: seg.images ?? [])
         original = d
         draft = d
         checkpointed = d
@@ -154,9 +188,20 @@ final class EditorModel: ObservableObject {
     }
 
     var changed: Bool { draft != original }
-    var duration: Double { (draft.end - draft.start) / draft.speed }
+    /// Something other than the look is waiting to be saved.
+    var changedBeyondLook: Bool {
+        var d = draft
+        d.look = original.look
+        return d != original
+    }
+    /// The clip's own clock, as the encoder will build it.
+    var map: TimeMap {
+        TimeMap(start: draft.start, end: draft.end, speed: draft.speed,
+                spans: draft.spans, replay: draft.replay)
+    }
+    var duration: Double { map.duration }
     /// Output seconds since the clip's in point, for the timecode and ruler.
-    func clock(_ t: Double) -> Double { max(0, (t - draft.start) / draft.speed) }
+    func clock(_ t: Double) -> Double { map.out(at: min(max(t, draft.start), draft.end)) }
 
     // MARK: - Undo
 
@@ -191,6 +236,10 @@ final class EditorModel: ObservableObject {
     func load(_ store: SessionStore, _ session: Session) async {
         guard let asset = await store.loadAsset(session) else { sourceMissing = true; return }
         self.asset = asset
+        folder = store.dir(session)
+        kept = clip.segment.mediaFiles
+        sweep(session)
+        loadVoice()
         let item = AVPlayerItem(asset: asset)
         item.audioTimePitchAlgorithm = .spectral
         let p = params
@@ -218,9 +267,15 @@ final class EditorModel: ObservableObject {
     }
 
     func stop() {
-        player.pause()
+        pause()
+        if recording { recorder?.stop(); recording = false; quietSession() }
         if let observer { player.removeTimeObserver(observer) }
         observer = nil
+        // Sound recorded or imported here that the clip did not keep.
+        for file in madeFiles where !kept.contains(file) {
+            if let folder { try? FileManager.default.removeItem(at: folder.appendingPathComponent(file)) }
+        }
+        madeFiles = []
     }
 
     /// Same order as the encoder: shape the frame, fill, grade. Zoom follows.
@@ -240,17 +295,68 @@ final class EditorModel: ObservableObject {
                 .transformed(by: CGAffineTransform(translationX: -(r.width * s - out.width) / 2,
                                                    y: -(r.height * s - out.height) / 2))
         }
-        return ClipExporter.graded(image, look.filter).cropped(to: CGRect(origin: .zero, size: out))
+        return ClipExporter.looked(image.cropped(to: CGRect(origin: .zero, size: out)), look)
     }
 
+    /// Plays the source the way the clip's clock says: each stretch at its
+    /// rate, a hold as a pause, and the replay as a jump back at half speed.
     private func tick(_ t: Double) {
-        guard playing, t.isFinite else { return }
-        if t >= draft.end - 0.02 {
-            seek(draft.start, exact: true)
-            time = draft.start
-        } else {
-            time = t
+        guard playing, !holding, t.isFinite else { return }
+        let map = self.map
+        if replaying {
+            if let i = map.replayIndex, t < map.pieces[i].to - 0.02 { time = t } else { restart() }
+            return
         }
+        if t >= draft.end - 0.02 {
+            if let i = map.replayIndex {
+                let p = map.pieces[i]
+                replaying = true
+                player.isMuted = true
+                seek(p.from, exact: true)
+                time = p.from
+                player.rate = Float(p.rate)
+            } else {
+                restart()
+            }
+            return
+        }
+        if let hold = draft.spans.first(where: { $0.hold != nil && $0.start > lastTick && $0.start <= t }) {
+            holding = true
+            player.pause()
+            seek(hold.start, exact: true)
+            time = hold.start
+            lastTick = hold.start
+            holdTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(hold.hold ?? 1))
+                guard let self, !Task.isCancelled, self.playing else { return }
+                self.holding = false
+                self.player.rate = self.rate(at: hold.start + 0.001)
+            }
+            return
+        }
+        time = t
+        lastTick = t
+        let r = rate(at: t)
+        if abs(player.rate - r) > 0.01 { player.rate = r }
+    }
+
+    /// The rate the source plays at around `t`.
+    private func rate(at t: Double) -> Float {
+        let map = self.map
+        let piece = map.pieces.enumerated().first { i, p in
+            i != map.replayIndex && !p.isFreeze && t >= p.from && t < p.to
+        }
+        return Float(piece?.element.rate ?? draft.speed)
+    }
+
+    private func restart() {
+        replaying = false
+        player.isMuted = recording
+        seek(draft.start, exact: true)
+        time = draft.start
+        lastTick = draft.start
+        player.rate = rate(at: draft.start)
+        syncVoice()
     }
 
     func togglePlay() { playing ? pause() : play() }
@@ -258,17 +364,25 @@ final class EditorModel: ObservableObject {
     func play() {
         if time >= draft.end - 0.05 || time < draft.start { scrub(to: draft.start, exact: true) }
         playing = true
-        player.rate = Float(draft.speed)
+        holding = false
+        replaying = false
+        lastTick = time
+        player.rate = rate(at: time)
+        syncVoice()
     }
 
     func pause() {
         playing = false
+        holdTask?.cancel()
+        holding = false
+        if replaying { replaying = false; player.isMuted = false }
         player.pause()
+        voicePlayer?.pause()
     }
 
     private func applyPlayback() {
         player.volume = Float(draft.look.volume)
-        if playing { player.rate = Float(draft.speed) }
+        if playing, !holding, !replaying { player.rate = rate(at: time) }
     }
 
     /// Moves the playhead. Seeks coalesce: one in flight, the latest wins.
@@ -315,6 +429,7 @@ final class EditorModel: ObservableObject {
     /// drawn at the output size, so all of them are made again.
     private func reshape() {
         captionCache.removeAll()
+        markCache.removeAll()
         drawWatermark()
         pushPreview(resize: true)
     }
@@ -392,7 +507,36 @@ final class EditorModel: ObservableObject {
         c.enabled = true
         c.text = placeholder
         let t = min(max(time, draft.start), draft.end - 0.5)
-        let sub = Subtitle(start: t, end: min(t + 2, draft.end), caption: c)
+        add(Subtitle(start: t, end: min(t + 2, draft.end), caption: c))
+    }
+
+    /// A name on a bar, low on the left, for the whole clip.
+    func addNameTag(placeholder: String) {
+        var c = CaptionEditorView.fresh(for: frame)
+        c.enabled = true
+        c.text = placeholder
+        c.style = .bar
+        c.color = .white
+        c.x = 0.3
+        c.y = frame.isPortrait ? 0.66 : 0.8
+        add(Subtitle(start: draft.start, end: draft.end, caption: c, anim: .slide))
+    }
+
+    /// One emoji, large, popping in at the playhead.
+    func addSticker(_ emoji: String) {
+        var c = CaptionEditorView.fresh(for: frame)
+        c.enabled = true
+        c.text = emoji
+        c.style = .plain
+        c.size = 2.4
+        c.x = 0.5
+        c.y = 0.3
+        let t = min(max(time, draft.start), draft.end - 0.5)
+        add(Subtitle(start: t, end: min(t + 2, draft.end), caption: c, anim: .pop))
+    }
+
+    private func add(_ sub: Subtitle) {
+        pause()
         draft.subtitles.append(sub)
         selection = .subtitle(sub.id)
         checkpoint()
@@ -407,6 +551,14 @@ final class EditorModel: ObservableObject {
         switch selection {
         case .subtitle(let id): draft.subtitles.removeAll { $0.id == id }
         case .key(let id): draft.zoomKeys.removeAll { $0.id == id }
+        case .span(let id):
+            // A hold takes the ring it was made with along.
+            if let s = draft.spans.first(where: { $0.id == id }), s.hold != nil {
+                draft.marks.removeAll { abs($0.start - s.start) < 0.001 }
+            }
+            draft.spans.removeAll { $0.id == id }
+        case .mark(let id): draft.marks.removeAll { $0.id == id }
+        case .image(let id): draft.images.removeAll { $0.id == id }
         case nil: return
         }
         selection = nil
@@ -434,6 +586,353 @@ final class EditorModel: ObservableObject {
     /// The framing showing at the playhead, for the badge and the panel.
     var zoomNow: Double { ZoomKey.at(time, in: draft.zoomKeys)?.zoom ?? 1 }
 
+    // MARK: - Effects
+
+    /// The pixels of a ring or arrow at preview size, and its frame as a
+    /// share of the picture (top-left origin).
+    func markLayer(_ mark: Mark) -> (CGImage, CGRect)? {
+        var centred = mark
+        centred.x = 0.5; centred.y = 0.5
+        let key = "\(mark.kind.rawValue)-\(mark.size)"
+        let cg: CGImage
+        if let hit = markCache[key] { cg = hit } else {
+            guard let image = ClipExporter.markImage(centred, in: outSize),
+                  let made = context.createCGImage(image, from: image.extent) else { return nil }
+            markCache[key] = made
+            cg = made
+        }
+        let w = CGFloat(cg.width) / outSize.width, h = CGFloat(cg.height) / outSize.height
+        return (cg, CGRect(x: mark.x - w / 2, y: mark.y - h / 2, width: w, height: h))
+    }
+
+    var selectedSpan: Int? {
+        guard case .span(let id) = selection else { return nil }
+        return draft.spans.firstIndex { $0.id == id }
+    }
+
+    var selectedMark: Int? {
+        guard case .mark(let id) = selection else { return nil }
+        return draft.marks.firstIndex { $0.id == id }
+    }
+
+    /// The strike the presets aim at: the one nearest the playhead inside the
+    /// clip, or the playhead itself when the detector heard none.
+    var anchor: Double {
+        hits.filter { $0 >= draft.start && $0 <= draft.end }
+            .min { abs($0 - time) < abs($1 - time) } ?? min(max(time, draft.start), draft.end)
+    }
+
+    private func inClip(_ t: Double) -> Double { min(max(t, draft.start), draft.end) }
+
+    /// Pushes in on the strike and eases back out.
+    func addPunchIn() {
+        pause()
+        let h = anchor
+        let times = [h - 0.6, h - 0.1, h + 0.9, h + 1.5].map(inClip)
+        draft.zoomKeys.removeAll { $0.time >= times[0] - 0.05 && $0.time <= times[3] + 0.05 }
+        let keys = zip(times, [1.0, 1.6, 1.6, 1.0]).map { ZoomKey(time: $0, zoom: $1) }
+        draft.zoomKeys = (draft.zoomKeys + keys).sorted { $0.time < $1.time }
+        selection = .key(keys[1].id)
+        checkpoint()
+        scrub(to: keys[1].time, exact: true)
+    }
+
+    /// Half speed across the strike.
+    func addSlowMo() {
+        pause()
+        let h = anchor
+        let span = SpeedSpan(start: inClip(h - 0.5), end: inClip(h + 0.7), rate: 0.5)
+        guard span.end - span.start > 0.2 else { return }
+        draft.spans.removeAll { $0.hold == nil && $0.start < span.end && $0.end > span.start }
+        draft.spans.append(span)
+        selection = .span(span.id)
+        checkpoint()
+        scrub(to: span.start, exact: true)
+    }
+
+    /// Holds the frame at the playhead with a ring to drag onto the ball.
+    func addFreeze() {
+        pause()
+        let t = min(max(time, draft.start + 0.05), draft.end - 0.05)
+        guard !draft.spans.contains(where: { $0.hold != nil && abs($0.start - t) < 0.1 }) else { return }
+        let span = SpeedSpan(start: t, end: t, hold: 1.5)
+        let mark = Mark(start: t, end: t + 0.05)
+        draft.spans.append(span)
+        draft.marks.append(mark)
+        selection = .mark(mark.id)
+        checkpoint()
+        scrub(to: t, exact: true)
+    }
+
+    /// The last strike again at half speed, after the clip.
+    func toggleReplay() {
+        pause()
+        if draft.replay != nil { draft.replay = nil } else {
+            draft.replay = hits.filter { $0 >= draft.start && $0 <= draft.end }.max()
+                ?? max(draft.start, draft.end - 1)
+        }
+        checkpoint()
+    }
+
+    // MARK: - Added sound
+
+    private func loadVoice() {
+        voicePlayer?.stop()
+        voicePlayer = nil
+        guard let voice = draft.voice, let folder else { return }
+        voicePlayer = try? AVAudioPlayer(contentsOf: folder.appendingPathComponent(voice.file))
+        voicePlayer?.volume = Float(voice.volume)
+        voicePlayer?.prepareToPlay()
+    }
+
+    /// Starts the added sound where the playhead is in the finished clip.
+    private func syncVoice() {
+        guard let voice = draft.voice, let p = voicePlayer, playing, !recording else { return }
+        p.volume = Float(voice.volume)
+        let offset = clock(time) - (voice.start >= draft.start ? clock(voice.start)
+                                                               : voice.start - draft.start)
+        p.stop()
+        if offset >= 0 {
+            guard offset < p.duration else { return }
+            p.currentTime = offset
+            p.play()
+        } else {
+            p.currentTime = 0
+            p.play(atTime: p.deviceCurrentTime + -offset)
+        }
+    }
+
+    /// Records from the playhead while the clip plays muted. False when the
+    /// microphone is not allowed.
+    func startRecording() async -> Bool {
+        guard let folder, await AVAudioApplication.requestRecordPermission() else { return false }
+        pause()
+        let name = "audio/voice-\(UUID().uuidString.prefix(8)).m4a"
+        let url = folder.appendingPathComponent(name)
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, options: [.defaultToSpeaker])
+            try AVAudioSession.sharedInstance().setActive(true)
+            let r = try AVAudioRecorder(url: url, settings: [
+                AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 44_100,
+                AVNumberOfChannelsKey: 1, AVEncoderBitRateKey: 96_000,
+            ])
+            guard r.record() else { quietSession(); return false }
+            recorder = r
+        } catch {
+            quietSession()
+            return false
+        }
+        madeFiles.append(name)
+        if time >= draft.end - 0.3 || time < draft.start { scrub(to: draft.start, exact: true) }
+        recordedAt = time
+        recording = true
+        player.isMuted = true
+        play()
+        // The take ends with the clip.
+        return true
+    }
+
+    func stopRecording() {
+        guard recording, let r = recorder else { return }
+        let seconds = r.currentTime
+        r.stop()
+        recorder = nil
+        recording = false
+        pause()
+        player.isMuted = false
+        quietSession()
+        guard seconds > 0.3, let name = madeFiles.last else { return }
+        draft.voice = AudioClip(file: name, start: recordedAt)
+        checkpoint()
+    }
+
+    private func quietSession() {
+        try? AVAudioSession.sharedInstance().setCategory(.soloAmbient)
+    }
+
+    /// Copies a sound file the user picked into the session and lays it over
+    /// the clip from its in point.
+    func importAudio(_ url: URL) -> Bool {
+        guard let folder else { return false }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let ext = url.pathExtension.isEmpty ? "m4a" : url.pathExtension
+        let name = "audio/sound-\(UUID().uuidString.prefix(8)).\(ext)"
+        let dest = folder.appendingPathComponent(name)
+        try? FileManager.default.createDirectory(at: dest.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
+        guard (try? FileManager.default.copyItem(at: url, to: dest)) != nil,
+              (try? AVAudioPlayer(contentsOf: dest)) != nil else {
+            try? FileManager.default.removeItem(at: dest)
+            return false
+        }
+        pause()
+        madeFiles.append(name)
+        draft.voice = AudioClip(file: name, start: draft.start, volume: 0.8)
+        checkpoint()
+        return true
+    }
+
+    // MARK: - Pictures
+
+    /// Sound and pictures no rally points at: left when the app was killed
+    /// with an editor open, before `stop` could tidy up.
+    private func sweep(_ session: Session) {
+        guard let folder else { return }
+        let used = (session.segments ?? []).reduce(into: Set<String>()) { $0.formUnion($1.mediaFiles) }
+        let fm = FileManager.default
+        for sub in ["audio", "images"] {
+            for name in (try? fm.contentsOfDirectory(atPath: folder.appendingPathComponent(sub).path)) ?? []
+            where !used.contains(sub + "/" + name) {
+                try? fm.removeItem(at: folder.appendingPathComponent(sub + "/" + name))
+            }
+        }
+    }
+
+    private var draftFiles: Set<String> {
+        var s = RallySegment(start: 0, end: 0, hits: 0)
+        s.voice = draft.voice
+        s.images = draft.images
+        return s.mediaFiles
+    }
+
+    var selectedImage: Int? {
+        guard case .image(let id) = selection else { return nil }
+        return draft.images.firstIndex { $0.id == id }
+    }
+
+    /// The picture as the preview draws it.
+    func picture(_ file: String) -> UIImage? {
+        if let hit = pictures[file] { return hit }
+        guard let folder, let image = UIImage(contentsOfFile: folder.appendingPathComponent(file).path)
+        else { return nil }
+        pictures[file] = image
+        return image
+    }
+
+    /// Saves a picked photo into the session, no larger than 1024 px on its
+    /// long side, and lays it over the whole clip.
+    func addPicture(_ data: Data) -> Bool {
+        guard let folder, let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 1024,
+              ] as CFDictionary),
+              let name = save(cg, in: folder) else { return false }
+        pause()
+        let layer = ImageLayer(file: name, start: draft.start, end: draft.end)
+        draft.images.append(layer)
+        selection = .image(layer.id)
+        checkpoint()
+        return true
+    }
+
+    private func save(_ image: CGImage, in folder: URL) -> String? {
+        let name = "images/pic-\(UUID().uuidString.prefix(8)).png"
+        let url = folder.appendingPathComponent(name)
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)
+        else { return nil }
+        CGImageDestinationAddImage(dest, image, nil)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        madeFiles.append(name)
+        return name
+    }
+
+    /// Cuts the background away from the selected picture, keeping the
+    /// subject — or puts the picture back as it was. False when nothing in
+    /// the picture stood out to keep.
+    func toggleCutout() async -> Bool {
+        guard let i = selectedImage, let folder else { return false }
+        let layer = draft.images[i]
+        if let original = layer.original {
+            draft.images[i].file = original
+            draft.images[i].original = nil
+            checkpoint()
+            return true
+        }
+        cutting = true
+        defer { cutting = false }
+        let source = folder.appendingPathComponent(layer.file)
+        let cut: CGImage? = await Task.detached(priority: .userInitiated) {
+            Self.subject(of: source)
+        }.value
+        guard let cut, let name = save(cut, in: folder),
+              let j = draft.images.firstIndex(where: { $0.id == layer.id }) else { return false }
+        draft.images[j].original = layer.file
+        draft.images[j].file = name
+        checkpoint()
+        return true
+    }
+
+    /// The foreground of a picture on a transparent ground, cropped to it.
+    nonisolated private static func subject(of url: URL) -> CGImage? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateImageAtIndex(src, 0, nil) else { return nil }
+        let handler = VNImageRequestHandler(cgImage: image)
+        let request = VNGenerateForegroundInstanceMaskRequest()
+        do { try handler.perform([request]) } catch {
+            // The simulator has no Neural Engine for this request.
+            #if DEBUG
+            print("[cutout] \(error)")
+            #endif
+            return nil
+        }
+        guard let found = request.results?.first, !found.allInstances.isEmpty,
+              let buffer = try? found.generateMaskedImage(ofInstances: found.allInstances, from: handler,
+                                                          croppedToInstancesExtent: true)
+        else { return nil }
+        let ci = CIImage(cvPixelBuffer: buffer)
+        return CIContext().createCGImage(ci, from: ci.extent)
+    }
+
+    // MARK: - Auto captions
+
+    /// Lines from what is said in the clip — the added voice when there is
+    /// one, else the match sound — placed on the moments they were said.
+    /// Returns how many were added.
+    func autoCaptions(lang: String) async throws -> Int {
+        guard let locale = AutoCaptions.locale(for: lang) else { throw AutoCaptions.Failure.unavailable }
+        pause()
+        captioning = true
+        defer { captioning = false }
+        let words: [AutoCaptions.Word]
+        var toSource: (Double) -> Double
+        if let voice = draft.voice, let folder {
+            words = try await AutoCaptions.transcribe(folder.appendingPathComponent(voice.file), locale: locale)
+            // The voice plays at 1× on the finished clip's clock.
+            let begins = voice.start >= draft.start ? clock(voice.start) : voice.start - draft.start
+            let map = self.map
+            toSource = { map.source(at: begins + $0) }
+        } else {
+            guard let asset else { throw AutoCaptions.Failure.failed }
+            let file = try await AutoCaptions.soundFile(of: asset, from: draft.start, to: draft.end)
+            defer { try? FileManager.default.removeItem(at: file) }
+            words = try await AutoCaptions.transcribe(file, locale: locale)
+            let start = draft.start
+            toSource = { start + $0 }
+        }
+        let joiner = ["ja", "zh-Hans"].contains(lang) ? "" : " "
+        var style = draft.subtitles.last?.caption ?? CaptionEditorView.fresh(for: frame)
+        style.enabled = true
+        let added: [Subtitle] = AutoCaptions.lines(words, joiner: joiner).compactMap { line in
+            let a = toSource(line.start), b = min(toSource(line.end), draft.end)
+            guard a < draft.end - 0.1, b > a else { return nil }
+            var c = style
+            c.text = line.text
+            return Subtitle(start: max(a, draft.start), end: b, caption: c, anim: .fade)
+        }
+        guard !added.isEmpty else { throw AutoCaptions.Failure.nothingHeard }
+        draft.subtitles += added
+        selection = nil
+        checkpoint()
+        return added.count
+    }
+
     // MARK: - Trim
 
     func fitToHits() {
@@ -458,11 +957,19 @@ final class EditorModel: ObservableObject {
         return mine == match ? nil : draft.look
     }
 
-    func commit(_ store: SessionStore) async -> Bool {
-        await store.trimClip(clip, start: draft.start, end: draft.end, speed: draft.speed,
-                             edit: clipLook, subtitles: draft.subtitles, zoomKeys: draft.zoomKeys,
-                             // Back to the match's own shape stores nothing.
-                             frame: .some(draft.frame.flatMap { OutputFrame($0) == matchFrame ? nil : $0 }))
+    /// `ownLook: false` leaves the clip's look as it was stored — for "use on
+    /// every clip", which sets the match's look right after.
+    func commit(_ store: SessionStore, ownLook: Bool = true) async -> Bool {
+        let ok = await store.trimClip(
+            clip, start: draft.start, end: draft.end, speed: draft.speed,
+            edit: ownLook ? clipLook : clip.segment.edit,
+            subtitles: draft.subtitles, zoomKeys: draft.zoomKeys,
+            // Back to the match's own shape stores nothing.
+            frame: .some(draft.frame.flatMap { OutputFrame($0) == matchFrame ? nil : $0 }),
+            spans: draft.spans, replay: draft.replay, marks: draft.marks, voice: draft.voice,
+            images: draft.images)
+        if ok { kept = (clip.segment.mediaFiles).union(draftFiles) }
+        return ok
     }
 
     var canSplit: Bool { time - draft.start >= minClip && draft.end - time >= minClip }

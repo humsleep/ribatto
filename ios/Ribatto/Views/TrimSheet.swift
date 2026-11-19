@@ -47,7 +47,7 @@ struct TrimSheet: View {
             Group {
                 if let tool = m.tool, tool != .split {
                     EditorPanel(m: m, tool: tool, session: session,
-                                onError: { message = $0 }, onDone: { dismiss() })
+                                onError: { message = $0 }, onApplyAll: applyLookToAll)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else {
                     toolBar
@@ -195,12 +195,13 @@ struct TrimSheet: View {
     private func edited(_ t: EditorTool) -> Bool {
         let d = m.draft
         switch t {
-        case .text: return !d.subtitles.isEmpty
+        case .fx: return !d.spans.isEmpty || d.replay != nil || !d.marks.isEmpty
+        case .text: return !d.subtitles.isEmpty || !d.images.isEmpty
         case .zoom: return !d.zoomKeys.isEmpty
         case .frame: return d.frame != nil
         case .speed: return d.speed != 1
-        case .look: return d.look.filter != .original
-        case .sound: return d.look.volume != 1
+        case .look: return d.look.changesPicture
+        case .sound: return d.look.volume != 1 || d.voice != nil
         case .background: return d.look.backdrop != .blur
         case .trim: return abs(d.start - clip.segment.start) > 0.05 || abs(d.end - clip.segment.end) > 0.05
         case .split: return false
@@ -215,11 +216,18 @@ struct TrimSheet: View {
             confirmSplit = true
         case .text:
             m.pause()
+            // The line under the playhead, or the list: a subtitle, a name
+            // tag or a sticker. Adding a subtitle unasked hid the other two.
             if let s = m.subtitleAtPlayhead { m.selection = .subtitle(s.id) }
-            else { m.addSubtitle(placeholder: L.s("ed_type_here", lang)) }
+            else if case .subtitle = m.selection { m.selection = nil }
+            else if case .image = m.selection { m.selection = nil }
             m.tool = .text
         default:
             if t != .zoom, case .key = m.selection { m.selection = nil }
+            if t != .fx {
+                if case .span = m.selection { m.selection = nil }
+                if case .mark = m.selection { m.selection = nil }
+            }
             m.tool = t
         }
     }
@@ -267,6 +275,27 @@ struct TrimSheet: View {
         working = true
         Task {
             let ok = await m.commit(store)
+            working = false
+            if ok { dismiss() } else { message = L.s("render_failed", lang) }
+        }
+    }
+
+    /// "Use on every clip". Pending trim, text and effects go in first, as
+    /// with a split: the editor closes after, and closing used to drop them.
+    private func applyLookToAll() {
+        if store.isBusy(clip.sessionID) { message = L.s("busy_wait", lang); return }
+        let look = m.draft.look
+        m.pause()
+        working = true
+        Task {
+            if m.changedBeyondLook, !(await m.commit(store, ownLook: false)) {
+                working = false
+                message = L.s("render_failed", lang)
+                return
+            }
+            // Read again: the commit above changed the session's segments.
+            let ok: Bool
+            if let now = session { ok = await store.useLookForAll(now, look) } else { ok = false }
             working = false
             if ok { dismiss() } else { message = L.s("render_failed", lang) }
         }

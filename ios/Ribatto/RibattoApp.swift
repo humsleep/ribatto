@@ -8,6 +8,7 @@ struct RibattoApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = SessionStore()
     @StateObject private var pass = ProPass()
+    @StateObject private var purchases = PurchaseManager()
     @StateObject private var ads = AdsManager()
     @AppStorage("rc_lang") private var lang = "en"
     @AppStorage("rc_onboarded") private var onboarded = false
@@ -78,6 +79,7 @@ struct RibattoApp: App {
             }
             .environmentObject(store)
             .environmentObject(pass)
+            .environmentObject(purchases)
             .environmentObject(ads)
             // Ads wait for onboarding: the tracking prompt on top of the
             // welcome page would be the first thing a new user sees.
@@ -94,10 +96,17 @@ struct RibattoApp: App {
                     try? await Task.sleep(for: .milliseconds(200))
                     if Task.isCancelled { return }
                 }
+                // A buyer reinstalling has no cached answer yet: ask the App
+                // Store first, or they meet the consent form and the tracking
+                // prompt of an ad SDK they paid to be rid of.
+                await purchases.waitUntilResolved()
+                pass.owned = purchases.owned
                 await ads.start(isPro: pass.isPro)
             }
             .task {
+                pass.owned = purchases.owned
                 store.isPro = pass.isPro
+                store.onProJob = { [weak pass] in pass?.consume() }
                 store.missingSourceMessage = L.s("source_missing", lang)
                 store.interruptedMessage = L.s("interrupted", lang)
                 store.placeLocale = L.locale(lang)
@@ -105,6 +114,8 @@ struct RibattoApp: App {
                 store.backfillCaptureDates()
                 #if DEBUG
                 Challenges.selfCheck()
+                TimeMap.selfCheck()
+                AutoCaptions.selfCheck()
                 if CommandLine.arguments.contains("-diagRender") {
                     await store.runDiagnostics()
                 }
@@ -138,6 +149,7 @@ struct RibattoApp: App {
                 guard phase == .active, onboarded, !showIntro else { return }
                 Task { await ads.retryIfNeverStarted() }
             }
+            .onChange(of: purchases.owned) { _, owned in pass.owned = owned }
             .onChange(of: pass.isPro) { _, pro in
                 store.isPro = pro
                 ads.setPro(pro)
