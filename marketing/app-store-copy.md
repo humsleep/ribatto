@@ -1,4 +1,4 @@
-# Ribatto — App Store listing copy (2.1)
+# Ribatto — App Store listing copy (2.2)
 
 Character limits are Apple's. Counts (Python `len()`, Unicode characters) are given so you can edit safely.
 Name, subtitle and keywords change only with a new version submission; promotional text can change any time.
@@ -46,7 +46,7 @@ New: Just the rallies. Your whole match with the dead time cut, point after poin
 **Description** (max 4000) — 2958 chars
 ```
 90 minutes filmed. Only the rallies kept.
-Free. No subscription.
+Free to start. Pro is optional.
 
 Ribatto listens for the sound of the strike, finds every rally and cuts out the walking, the ball fetching and the changeovers. Tap "Just the rallies" to watch the whole match back to back, skip from point to point, and send it to your partner or coach. Built for tennis. Pickleball and padel work too.
 
@@ -81,10 +81,25 @@ Rallies, courts, longest point and shots per rally, month by month.
 IT ALL RUNS ON YOUR IPHONE
 No account. No sign-up. No Ribatto servers. Your video and its audio never leave the phone, and detection works offline at the court. About your match, the only thing that ever leaves is a coordinate sent to Apple to name a court, and only if your video carries GPS. The free version shows ads from Google AdMob, described in the privacy policy.
 
-FREE, WITH A PASS ON DEMAND
-Ribatto is free and supported by ads. Every editing tool is free. Watch one short ad and a one-hour PASS adds: no ads, source quality (4K landscape, 1080p vertical), no watermark, smart vertical crop that follows the rally, follow-one-player tracking, batch save and merge. Clips and reels you make in that hour keep their quality.
+FREE, WITH PRO WHEN YOU WANT IT
+Ribatto is free and supported by ads, and every editing tool is free. Pro adds no ads, source quality (4K landscape, 1080p vertical), no watermark, smart vertical crop that follows the rally, follow-one-player tracking, batch save and merge. Try it first: one short ad opens Pro for your next render, reel, batch save or merge, up to three times a day. What you make keeps its quality.
+
+Pro comes monthly, yearly or as a one-time lifetime purchase. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period, and can be managed or cancelled in your Apple Account settings. Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 Free: unlimited imports, 720p, watermark.
+```
+
+**What's New (2.2)** — 634 chars
+```
+A real editor, and Pro.
+
+- Effects: punch-in zoom, slow motion, freeze frame with a ring or arrow, and a slow replay of the last shot, each placed on the nearest strike.
+- Text in several lines with fade, pop or slide, name tags, stickers and photos with the background removed.
+- Brightness, contrast, saturation, warmth and mirror.
+- Record a voiceover or add your own audio. Auto captions from speech, made on your iPhone.
+- Dissolves between rallies in reels.
+- Send "Just the rallies" to your partners in one tap.
+- Ribatto Pro: monthly, yearly or lifetime. Or watch one ad to open Pro for your next job, up to three times a day.
 ```
 
 **What's New (2.1)** — 381 chars
@@ -126,7 +141,7 @@ Ribatto: 테니스 영상 하이라이트
 **설명** (4000자) — 1639 chars
 ```
 90분 경기, 랠리만 남겼습니다.
-무료, 구독 없음.
+무료로 시작하고, Pro는 필요할 때만.
 
 Ribatto가 타구음을 듣고 랠리를 모두 찾아, 공 줍고 걸어가고 코트를 바꾸는 시간을 잘라냅니다. '랠리만 이어 보기'를 누르면 경기 전체를 랠리만 이어서 보고, 포인트에서 포인트로 건너뛰고, 파트너나 코치에게 그대로 보낼 수 있습니다. 테니스에 맞춰 만들었고, 피클볼·파델도 됩니다.
 
@@ -161,10 +176,25 @@ Ribatto가 타구음을 듣고 랠리를 모두 찾아, 공 줍고 걸어가고 
 전부 아이폰에서 처리됩니다
 계정도 가입도 없고, Ribatto 서버도 없습니다. 영상과 소리는 폰을 벗어나지 않고, 감지는 코트에서 오프라인으로도 동작합니다. 경기에 관해 밖으로 나가는 것은 코트 이름을 붙일 때 애플에 보내는 좌표뿐이며, 그것도 영상에 GPS 정보가 있을 때만입니다. 무료 버전에는 Google AdMob 광고가 표시되며, 자세한 내용은 개인정보 처리방침에 있습니다.
 
-무료, 패스는 필요할 때만
-Ribatto는 광고로 운영되는 무료 앱이고, 편집 기능은 전부 무료입니다. 짧은 광고 한 편을 보면 1시간 패스가 열립니다 — 광고 없음, 원본 화질(가로 4K·세로 1080p), 워터마크 없음, 랠리를 따라가는 스마트 세로 크롭, 한 선수만 따라가기, 일괄 저장, 클립 병합. 그 사이 만든 클립과 릴스는 품질이 그대로 남습니다.
+무료, Pro는 필요할 때만
+Ribatto는 광고로 운영되는 무료 앱이고, 편집 기능은 전부 무료입니다. Pro는 광고 없음, 원본 화질(가로 4K, 세로 1080p), 워터마크 없음, 랠리를 따라가는 스마트 세로 크롭, 선수 추적, 일괄 저장과 병합을 더합니다. 먼저 써 보세요. 짧은 광고 한 편이면 다음 렌더·릴스·일괄 저장·병합 한 번에 Pro가 열립니다(하루 3번까지). 그렇게 만든 영상은 화질이 그대로 남습니다.
+
+Pro는 월간, 연간, 평생(한 번 결제) 중에서 고를 수 있습니다. 구독은 현재 기간이 끝나기 24시간 전까지 해지하지 않으면 자동으로 갱신되며, Apple 계정 설정에서 관리하거나 해지할 수 있습니다. 이용약관: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 무료: 가져오기 무제한, 720p, 워터마크.
+```
+
+**새로운 기능 (2.2)** — 337 chars
+```
+제대로 된 편집기, 그리고 Pro.
+
+- 연출: 펀치인 줌, 슬로모션, 원·화살표를 넣은 정지 화면, 마지막 타구 슬로 리플레이. 가장 가까운 타구에 자동으로 맞춥니다.
+- 여러 줄 자막과 페이드·팝·슬라이드, 이름표, 스티커, 배경을 지운 사진.
+- 밝기·대비·채도·색온도와 좌우 반전.
+- 보이스오버 녹음과 내 오디오 추가. 말소리를 자막으로 바꾸는 자동 자막(iPhone 안에서 처리).
+- 릴스의 랠리 사이 디졸브 전환.
+- '랠리만 이어 보기'를 파트너에게 한 번에 보내기.
+- Ribatto Pro: 월간·연간·평생. 또는 광고 한 편으로 다음 작업 한 번에 Pro를 써 보세요(하루 3번).
 ```
 
 **새로운 기능 (2.1)** — 185 chars
@@ -205,7 +235,7 @@ Ribatto: テニス動画ハイライト
 **Description** — 1482 chars
 ```
 90分撮った試合から、ラリーだけを残す。
-無料、サブスクなし。
+無料で始められて、Proは必要なときだけ。
 
 Ribattoは打球音を聞き取ってラリーをすべて見つけ、ボール拾いや移動、コートチェンジの時間を切り落とします。「ラリーだけ通して見る」をタップすると、試合全体をラリーだけでつなげて見られ、ポイントからポイントへ飛ばせて、パートナーやコーチにそのまま送れます。テニス向けに作り、ピックルボールとパデルにも対応。
 
@@ -240,10 +270,25 @@ Ribattoは打球音を聞き取ってラリーをすべて見つけ、ボール�
 すべてiPhoneの中で
 アカウントも登録も不要で、Ribattoのサーバーもありません。動画も音声も端末から出ず、コートでオフラインのまま検出できます。試合に関して外に出るのは、コート名を調べるためにAppleへ送る座標だけ。それも動画にGPS情報がある場合だけです。無料版ではGoogle AdMobの広告を表示します。詳細はプライバシーポリシーに記載しています。
 
-無料、必要なときだけパス
-Ribattoは広告で運営される無料アプリで、編集機能はすべて無料です。短い広告を1本見ると1時間のパスが開きます — 広告なし、元画質(横4K・縦1080p)、ウォーターマークなし、ラリーを追うスマート縦切り抜き、選手ひとりの追尾、一括保存、クリップ結合。その間に作ったクリップとリールは、終わったあとも画質そのままです。
+無料、Proは必要なときだけ
+Ribattoは広告で運営される無料アプリで、編集機能はすべて無料です。Proでは広告なし、オリジナル画質（横4K・縦1080p）、ウォーターマークなし、ラリーを追うスマート縦クロップ、選手追跡、一括保存と結合が使えます。まずは試せます。短い広告を1本見ると、次の書き出し・リール・一括保存・結合1回にProが使えます（1日3回まで）。作った動画の画質はそのまま残ります。
+
+Proは月額・年額・買い切りから選べます。サブスクリプションは現在の期間終了の24時間前までに解約しない限り自動更新され、Apple Accountの設定から管理・解約できます。利用規約：https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 無料: 取り込み無制限、720p、ウォーターマークあり。
+```
+
+**What's New (2.2)** — 302 chars
+```
+本格的なエディタと、Pro。
+
+- 演出：パンチインズーム、スローモーション、リングや矢印つきの静止、最後のショットのスローリプレイ。いちばん近い打球に自動で合わせます。
+- 複数行のテキストとフェード・ポップ・スライド、ネームタグ、ステッカー、背景を消した写真。
+- 明るさ・コントラスト・彩度・色温度と左右反転。
+- ナレーション録音や手持ちの音声の追加。話し声から自動字幕（iPhone内で処理）。
+- リールのラリー間にディゾルブ。
+- 「ラリーだけ」をワンタップで一緒にプレーした人へ。
+- Ribatto Pro：月額・年額・買い切り。または広告1本で次の作業1回にProを（1日3回まで）。
 ```
 
 **What's New (2.1)** — 169 chars
@@ -283,7 +328,7 @@ Nuevo: Solo los puntos. Tu partido entero sin tiempos muertos, punto a punto, li
 **Description** — 3165 chars
 ```
 90 minutos grabados. Solo quedan los puntos.
-Gratis y sin suscripción, con el vídeo que ya grabaste.
+Gratis para empezar, con el vídeo que ya grabaste. Pro es opcional.
 
 Ribatto escucha el golpeo, encuentra cada punto y quita los paseos, la recogida de bolas y los cambios de lado. Toca «Solo los puntos» para ver el partido entero seguido, saltar de punto en punto y enviárselo a tu pareja o a tu entrenador. Pensado para el tenis; también funciona con pádel y pickleball.
 
@@ -318,10 +363,25 @@ Puntos, pistas, el punto más largo y golpes por punto, mes a mes.
 TODO OCURRE EN TU IPHONE
 Sin cuenta. Sin registro. Sin servidores de Ribatto. Tu vídeo y su audio nunca salen del móvil, y la detección funciona sin conexión en la pista. De tu partido, lo único que sale es una coordenada enviada a Apple para nombrar la pista, y solo si el vídeo lleva GPS. La versión gratuita muestra anuncios de Google AdMob, descritos en la política de privacidad.
 
-GRATIS, CON UN PASE CUANDO LO NECESITES
-Ribatto es gratis y se financia con anuncios. Todas las herramientas de edición son gratis. Mira un anuncio corto y un PASE de una hora añade: sin anuncios, calidad original (4K horizontal, 1080p vertical), sin marca de agua, recorte vertical inteligente que sigue el punto, seguimiento de un jugador, guardado en lote y unión de clips. Lo que hagas en esa hora conserva su calidad.
+GRATIS, CON PRO CUANDO LO QUIERAS
+Ribatto es gratis y se financia con anuncios, y todas las herramientas de edición son gratis. Pro añade: sin anuncios, calidad original (4K horizontal, 1080p vertical), sin marca de agua, recorte vertical inteligente que sigue el punto, seguimiento de un jugador, guardado múltiple y unión de clips. Pruébalo antes: un anuncio corto abre Pro para tu próximo render, reel, guardado múltiple o unión, hasta tres veces al día. Lo que hagas conserva su calidad.
+
+Pro está disponible mensual, anual o de por vida con un pago único. Las suscripciones se renuevan automáticamente salvo que se cancelen al menos 24 horas antes de que termine el periodo actual, y se gestionan o cancelan en los ajustes de tu cuenta de Apple. Términos de uso: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 Gratis: importaciones ilimitadas, 720p, marca de agua.
+```
+
+**What's New (2.2)** — 659 chars
+```
+Un editor de verdad, y Pro.
+
+- Efectos: zoom de impacto, cámara lenta, pausa con anillo o flecha y repetición lenta del último golpe, cada uno colocado en el golpe más cercano.
+- Texto en varias líneas con fundido, pop o deslizamiento, etiquetas de nombre, stickers y fotos sin fondo.
+- Brillo, contraste, saturación, calidez y espejo.
+- Graba una voz en off o añade tu propio audio. Subtítulos automáticos de la voz, hechos en tu iPhone.
+- Fundidos entre puntos en los reels.
+- Envía «Solo los puntos» a tus compañeros con un toque.
+- Ribatto Pro: mensual, anual o de por vida. O mira un anuncio para abrir Pro en tu próximo trabajo, hasta tres veces al día.
 ```
 
 **What's New (2.1)** — 394 chars
@@ -362,7 +422,7 @@ Novo: Só os pontos. Sua partida inteira sem tempo morto, ponto a ponto, pronta 
 **Description** — 3122 chars
 ```
 90 minutos gravados. Só os pontos ficam.
-Grátis, sem assinatura, com o vídeo que você já gravou.
+Grátis para começar, com o vídeo que você já gravou. O Pro é opcional.
 
 O Ribatto escuta o som da batida, encontra cada ponto e corta as caminhadas, a busca de bolas e as trocas de lado. Toque em "Só os pontos" para ver a partida inteira em sequência, pular de ponto em ponto e mandar para sua dupla ou seu professor. Feito para o tênis; também funciona com padel e pickleball.
 
@@ -397,10 +457,25 @@ Rallies, quadras, ponto mais longo e batidas por rally, mês a mês.
 TUDO RODA NO SEU IPHONE
 Sem conta. Sem cadastro. Sem servidores do Ribatto. Seu vídeo e o áudio nunca saem do aparelho, e a detecção funciona offline na quadra. Da sua partida, a única coisa que sai é uma coordenada enviada à Apple para dar nome à quadra, e só se o vídeo tiver GPS. A versão gratuita mostra anúncios do Google AdMob, descritos na política de privacidade.
 
-GRÁTIS, COM UM PASSE QUANDO PRECISAR
-O Ribatto é grátis e mantido por anúncios. Todas as ferramentas de edição são grátis. Assista a um anúncio curto e um PASSE de uma hora acrescenta: sem anúncios, qualidade original (4K na horizontal, 1080p na vertical), sem marca d'água, corte vertical inteligente que acompanha o rally, seguir um jogador, salvar em lote e juntar clipes. O que você fizer nessa hora mantém a qualidade.
+GRÁTIS, COM PRO QUANDO QUISER
+O Ribatto é grátis e mantido por anúncios, e todas as ferramentas de edição são grátis. O Pro acrescenta: sem anúncios, qualidade original (4K na horizontal, 1080p na vertical), sem marca d'água, corte vertical inteligente que acompanha o rali, acompanhamento de um jogador, salvar em lote e juntar clipes. Experimente antes: um anúncio curto abre o Pro para sua próxima renderização, reel, salvamento em lote ou junção, até três vezes por dia. O que você fizer mantém a qualidade.
+
+O Pro está disponível mensal, anual ou vitalício com pagamento único. As assinaturas renovam automaticamente, a menos que sejam canceladas pelo menos 24 horas antes do fim do período atual, e podem ser gerenciadas ou canceladas nos ajustes da sua Conta Apple. Termos de uso: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 Grátis: importações ilimitadas, 720p, marca d'água.
+```
+
+**What's New (2.2)** — 668 chars
+```
+Um editor de verdade, e o Pro.
+
+- Efeitos: zoom de impacto, câmera lenta, pausa com anel ou seta e replay lento da última batida, cada um colocado na batida mais próxima.
+- Texto em várias linhas com fade, pop ou deslizar, etiquetas de nome, figurinhas e fotos sem fundo.
+- Brilho, contraste, saturação, temperatura e espelhar.
+- Grave uma narração ou adicione seu próprio áudio. Legendas automáticas da fala, feitas no seu iPhone.
+- Transições de fusão entre os ralis nos reels.
+- Envie "Só os ralis" para seus parceiros com um toque.
+- Ribatto Pro: mensal, anual ou vitalício. Ou assista a um anúncio para abrir o Pro no seu próximo trabalho, até três vezes por dia.
 ```
 
 **What's New (2.1)** — 395 chars
@@ -440,7 +515,7 @@ Neu: Nur die Ballwechsel. Dein ganzes Match ohne Leerlauf, Punkt für Punkt, ber
 **Description** — 3334 chars
 ```
 90 Minuten gefilmt. Nur die Ballwechsel bleiben.
-Kostenlos, kein Abo.
+Kostenlos starten. Pro ist optional.
 
 Ribatto hört den Schlag, findet jeden Ballwechsel und schneidet Laufwege, Ballholen und Seitenwechsel heraus. Tippe auf „Nur die Ballwechsel“ und sieh das ganze Match am Stück, spring von Punkt zu Punkt und schick es deinem Doppelpartner oder Trainer. Für Tennis gemacht, funktioniert auch bei Pickleball und Padel.
 
@@ -475,10 +550,25 @@ Ballwechsel, Plätze, längster Punkt und Schläge pro Ballwechsel, Monat für M
 ALLES LÄUFT AUF DEINEM IPHONE
 Kein Konto. Keine Anmeldung. Keine Ribatto-Server. Dein Video und sein Ton verlassen das Handy nie, und die Erkennung läuft offline auf dem Platz. Von deinem Match verlässt nur eine Koordinate das Gerät, die an Apple geht, um den Platz zu benennen — und nur, wenn dein Video GPS-Daten hat. Die kostenlose Version zeigt Werbung von Google AdMob, beschrieben in der Datenschutzerklärung.
 
-KOSTENLOS, MIT PASS BEI BEDARF
-Ribatto ist kostenlos und finanziert sich über Werbung. Alle Bearbeitungswerkzeuge sind kostenlos. Sieh dir eine kurze Anzeige an, und ein PASS bringt eine Stunde lang: keine Werbung, Originalqualität (4K quer, 1080p hochkant), kein Wasserzeichen, smarter Hochkant-Ausschnitt, der dem Ballwechsel folgt, Verfolgung einer Person, Sammelspeichern und Zusammenfügen. Was du in dieser Stunde erstellst, behält seine Qualität.
+KOSTENLOS, MIT PRO, WENN DU WILLST
+Ribatto ist kostenlos und finanziert sich über Werbung, und alle Bearbeitungswerkzeuge sind kostenlos. Pro bringt: keine Werbung, Originalqualität (4K quer, 1080p hochkant), kein Wasserzeichen, smarten Hochformat-Zuschnitt, der dem Ballwechsel folgt, Spieler-Tracking, Sammelspeichern und Zusammenfügen. Erst ausprobieren: Eine kurze Anzeige öffnet Pro für dein nächstes Rendern, Reel, Sammelspeichern oder Zusammenfügen, bis zu dreimal am Tag. Was du damit machst, behält seine Qualität.
+
+Pro gibt es monatlich, jährlich oder als einmaligen Kauf auf Lebenszeit. Abos verlängern sich automatisch, wenn sie nicht mindestens 24 Stunden vor Ende des aktuellen Zeitraums gekündigt werden, und lassen sich in den Einstellungen deines Apple Accounts verwalten oder kündigen. Nutzungsbedingungen: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 Kostenlos: unbegrenzt importieren, 720p, Wasserzeichen.
+```
+
+**What's New (2.2)** — 716 chars
+```
+Ein richtiger Editor – und Pro.
+
+- Effekte: Punch-in-Zoom, Zeitlupe, Standbild mit Ring oder Pfeil und eine Zeitlupen-Wiederholung des letzten Schlags, jeweils am nächsten Schlag angesetzt.
+- Mehrzeiliger Text mit Einblenden, Pop oder Gleiten, Namensschilder, Sticker und freigestellte Fotos.
+- Helligkeit, Kontrast, Sättigung, Wärme und Spiegeln.
+- Voiceover aufnehmen oder eigenen Ton hinzufügen. Automatische Untertitel aus Sprache, direkt auf dem iPhone.
+- Überblendungen zwischen Ballwechseln in Reels.
+- „Nur Ballwechsel“ mit einem Tipp an deine Mitspieler senden.
+- Ribatto Pro: monatlich, jährlich oder auf Lebenszeit. Oder eine Werbung ansehen und Pro für den nächsten Auftrag nutzen, bis zu dreimal am Tag.
 ```
 
 **What's New (2.1)** — 438 chars
@@ -518,7 +608,7 @@ Nouveau : Uniquement les échanges. Tout votre match sans temps morts, point par
 **Description** — 3441 chars
 ```
 90 minutes filmées. Il ne reste que les échanges.
-Gratuit, sans abonnement, avec la vidéo que vous avez déjà.
+Gratuit pour commencer, avec la vidéo que vous avez déjà. Pro est en option.
 
 Ribatto écoute le bruit de la frappe, trouve chaque échange et coupe les déplacements, le ramassage des balles et les changements de côté. Touchez « Uniquement les échanges » pour revoir tout le match d'affilée, sauter d'un point à l'autre et l'envoyer à votre partenaire ou à votre coach. Conçu pour le tennis, fonctionne aussi au padel et au pickleball.
 
@@ -553,10 +643,25 @@ VOTRE SAISON
 TOUT SE PASSE SUR VOTRE IPHONE
 Pas de compte. Pas d'inscription. Aucun serveur Ribatto. Votre vidéo et son son ne quittent jamais le téléphone, et la détection fonctionne hors ligne sur le court. De votre match, la seule chose qui sort est une coordonnée envoyée à Apple pour nommer le court, et seulement si la vidéo contient des données GPS. La version gratuite affiche des publicités Google AdMob, décrites dans la politique de confidentialité.
 
-GRATUIT, AVEC UN PASS QUAND IL FAUT
-Ribatto est gratuit et financé par la publicité. Tous les outils de montage sont gratuits. Regardez une courte publicité et un PASS d'une heure ajoute : sans publicité, qualité d'origine (4K horizontal, 1080p vertical), sans filigrane, cadrage vertical intelligent qui suit l'échange, suivi d'un joueur, enregistrement groupé et fusion de clips. Ce que vous créez pendant cette heure garde sa qualité.
+GRATUIT, AVEC PRO QUAND VOUS VOULEZ
+Ribatto est gratuit et financé par la publicité, et tous les outils de montage sont gratuits. Pro ajoute : sans publicité, qualité d'origine (4K à l'horizontale, 1080p à la verticale), sans filigrane, recadrage vertical intelligent qui suit l'échange, suivi d'un joueur, enregistrement groupé et fusion. Essayez d'abord : une courte pub ouvre Pro pour votre prochain rendu, reel, enregistrement groupé ou fusion, jusqu'à trois fois par jour. Ce que vous créez garde sa qualité.
+
+Pro est proposé au mois, à l'année ou à vie en un seul achat. Les abonnements se renouvellent automatiquement sauf résiliation au moins 24 heures avant la fin de la période en cours, et se gèrent ou se résilient dans les réglages de votre compte Apple. Conditions d'utilisation : https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 Gratuit : imports illimités, 720p, filigrane.
+```
+
+**What's New (2.2)** — 695 chars
+```
+Un vrai éditeur, et Pro.
+
+- Effets : zoom d'impact, ralenti, arrêt sur image avec cercle ou flèche et ralenti du dernier coup, chacun placé sur la frappe la plus proche.
+- Texte sur plusieurs lignes avec fondu, pop ou glissé, étiquettes de nom, stickers et photos détourées.
+- Luminosité, contraste, saturation, chaleur et miroir.
+- Enregistrez une voix off ou ajoutez votre propre son. Sous-titres automatiques de la parole, créés sur votre iPhone.
+- Fondus entre les échanges dans les reels.
+- Envoyez « Échanges seulement » à vos partenaires d'un toucher.
+- Ribatto Pro : au mois, à l'année ou à vie. Ou regardez une pub pour ouvrir Pro sur votre prochaine tâche, jusqu'à trois fois par jour.
 ```
 
 **What's New (2.1)** — 416 chars
@@ -596,7 +701,7 @@ Novità: Solo gli scambi. Tutta la partita senza tempi morti, punto per punto, p
 **Description** — 3295 chars
 ```
 90 minuti filmati. Restano solo gli scambi.
-Gratis, senza abbonamento, dal video che hai già girato.
+Gratis per iniziare, dal video che hai già girato. Pro è facoltativo.
 
 Ribatto ascolta il suono del colpo, trova ogni scambio e taglia le camminate, la raccolta delle palline e i cambi di campo. Tocca «Solo gli scambi» per rivedere tutta la partita di fila, saltare da un punto all'altro e mandarla al tuo compagno o al tuo maestro. Pensato per il tennis, funziona anche con padel e pickleball.
 
@@ -631,10 +736,25 @@ Scambi, campi, punto più lungo e colpi per scambio, mese per mese.
 TUTTO GIRA SUL TUO IPHONE
 Nessun account. Nessuna registrazione. Nessun server di Ribatto. Il video e il suo audio non escono mai dal telefono, e il rilevamento funziona offline in campo. Della tua partita esce solo una coordinata inviata ad Apple per dare un nome al campo, e solo se il video ha i dati GPS. La versione gratuita mostra annunci di Google AdMob, descritti nell'informativa sulla privacy.
 
-GRATIS, CON UN PASS QUANDO SERVE
-Ribatto è gratis e si sostiene con la pubblicità. Tutti gli strumenti di modifica sono gratis. Guarda un annuncio breve e un PASS di un'ora aggiunge: niente pubblicità, qualità originale (4K orizzontale, 1080p verticale), niente filigrana, inquadratura verticale intelligente che segue lo scambio, segui un giocatore, salvataggio multiplo e unione di clip. Ciò che crei in quell'ora mantiene la sua qualità.
+GRATIS, CON PRO QUANDO VUOI
+Ribatto è gratis e si sostiene con la pubblicità, e tutti gli strumenti di modifica sono gratis. Pro aggiunge: niente pubblicità, qualità originale (4K in orizzontale, 1080p in verticale), niente filigrana, ritaglio verticale intelligente che segue lo scambio, tracciamento di un giocatore, salvataggio multiplo e unione. Provalo prima: una breve pubblicità apre Pro per il prossimo rendering, reel, salvataggio multiplo o unione, fino a tre volte al giorno. Quello che crei mantiene la qualità.
+
+Pro è disponibile mensile, annuale o a vita con un pagamento unico. Gli abbonamenti si rinnovano automaticamente se non vengono annullati almeno 24 ore prima della fine del periodo in corso, e si gestiscono o annullano nelle impostazioni del tuo Account Apple. Termini d'uso: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 Gratis: importazioni illimitate, 720p, filigrana.
+```
+
+**What's New (2.2)** — 675 chars
+```
+Un vero editor, e Pro.
+
+- Effetti: zoom d'impatto, rallentatore, fermo immagine con anello o freccia e replay lento dell'ultimo colpo, ognuno sul colpo più vicino.
+- Testo su più righe con dissolvenza, pop o scorrimento, etichette con il nome, sticker e foto scontornate.
+- Luminosità, contrasto, saturazione, calore e specchio.
+- Registra una voce fuori campo o aggiungi il tuo audio. Sottotitoli automatici dal parlato, creati sul tuo iPhone.
+- Dissolvenze tra gli scambi nei reel.
+- Invia «Solo gli scambi» ai tuoi compagni con un tocco.
+- Ribatto Pro: mensile, annuale o a vita. Oppure guarda una pubblicità per aprire Pro nel prossimo lavoro, fino a tre volte al giorno.
 ```
 
 **What's New (2.1)** — 398 chars
@@ -674,7 +794,7 @@ Ribatto: 网球视频集锦剪辑
 **Description** — 1116 chars
 ```
 拍了 90 分钟，只留下回合。
-免费，无需订阅。
+免费开始使用，Pro 按需选择。
 
 Ribatto 听击球声找出每一个回合，把走位、捡球和换边的时间全部剪掉。点「只看回合」，就能把整场比赛连着看完，一分一分地跳着看，还能直接发给搭档或教练。专为网球打造，匹克球和板式网球也能用。
 
@@ -709,10 +829,25 @@ Ribatto 听击球声找出每一个回合，把走位、捡球和换边的时间
 一切都在你的 iPhone 上完成
 没有账号，不用注册，也没有 Ribatto 服务器。视频和声音都不会离开手机，在球场上离线也能识别。关于你的比赛，唯一离开手机的是一个发给 Apple 用来查球场名字的坐标，而且只在视频带 GPS 信息时才会发送。免费版会显示 Google AdMob 广告，详见隐私政策。
 
-免费，需要时再开通行证
-Ribatto 免费使用，由广告支持，所有剪辑工具都免费。看完一段短广告，一小时通行证会加上：无广告、原画质（横屏 4K、竖屏 1080p）、无水印、跟着回合走的智能竖屏裁切、只跟拍一位球员、批量保存和片段合并。这一小时内做好的片段和短片，之后画质依然保留。
+免费，需要时再升级 Pro
+Ribatto 免费使用，由广告支持，所有剪辑工具都免费。Pro 提供：无广告、原画质（横屏 4K、竖屏 1080p）、无水印、跟随回合的智能竖屏裁切、球员追踪、批量保存和合并。可以先试用：看一段短广告，下一次渲染、短视频、批量保存或合并就能用 Pro，每天最多 3 次。做出的视频会保持原画质。
+
+Pro 提供按月、按年和终身（一次性购买）三种方式。订阅会自动续订，除非在当期结束前至少 24 小时取消；可在 Apple 账户设置中管理或取消。使用条款：https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 免费版：导入次数不限，720p，带水印。
+```
+
+**What's New (2.2)** — 247 chars
+```
+真正的剪辑器，还有 Pro。
+
+- 效果：冲击变焦、慢动作、带圆环或箭头的定格、最后一击的慢放重播，都会自动对准最近的一击。
+- 多行文字和淡入、弹出、滑入动画，名牌、贴纸，以及去除背景的照片。
+- 亮度、对比度、饱和度、色温和镜像。
+- 录制旁白或添加自己的音频。语音自动字幕，在 iPhone 上完成。
+- 短视频中回合之间的叠化转场。
+- 一键把“只看回合”发给一起打球的人。
+- Ribatto Pro：按月、按年或终身。也可以看一段广告，在下一次作业中使用 Pro，每天最多 3 次。
 ```
 
 **What's New (2.1)** — 127 chars
@@ -742,7 +877,7 @@ Ribatto 免费使用，由广告支持，所有剪辑工具都免费。看完一
 **Description** — 2960 chars
 ```
 90 minutes filmed. Only the rallies kept.
-Free. No subscription.
+Free to start. Pro is optional.
 
 Ribatto listens for the sound of the strike, finds every rally and cuts out the walking, the ball fetching and the changeovers. Tap "Just the rallies" to watch the whole match back to back, skip from point to point, and send it to your partner or coach. Built for tennis. Pickleball and padel work too.
 
@@ -777,10 +912,25 @@ Rallies, courts, longest point and shots per rally, month by month.
 IT ALL RUNS ON YOUR IPHONE
 No account. No sign-up. No Ribatto servers. Your video and its audio never leave the phone, and detection works offline at the court. About your match, the only thing that ever leaves is a coordinate sent to Apple to name a court, and only if your video carries GPS. The free version shows ads from Google AdMob, described in the privacy policy.
 
-FREE, WITH A PASS ON DEMAND
-Ribatto is free and supported by ads. Every editing tool is free. Watch one short ad and a one-hour PASS adds: no ads, source quality (4K landscape, 1080p vertical), no watermark, smart vertical crop that follows the rally, follow-one-player tracking, batch save and merge. Clips and reels you make in that hour keep their quality.
+FREE, WITH PRO WHEN YOU WANT IT
+Ribatto is free and supported by ads, and every editing tool is free. Pro adds no ads, source quality (4K landscape, 1080p vertical), no watermark, smart vertical crop that follows the rally, follow-one-player tracking, batch save and merge. Try it first: one short ad opens Pro for your next render, reel, batch save or merge, up to three times a day. What you make keeps its quality.
+
+Pro comes monthly, yearly or as a one-time lifetime purchase. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period, and can be managed or cancelled in your Apple Account settings. Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 Free: unlimited imports, 720p, watermark.
+```
+
+**What's New (2.2)** — 634 chars
+```
+A real editor, and Pro.
+
+- Effects: punch-in zoom, slow motion, freeze frame with a ring or arrow, and a slow replay of the last shot, each placed on the nearest strike.
+- Text in several lines with fade, pop or slide, name tags, stickers and photos with the background removed.
+- Brightness, contrast, saturation, warmth and mirror.
+- Record a voiceover or add your own audio. Auto captions from speech, made on your iPhone.
+- Dissolves between rallies in reels.
+- Send "Just the rallies" to your partners in one tap.
+- Ribatto Pro: monthly, yearly or lifetime. Or watch one ad to open Pro for your next job, up to three times a day.
 ```
 
 **What's New (2.1)** — 381 chars
@@ -820,7 +970,7 @@ Nuevo: Solo los puntos. Tu partido entero sin tiempos muertos, punto a punto, li
 **Description** — 3173 chars
 ```
 90 minutos grabados. Solo quedan los puntos.
-Gratis y sin suscripción, con el video que ya grabaste.
+Gratis para empezar, con el video que ya grabaste. Pro es opcional.
 
 Ribatto escucha el golpeo, encuentra cada punto y quita los paseos, la recogida de bolas y los cambios de lado. Toca «Solo los puntos» para ver el partido entero seguido, saltar de punto en punto y enviárselo a tu pareja o a tu entrenador. Pensado para el tenis; también funciona con pádel y pickleball.
 
@@ -855,10 +1005,25 @@ Puntos, canchas, el punto más largo y golpes por punto, mes a mes.
 TODO OCURRE EN TU IPHONE
 Sin cuenta. Sin registro. Sin servidores de Ribatto. Tu video y su audio nunca salen del celular, y la detección funciona sin conexión en la cancha. De tu partido, lo único que sale es una coordenada enviada a Apple para nombrar la cancha, y solo si el video lleva GPS. La versión gratuita muestra anuncios de Google AdMob, descritos en la política de privacidad.
 
-GRATIS, CON UN PASE CUANDO LO NECESITES
-Ribatto es gratis y se financia con anuncios. Todas las herramientas de edición son gratis. Mira un anuncio corto y un PASE de una hora añade: sin anuncios, calidad original (4K horizontal, 1080p vertical), sin marca de agua, recorte vertical inteligente que sigue el punto, seguimiento de un jugador, guardado en lote y unión de clips. Lo que hagas en esa hora conserva su calidad.
+GRATIS, CON PRO CUANDO LO QUIERAS
+Ribatto es gratis y se financia con anuncios, y todas las herramientas de edición son gratis. Pro añade: sin anuncios, calidad original (4K horizontal, 1080p vertical), sin marca de agua, recorte vertical inteligente que sigue el punto, seguimiento de un jugador, guardado múltiple y unión de clips. Pruébalo antes: un anuncio corto abre Pro para tu próximo render, reel, guardado múltiple o unión, hasta tres veces al día. Lo que hagas conserva su calidad.
+
+Pro está disponible mensual, anual o de por vida con un pago único. Las suscripciones se renuevan automáticamente salvo que se cancelen al menos 24 horas antes de que termine el periodo actual, y se gestionan o cancelan en los ajustes de tu cuenta de Apple. Términos de uso: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 Gratis: importaciones ilimitadas, 720p, marca de agua.
+```
+
+**What's New (2.2)** — 659 chars
+```
+Un editor de verdad, y Pro.
+
+- Efectos: zoom de impacto, cámara lenta, pausa con anillo o flecha y repetición lenta del último golpe, cada uno colocado en el golpe más cercano.
+- Texto en varias líneas con fundido, pop o deslizamiento, etiquetas de nombre, stickers y fotos sin fondo.
+- Brillo, contraste, saturación, calidez y espejo.
+- Graba una voz en off o añade tu propio audio. Subtítulos automáticos de la voz, hechos en tu iPhone.
+- Fundidos entre puntos en los reels.
+- Envía «Solo los puntos» a tus compañeros con un toque.
+- Ribatto Pro: mensual, anual o de por vida. O mira un anuncio para abrir Pro en tu próximo trabajo, hasta tres veces al día.
 ```
 
 **What's New (2.1)** — 394 chars
@@ -896,7 +1061,7 @@ Novo: Só os pontos. O seu jogo inteiro sem tempos mortos, ponto a ponto, pronto
 **Description** — 3151 chars
 ```
 90 minutos gravados. Só ficam os pontos.
-Grátis, sem subscrição, com o vídeo que já gravou.
+Grátis para começar, com o vídeo que já gravou. O Pro é opcional.
 
 O Ribatto ouve o som da pancada, encontra cada ponto e corta as caminhadas, a apanha de bolas e as mudanças de campo. Toque em "Só os pontos" para ver o jogo inteiro seguido, saltar de ponto em ponto e enviá-lo ao seu parceiro ou treinador. Feito para o ténis; também funciona com padel e pickleball.
 
@@ -931,10 +1096,25 @@ Pontos, campos, ponto mais longo e pancadas por ponto, mês a mês.
 TUDO CORRE NO SEU IPHONE
 Sem conta. Sem registo. Sem servidores do Ribatto. O seu vídeo e o áudio nunca saem do telemóvel, e a deteção funciona offline no campo. Do seu jogo, a única coisa que sai é uma coordenada enviada à Apple para dar nome ao campo, e só se o vídeo tiver GPS. A versão gratuita mostra anúncios do Google AdMob, descritos na política de privacidade.
 
-GRÁTIS, COM UM PASSE QUANDO PRECISAR
-O Ribatto é grátis e suportado por anúncios. Todas as ferramentas de edição são grátis. Veja um anúncio curto e um PASSE de uma hora acrescenta: sem anúncios, qualidade original (4K na horizontal, 1080p na vertical), sem marca de água, recorte vertical inteligente que acompanha o ponto, seguir um jogador, guardar em lote e juntar clips. O que fizer nessa hora mantém a qualidade.
+GRÁTIS, COM PRO QUANDO QUISER
+O Ribatto é grátis e suportado por anúncios, e todas as ferramentas de edição são grátis. O Pro acrescenta: sem anúncios, qualidade original (4K na horizontal, 1080p na vertical), sem marca de água, enquadramento vertical inteligente que segue o ponto, seguimento de um jogador, guardar em lote e juntar clips. Experimente primeiro: um anúncio curto abre o Pro para a próxima exportação, vídeo, gravação em lote ou junção, até três vezes por dia. O que fizer mantém a qualidade.
+
+O Pro está disponível mensal, anual ou vitalício com pagamento único. As subscrições renovam automaticamente, salvo se forem canceladas pelo menos 24 horas antes do fim do período atual, e podem ser geridas ou canceladas nas definições da sua Conta Apple. Termos de utilização: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 Grátis: importações ilimitadas, 720p, marca de água.
+```
+
+**What's New (2.2)** — 661 chars
+```
+Um editor a sério, e o Pro.
+
+- Efeitos: zoom de impacto, câmara lenta, pausa com anel ou seta e repetição lenta da última pancada, cada um colocado na pancada mais próxima.
+- Texto em várias linhas com fade, pop ou deslizar, etiquetas de nome, autocolantes e fotografias sem fundo.
+- Brilho, contraste, saturação, temperatura e espelhar.
+- Grave uma narração ou adicione o seu próprio áudio. Legendas automáticas da fala, feitas no seu iPhone.
+- Transições entre pontos nos vídeos.
+- Envie "Só os pontos" aos seus parceiros com um toque.
+- Ribatto Pro: mensal, anual ou vitalício. Ou veja um anúncio para abrir o Pro no próximo trabalho, até três vezes por dia.
 ```
 
 **What's New (2.1)** — 399 chars

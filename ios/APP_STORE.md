@@ -78,13 +78,14 @@
   (`Store/SessionStore.swift`). 클립을 사진 앱에 저장할 때도 같은 권한을 쓴다.
   예전 문안("PHPicker only — no permission prompt")은 사실과 달라 5.1.1 반려를 부른다.
   아래 §4-1의 문안을 그대로 쓸 것.
-- **구매 없음**: 복원 버튼 요건(3.1.1)이 해당하지 않는다. 패스 시트는 "구매할 것 없음 · 광고 1편 = 1시간"을 적는다.
+- **구매 있음(2.2.0부터)**: 월간·연간 구독 + 평생. 결제 화면에 복원 버튼, 이용약관(Apple 표준 EULA)·개인정보 링크, 자동 갱신 안내를 둔다(3.1.2).
+  제품 페이지 설명에도 이용약관 링크와 갱신 안내를 넣었다(marketing/app-store-copy.md).
 - **리워드 광고 = 기능 해제**: 광고 시청으로 앱 기능을 여는 것은 3.2.2(x)에서 허용된다(보상형 광고). 3.1.1이 아니다. 결제를 우회하는
   구조가 아니라 판매 자체가 없다는 점을 메모에 적는다.
 - **ATT**: 온보딩이 끝난 뒤, 첫 광고 요청 전에 묻는다. 거부해도 비맞춤 광고와 패스 열기가 그대로 동작한다.
 
 
-### 4-1. 심사 정보 메모 (그대로 복사)
+### 4-1. 심사 정보 메모 (그대로 복사, 2.2.0부터)
 
 ```
 Ribatto analyses a racket-sport match video that the user imports from Photos.
@@ -95,47 +96,61 @@ Steps:
 1. Save the sample video to the device's Photos library.
 2. Open Ribatto, tap + at the top of "My Matches", then "From Photos".
    On the first import the app asks which sport you play: choose Tennis.
-3. Pick the sample. Detection runs automatically with live progress; the best
-   rally starts playing as soon as it is found, and clips follow within about a minute.
-4. Open a clip to play it, or tap "30-second highlight reel": the vertical reel
-   is built at once and can be saved or shared from the result screen.
-5. The pass: tap "Get PASS" under the title, then "Watch an ad".
-   An optional PASS offer may appear while importing or before Apply; tapping
-   "Later · make it free" continues the free flow unchanged.
+3. Pick the sample. Detection runs automatically with live progress; clips
+   follow within about a minute.
+4. Open a clip and tap "Edit" for the editor (effects, text, photo stickers,
+   voiceover, auto captions). Tap "Just the rallies" on the match screen to
+   watch the match without dead time and "Send to your partners" to share it.
+5. In-app purchases: tap "Go Pro" under the title. The sheet lists
+   Ribatto Pro Monthly, Yearly (auto-renewable, one subscription group) and
+   Lifetime (non-consumable), with Restore, Terms of Use (Apple standard EULA)
+   and Privacy Policy links and the renewal terms.
 
-Please note about step 5: review builds request Google's public test ad
-units (a sandbox receipt is treated as a pre-release install), so the rewarded
-ad plays as a Google test ad labelled "Test mode". Watching it to the end opens
-the one-hour pass. App Store installs use live ad units. For reference, the
-page above also has the same rally exported both ways: rally-pass.mp4 (full
-quality, no watermark, re-framed vertically) and rally-free.mp4 (720p,
-watermarked). The pass changes only export quality and framing; every
-detection and editing feature is available without it. There are no in-app
-purchases of any kind.
+Rewarded ad (optional): on the same sheet, "Watch an ad" opens the Pro
+features for the next single job (one match render, one reel, one batch save
+or one merge), at most three times a day. Review builds request Google's
+public test ad units (a sandbox receipt is treated as a pre-release install),
+so the ad plays as a Google test ad labelled "Test mode". Every detection and
+editing feature works without paying or watching anything; the free tier
+exports at 720p with a watermark and shows ads.
 
 No account or sign-in is required.
 
-Photos access: the app uses PhotosPicker to select a match video, and also
-requests Photos permission so it can read the selected video in place (via
-PHImageManager) rather than duplicating a multi-gigabyte file into app
-storage, and so it can save exported clips back to the library. If access is
-denied, import still works through the picker using a local copy.
+Photos access: PhotosPicker selects a match video; Photos permission lets the
+app read that video in place instead of duplicating a multi-gigabyte file, and
+save exported clips back. Picking a photo sticker uses PhotosPicker only.
 
-All video analysis and rendering happen entirely on-device, and the video
-itself never leaves the device. There is no server of ours and no analytics.
-Network use: Google AdMob for ads in the free tier (it receives the
-advertising identifier only if the tracking prompt is accepted, plus IP
-address and basic device data), and CLGeocoder to turn a video's own GPS tag
-into a court name.
+Microphone: used to record the match in the app and to record a voiceover
+over a clip, only when the user taps Record.
 
-There are no in-app purchases. A one-hour pass (original-quality export, no
-watermark, no ads, smart vertical crop, player tracking, batch save, clip
-merge) opens after watching a rewarded video ad to the end. Without it the app
-still runs the whole flow at 720p with a watermark, watching nothing.
+Speech recognition: "Auto captions" in the text tool turns speech in a clip
+into captions with SFSpeechRecognizer, with requiresOnDeviceRecognition set to
+true. Audio is never sent to Apple's servers; if the on-device model for the
+language is missing, the app says so instead. The system permission prompt's
+own wording mentions sending data to Apple; that text is fixed by iOS.
+
+All video analysis and rendering happen on-device; the video never leaves the
+device. There is no server of ours and no analytics. Network use: Google
+AdMob for ads in the free tier (advertising identifier only if the tracking
+prompt is accepted, plus IP address and basic device data), StoreKit, and
+CLGeocoder to turn a video's own GPS tag into a court name. The ad SDK is not
+started for Pro purchasers.
 
 Detection works from the sound of racket impacts, so footage without racket
 strikes will correctly report that no rallies were found.
 ```
+
+### 4-1-a. 인앱 구입 상품 (App Store Connect 등록값)
+
+| 참조 이름 | 제품 ID | 유형 | 가격 | 표시 이름 (en / ko) | 설명 (en / ko) |
+|---|---|---|---|---|---|
+| Ribatto Pro Monthly | `com.ribatto.pro.monthly` | 자동 갱신 구독, 그룹 "Ribatto Pro", 1개월 | $2.99 | Ribatto Pro Monthly / Ribatto Pro 월간 | No ads, full quality, no watermark. / 광고 없음, 원본 화질, 워터마크 없음. |
+| Ribatto Pro Yearly | `com.ribatto.pro.yearly` | 자동 갱신 구독, 같은 그룹, 1년 | $19.99 | Ribatto Pro Yearly / Ribatto Pro 연간 | No ads, full quality, no watermark. / 광고 없음, 원본 화질, 워터마크 없음. |
+| Ribatto Pro Lifetime | `com.ribatto.pro.lifetime` | 비소모성 | $49.99 | Ribatto Pro Lifetime / Ribatto Pro 평생 | Pro for good: no ads, full quality. / 평생 Pro: 광고 없음, 원본 화질. |
+
+- 설명은 App Store 표시 한도(55자) 안. 구독 그룹 표시 이름: "Ribatto Pro".
+- 심사용 스크린샷: 결제 화면(ProPassView)에 세 상품이 보이는 캡처. Xcode에서 실행해야 `Ribatto.storekit` 상품이 뜬다.
+- 첫 인앱 구입은 **앱 버전과 함께** 심사에 제출해야 한다(버전 페이지의 "인앱 구입 및 구독" 섹션에서 추가).
 
 ### 4-2. 2.1 Information Needed 회신 (2026-10-01 요청, 그대로 복사)
 
