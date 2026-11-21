@@ -687,6 +687,7 @@ enum RallyPreview {
 
 struct HighlightPlayerSheet: View {
     @AppStorage("rc_lang") private var lang = "en"
+    @Environment(\.dismiss) private var dismiss
     let url: URL
     let name: String
     /// The frame the session was rendered to. A vertical highlight gains
@@ -724,6 +725,13 @@ struct HighlightPlayerSheet: View {
                 .allowsLandscape(!OutputFrame(orientation).isPortrait)
                 .navigationTitle("✨ \(name)")
                 .navigationBarTitleDisplayMode(.inline)
+                // Turned sideways the sheet goes full screen and can't be swiped away.
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { dismiss() } label: { Image(systemName: "xmark") }
+                            .accessibilityLabel(L.s("done", lang))
+                    }
+                }
                 // Sending the match to the people in it is what this video is
                 // for, so it is a button under the picture, not an icon.
                 .safeAreaInset(edge: .bottom) {

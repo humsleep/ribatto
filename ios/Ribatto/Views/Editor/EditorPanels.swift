@@ -85,8 +85,11 @@ struct EditorPanel: View {
     // MARK: Text
 
     @ViewBuilder private var textPanel: some View {
+        // Each panel binding falls back to the value it was drawn with: deleting the
+        // last item re-reads it once before the panel goes (min(i, count - 1) was -1).
         if let i = m.selectedImage {
-            let pic = Binding(get: { m.draft.images[min(i, m.draft.images.count - 1)] },
+            let picNow = m.draft.images[i]
+            let pic = Binding(get: { m.draft.images.indices.contains(i) ? m.draft.images[i] : picNow },
                               set: { if m.draft.images.indices.contains(i) { m.draft.images[i] = $0 } })
             VStack(alignment: .leading, spacing: 12) {
                 fxBack("text_photo")
@@ -115,7 +118,8 @@ struct EditorPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         } else if let i = m.selectedSubtitle {
-            let sub = Binding(get: { m.draft.subtitles[min(i, m.draft.subtitles.count - 1)] },
+            let subNow = m.draft.subtitles[i]
+            let sub = Binding(get: { m.draft.subtitles.indices.contains(i) ? m.draft.subtitles[i] : subNow },
                               set: { if m.draft.subtitles.indices.contains(i) { m.draft.subtitles[i] = $0 } })
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 10) {
@@ -446,7 +450,8 @@ struct EditorPanel: View {
     /// selected shows its own controls instead.
     @ViewBuilder private var fxPanel: some View {
         if let i = m.selectedSpan {
-            let span = Binding(get: { m.draft.spans[min(i, m.draft.spans.count - 1)] },
+            let spanNow = m.draft.spans[i]
+            let span = Binding(get: { m.draft.spans.indices.contains(i) ? m.draft.spans[i] : spanNow },
                                set: { if m.draft.spans.indices.contains(i) { m.draft.spans[i] = $0; m.checkpoint() } })
             VStack(alignment: .leading, spacing: 12) {
                 fxBack(span.wrappedValue.hold != nil ? "fx_freeze" : "fx_slow")
@@ -463,7 +468,8 @@ struct EditorPanel: View {
                 }
             }
         } else if let i = m.selectedMark {
-            let mark = Binding(get: { m.draft.marks[min(i, m.draft.marks.count - 1)] },
+            let markNow = m.draft.marks[i]
+            let mark = Binding(get: { m.draft.marks.indices.contains(i) ? m.draft.marks[i] : markNow },
                                set: { if m.draft.marks.indices.contains(i) { m.draft.marks[i] = $0 } })
             VStack(alignment: .leading, spacing: 12) {
                 fxBack("fx_freeze")

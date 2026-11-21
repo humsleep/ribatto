@@ -1623,11 +1623,16 @@ struct SessionDetailView: View {
         // Most clips' shape: one clip turned vertical in the editor must not
         // narrow the whole grid.
         let portrait = clips.filter { OutputFrame($0.orientation).isPortrait }.count * 2 > clips.count
+        // Mixed shapes: every card takes the majority's, or one vertical clip
+        // stretches its row and leaves its neighbour a blank, black card.
+        let shapes = Set(clips.map { OutputFrame($0.orientation) })
+        let uniform: CGFloat? = shapes.count > 1 ? (portrait ? OutputFrame.vertical : .landscape).aspectRatio : nil
         let columns = [GridItem(.adaptive(minimum: portrait ? 108 : 165),
                                 spacing: 10)]
         return LazyVGrid(columns: columns, spacing: 10) {
             ForEach(clips) { clip in
                 ClipCard(clip: clip,
+                         uniformAspect: uniform,
                          selected: selecting ? selection.contains(clip.id) : nil,
                          highlighted: highlighted.contains(clip.number)) {
                     if selecting {

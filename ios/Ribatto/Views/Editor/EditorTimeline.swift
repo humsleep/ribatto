@@ -30,7 +30,9 @@ struct EditorTimeline: View {
             let w = geo.size.width
             VStack(alignment: .leading, spacing: 6) {
                 ruler(w).frame(height: rulerH)
-                textTrack(w).frame(height: textTrackHeight)
+                // Top-aligned: the bars are offsets, so the ZStack is one row tall and a
+                // centred frame pushed a second row down over the zoom lane.
+                textTrack(w).frame(height: textTrackHeight, alignment: .topLeading)
                 keyTrack(w).frame(height: keyH)
                 if hasFX { fxTrack(w).frame(height: fxH) }
                 videoTrack(w).frame(height: videoH)

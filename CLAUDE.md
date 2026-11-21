@@ -10,7 +10,8 @@
 
 ## 읽지 말 것 (토큰/사고 방지)
 
-- `sample.mov` — **6.6GB**. 절대 Read 금지. 메타데이터가 필요하면 `ios/Tools`의 검증 도구 사용.
+- **테스트 샘플은 `~/Downloads/IMG_0939.MOV`**(2026-11-20 지정, 4K 15분 4.1GB, 테니스). 절대 Read 금지 — 메타데이터는 `mdls`나 `ios/Tools` 검증 도구로.
+  예전 `sample.mov`(6.6GB)·`sample2.mov`는 삭제됐다. 아래 기록에 남은 측정값은 그 녹화 기준이다.
 - `ios/.build/`, `*.xcuserstate` — 빌드 산출물.
 
 `.claude/settings.json`에서 위 경로 Read를 deny 처리해 뒀다.
@@ -293,7 +294,7 @@ swift Tools/make_screenshots.swift <캡처폴더> <출력폴더>   # ios/ 에서
 캡처용 기록은 meta.json만 있는 임시 경기 8개로 만들고 지웠다. 세션·시즌 프레임은 다시 찍지 않아 아래 끝에 3탭 바가 살짝 걸려 있다.
 2026-10-30(1.2.0): 히어로 · 편집기 자막(NEW 칩) · 세션 · 편집기 줌 · 릴스 · 시즌 6장(`screenshot-plan.md`). 히어로는 10-28 캡처 재사용,
 편집기 캡처는 test_import 세션 #1(가로, "MATCH POINT" 자막·줌 키를 meta.json에 직접 넣음)을 17초/21초에 세워 찍었다. 릴스 화면은 재생 중 프레임(영어 훅이 안 보이게).
-데모 데이터: sample2.mov에서 자른 5분짜리 3개를 앱 Documents/seed에 넣고 Debug 빌드를 `-seedDemo`로 띄우면 가져와 감지한다.
+데모 데이터: 샘플(`~/Downloads/IMG_0939.MOV`)을 앱 Documents/seed에 하드링크(`ln`, 복사 비용 없음)하고 Debug 빌드를 `-seedDemo`로 띄우면 가져와 감지한다.
 언어는 `-rc_lang <code>` 실행 인자로 바꾸고, 코트 이름은 meta.json `placeName`을 언어별로 고쳐 찍었다.
 
 ## Pro 테스트

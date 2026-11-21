@@ -68,55 +68,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ribatto records sound with your match video so it can find rallies by the sound of the ball."
+            "value": "Ribatto records sound with your match video so it can find rallies by the sound of the ball, and records the voiceovers you add to clips."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ribatto가 경기 영상과 함께 소리를 녹음해 공 소리로 랠리를 찾습니다."
+            "value": "Ribatto가 경기 영상과 함께 소리를 녹음해 공 소리로 랠리를 찾고, 클립에 넣을 목소리를 녹음합니다."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ribattoは試合の動画と一緒に音声を録音し、ボールの音でラリーを見つけます。"
+            "value": "Ribattoは試合の映像と一緒に音を録音して打球音でラリーを見つけ、クリップに入れるナレーションを録音します。"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ribatto graba el sonido junto con el vídeo del partido para encontrar los puntos por el sonido de la pelota."
+            "value": "Ribatto graba el sonido con el vídeo del partido para encontrar los puntos por el sonido de la pelota, y graba las voces en off que añades a los clips."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Ribatto grava o som junto com o vídeo da partida para encontrar os pontos pelo som da bola."
+            "value": "O Ribatto grava o som com o vídeo da partida para encontrar os pontos pelo som da bola e grava as narrações que você adiciona aos clipes."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ribatto nimmt zum Matchvideo den Ton auf, um Ballwechsel am Klang des Balls zu erkennen."
+            "value": "Ribatto nimmt den Ton mit deinem Matchvideo auf, um Ballwechsel am Klang des Balls zu finden, und nimmt die Sprachaufnahmen für deine Clips auf."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ribatto enregistre le son avec la vidéo du match pour trouver les échanges au bruit de la balle."
+            "value": "Ribatto enregistre le son avec la vidéo du match pour trouver les échanges au bruit de la balle, et enregistre les voix off que vous ajoutez aux clips."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ribatto registra l'audio insieme al video della partita per trovare gli scambi dal suono della palla."
+            "value": "Ribatto registra l'audio con il video della partita per trovare gli scambi dal suono della palla e registra le voci fuori campo che aggiungi ai clip."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ribatto 在录制比赛视频时一并录音，以便通过击球声找出回合。"
+            "value": "Ribatto 会随比赛视频一起录音，凭击球声找出回合，并录制你为片段添加的旁白。"
           }
         }
       }
@@ -297,6 +297,65 @@
           "stringUnit": {
             "state": "translated",
             "value": "允许跟踪后，免费版中的广告会更贴合你的兴趣。你的视频和片段绝不会被分享。"
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto turns speech in your clips into captions. Recognition runs on this iPhone only."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto가 클립 속 말소리를 자막으로 바꿉니다. 인식은 이 iPhone 안에서만 이뤄집니다."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribattoはクリップ内の話し声を字幕に変換します。認識はこのiPhone内だけで行われます。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto convierte la voz de tus clips en subtítulos. El reconocimiento se hace solo en este iPhone."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Ribatto transforma a fala dos seus clipes em legendas. O reconhecimento acontece só neste iPhone."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto wandelt Sprache in deinen Clips in Untertitel um. Die Erkennung läuft nur auf diesem iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto transforme la parole de vos clips en sous-titres. La reconnaissance se fait uniquement sur cet iPhone."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto trasforma il parlato dei tuoi clip in sottotitoli. Il riconoscimento avviene solo su questo iPhone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ribatto 会把片段中的语音转成字幕。识别只在这台 iPhone 上进行。"
           }
         }
       }

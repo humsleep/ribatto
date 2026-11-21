@@ -1851,10 +1851,24 @@ final class SessionStore: ObservableObject {
     private func join(_ chosen: [ClipInfo], as name: String,
                       in session: Session) async -> (url: URL, starts: [Double])? {
         let out = dir(session).appendingPathComponent(name)
+        // Same clips, same files since the last join: reopening the player used
+        // to re-copy a whole Pro match (600MB+) every time.
+        let sidecar = out.appendingPathExtension("json")
+        let key = chosen.map { c -> String in
+            let v = try? c.url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            return "\(c.url.lastPathComponent)|\(v?.fileSize ?? 0)|\(v?.contentModificationDate?.timeIntervalSince1970 ?? 0)"
+        }
+        struct Cached: Codable { let key: [String]; let starts: [Double] }
+        if fm.fileExists(atPath: out.path), let data = try? Data(contentsOf: sidecar),
+           let cached = try? JSONDecoder().decode(Cached.self, from: data), cached.key == key {
+            return (out, cached.starts)
+        }
+        try? fm.removeItem(at: sidecar)
         progress[session.id] = .merge
         defer { clearProgressUnlessFailed(session.id) }
         do {
             let starts = try await HighlightMerger.merge(clips: chosen.map(\.url), to: out)
+            try? JSONEncoder().encode(Cached(key: key, starts: starts)).write(to: sidecar)
             return (out, starts)
         } catch {
             progress[session.id] = .failed(failureText(error))
