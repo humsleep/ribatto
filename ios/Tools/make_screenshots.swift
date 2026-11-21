@@ -60,104 +60,144 @@ struct Frame {
     let full: Bool            // true = image fills the frame (the hero clip)
 }
 
-// [headline line 1, line 2, sub] per frame, per locale. Platform names stay
-// out of the copy (guideline 2.3.7 risk); the app's own words for rally and
-// season are used so the frames match the UI.
+// 3.0 (2026-11-20): benchmarked against SwingVision, Clutch, PerfectSwing and
+// others — none says "send your partner the match without the dead time", and
+// only one shows a before/after. Frame 1 leads with that, full-bleed footage
+// from the test sample (~/Downloads/IMG_0939.MOV) and its measured numbers.
+// Numbers here must come from a real run: 15:09 of video, 14 rallies, 2:53.
+// No shot counts or "every rally" — both can be wrong.
+//
+// [headline line 1, line 2, sub] per frame, per locale.
 var copy: [String: [[String]]] = [
-    "en": [["JUST THE", "RALLIES", "The whole match with the dead time cut. Skip point to point, send it to your partner."],
-           ["ONE TAP,", "MATCH TO REEL", "Every rally found by its sound and cut vertical, ready to post."],
-           ["EDIT IT", "YOUR WAY", "Text anywhere, zoom keyframes, slow motion, color looks. All free."],
-           ["FOUND BY", "SOUND", "It hears every strike and cuts the dead time. Best rally first."],
-           ["ZOOM IN ON", "THE WINNER", "Zoom and pan keyframes on a real timeline. Slow the last shot to 0.5×."],
-           ["30 SECONDS,", "BEST FIRST", "One tap makes a vertical reel, best rally first. Share it anywhere."],
-           ["YOUR SEASON,", "COUNTED", "Every rally, every court. Your video never leaves your iPhone."]],
-    "ko": [["랠리만", "이어 보기", "빈 시간을 뺀 경기 전체. 포인트별로 넘겨 보고, 파트너에게 보내세요."],
-           ["탭 한 번에", "경기가 릴스로", "타구음으로 랠리를 모두 찾아 세로로 잘라 둡니다. 바로 올리세요."],
-           ["내 마음대로", "편집하기", "자막은 원하는 곳에, 줌 키프레임, 슬로모션, 색감까지. 전부 무료."],
-           ["소리로", "랠리를 찾다", "타구음을 듣고 쉬는 시간은 잘라냅니다. 베스트 랠리부터."],
-           ["위닝샷을", "크게 당겨서", "타임라인에 줌·이동 키프레임을. 마지막 샷은 0.5× 슬로로."],
-           ["30초 릴스,", "베스트부터", "탭 한 번에 세로 릴스, 베스트 랠리가 먼저. 어디든 공유하세요."],
-           ["나의 시즌을", "기록으로", "모든 랠리, 모든 코트. 영상은 iPhone 밖으로 나가지 않습니다."]],
-    "ja": [["ラリーだけ", "通して見る", "待ち時間を抜いた試合全体。ポイントごとに飛ばして、パートナーに送れます。"],
-           ["ワンタップで", "試合がリールに", "打球音でラリーをすべて見つけ、縦型にカット。すぐ投稿できます。"],
-           ["思いどおりに", "編集", "テキストは好きな位置に。ズーム、スロー、カラーまで。すべて無料。"],
-           ["音で", "ラリーを検出", "打球音を聞き分けて空き時間をカット。ベストラリーから。"],
-           ["決めの一打を", "ズームで", "タイムラインでズームと移動のキーフレーム。最後の一打は0.5×スローで。"],
-           ["30秒リール、", "ベストから", "ワンタップで縦型リール。ベストラリーが最初。どこでもシェア。"],
-           ["シーズンを", "記録に", "すべてのラリー、すべてのコート。動画はiPhoneの外に出ません。"]],
-    "es": [["SOLO LOS", "PUNTOS", "El partido entero sin tiempos muertos. Salta de punto en punto y envíalo a tu pareja."],
-           ["UN TOQUE,", "DEL PARTIDO AL REEL", "Encuentra cada punto por el sonido y lo corta en vertical. Publícalo."],
-           ["EDÍTALO", "A TU MANERA", "Texto donde quieras, zoom, cámara lenta y colores. Todo gratis."],
-           ["LO ENCUENTRA", "POR EL SONIDO", "Escucha cada golpe y quita los tiempos muertos. El mejor punto, primero."],
-           ["ZOOM AL", "GOLPE GANADOR", "Fotogramas clave de zoom en la línea de tiempo. El último golpe a 0,5×."],
-           ["30 SEGUNDOS,", "LO MEJOR PRIMERO", "Un toque crea un reel vertical con tu mejor punto primero. Compártelo."],
-           ["TU TEMPORADA,", "EN NÚMEROS", "Cada punto, cada pista. Tu vídeo nunca sale de tu iPhone."]],
-    "pt": [["SÓ OS", "PONTOS", "A partida inteira sem tempo morto. Pule de ponto em ponto e mande para sua dupla."],
-           ["UM TOQUE,", "DA PARTIDA AO REEL", "Acha cada ponto pelo som e corta na vertical. Pronto para postar."],
-           ["EDITE DO", "SEU JEITO", "Texto onde quiser, zoom, câmera lenta e cores. Tudo grátis."],
-           ["ACHADO", "PELO SOM", "Ouve cada batida e corta o tempo morto. O melhor ponto primeiro."],
-           ["ZOOM NO", "GOLPE DECISIVO", "Quadros-chave de zoom na linha do tempo. O último golpe a 0,5×."],
-           ["30 SEGUNDOS,", "O MELHOR PRIMEIRO", "Um toque cria um reel vertical com o melhor ponto primeiro. Compartilhe."],
-           ["SUA TEMPORADA,", "EM NÚMEROS", "Cada ponto, cada quadra. Seu vídeo nunca sai do seu iPhone."]],
-    "de": [["NUR DIE", "BALLWECHSEL", "Das ganze Match ohne Leerlauf. Von Punkt zu Punkt springen und an den Partner schicken."],
-           ["EIN TIPPEN,", "VOM MATCH ZUM REEL", "Jeder Ballwechsel am Klang erkannt und hochkant geschnitten."],
-           ["SCHNEIDE,", "WIE DU WILLST", "Text überall, Zoom-Keyframes, Zeitlupe, Farblooks. Alles kostenlos."],
-           ["AM KLANG", "ERKANNT", "Es hört jeden Schlag und schneidet Pausen weg. Der beste zuerst."],
-           ["ZOOM AUF DEN", "SIEGSCHLAG", "Zoom- und Schwenk-Keyframes auf der Zeitleiste. Letzter Schlag in 0,5×."],
-           ["30 SEKUNDEN,", "DAS BESTE ZUERST", "Ein Tippen macht ein Hochkant-Reel, der beste Ballwechsel zuerst."],
-           ["DEINE SAISON,", "GEZÄHLT", "Jeder Ballwechsel, jeder Platz. Dein Video verlässt nie dein iPhone."]],
-    "fr": [["UNIQUEMENT", "LES ÉCHANGES", "Tout le match sans temps morts. Sautez d'un point à l'autre et envoyez-le à votre partenaire."],
-           ["UN TOUCHER,", "DU MATCH AU REEL", "Chaque échange repéré au son et recadré à la verticale, prêt à publier."],
-           ["MONTEZ", "À VOTRE FAÇON", "Texte où vous voulez, zoom, ralenti, looks couleur. Tout est gratuit."],
-           ["TROUVÉ", "AU SON", "Il écoute chaque frappe et coupe les temps morts. Le meilleur d'abord."],
-           ["ZOOMEZ SUR", "LE COUP GAGNANT", "Images clés de zoom sur la timeline. Le dernier coup ralenti à 0,5×."],
-           ["30 SECONDES,", "LE MEILLEUR D'ABORD", "Un toucher crée un reel vertical, meilleur échange en premier. Partagez."],
-           ["VOTRE SAISON,", "EN CHIFFRES", "Chaque échange, chaque court. Votre vidéo ne quitte jamais votre iPhone."]],
-    "it": [["SOLO GLI", "SCAMBI", "Tutta la partita senza tempi morti. Salta da un punto all'altro e mandala al compagno."],
-           ["UN TOCCO,", "DAL MATCH AL REEL", "Ogni scambio riconosciuto dal suono e tagliato in verticale. Pubblicalo."],
-           ["MONTA", "A MODO TUO", "Testo ovunque, zoom, rallenty e look colore. Tutto gratis."],
-           ["TROVATO", "DAL SUONO", "Ascolta ogni colpo e taglia i tempi morti. Il migliore per primo."],
-           ["ZOOM SUL", "COLPO VINCENTE", "Fotogrammi chiave di zoom sulla timeline. L'ultimo colpo a 0,5×."],
-           ["30 SECONDI,", "IL MEGLIO PRIMA", "Un tocco crea un reel verticale, lo scambio migliore per primo."],
-           ["LA TUA STAGIONE,", "IN NUMERI", "Ogni scambio, ogni campo. Il tuo video non lascia mai il tuo iPhone."]],
-    "zh-Hans": [["只看", "回合", "去掉空档的整场比赛。一分一分地跳着看，直接发给搭档。"],
-                ["轻点一下", "比赛变竖版视频", "凭击球声找出每一个回合，裁成竖屏，随时发布。"],
-                ["随心", "剪辑", "文字随处摆放，缩放关键帧、慢动作、调色。全部免费。"],
-                ["听声音", "找回合", "听出每一次击球，剪掉空闲时间。最佳回合优先。"],
-                ["致胜一击", "放大看", "在时间线上设置缩放与平移关键帧，最后一击 0.5× 慢放。"],
-                ["30 秒竖版视频", "最佳回合打头", "轻点一下生成竖版视频，最佳回合排第一。随处分享。"],
-                ["你的赛季", "尽在记录", "每个回合，每块球场。你的视频从不离开你的 iPhone。"]],
-    "pt-PT": [["SÓ OS", "PONTOS", "O jogo inteiro sem tempos mortos. Salte de ponto em ponto e envie ao seu parceiro."],
-              ["UM TOQUE,", "DO JOGO AO REEL", "Encontra cada ponto pelo som e corta na vertical. Pronto a publicar."],
-              ["EDITE À", "SUA MANEIRA", "Texto onde quiser, zoom, câmara lenta e cores. Tudo grátis."],
-              ["ENCONTRADO", "PELO SOM", "Ouve cada pancada e corta o tempo morto. O melhor ponto primeiro."],
-              ["ZOOM NO", "PONTO VENCEDOR", "Keyframes de zoom na linha temporal. A última pancada a 0,5×."],
-              ["30 SEGUNDOS,", "O MELHOR PRIMEIRO", "Um toque cria um reel vertical com o melhor ponto primeiro. Partilhe."],
-              ["A SUA ÉPOCA,", "EM NÚMEROS", "Cada ponto, cada campo. O seu vídeo nunca sai do seu iPhone."]],
+    "en": [["YOUR WHOLE MATCH.", "JUST THE RALLIES.", "Example match: 15:09 of video, 2:53 of rallies."],
+           ["SEND IT TO", "YOUR PARTNER", "All the rallies in one video, point by point."],
+           ["FOUND BY THE", "SOUND OF THE BALL", "Tennis, padel, pickleball, badminton. The dead time is cut for you."],
+           ["A 30-SECOND REEL", "IN ONE TAP", "Vertical, best rally first, ready to post."],
+           ["SLOW-MO, FREEZE,", "REPLAY THE WINNER", "One tap snaps zoom and slow motion to the shot."],
+           ["CAPTIONS, ZOOM,", "STICKERS. FREE.", "The whole editor is free. Text anywhere, keyframes, color."],
+           ["YOUR VIDEO", "STAYS ON YOUR PHONE", "Detection and editing run on your iPhone. No account."]],
+    "ko": [["경기 전체에서", "랠리만 쏙.", "예시 경기: 영상 15:09 → 랠리 2:53"],
+           ["복식 파트너에게", "바로 보내기", "랠리만 이은 영상 하나로 포인트마다 넘겨 봐요."],
+           ["공 소리로", "랠리를 찾아요", "테니스·파델·피클볼·배드민턴. 쉬는 시간은 알아서 잘라요."],
+           ["탭 한 번에", "30초 릴스", "세로 영상, 베스트 랠리부터. 바로 올리세요."],
+           ["슬로모션·정지·", "위닝샷 리플레이", "탭 한 번이면 그 타구에 줌과 슬로모션이 붙어요."],
+           ["자막·줌·스티커,", "전부 무료", "편집기는 모두 무료. 어디든 자막, 키프레임, 색감."],
+           ["영상은", "내 폰에만", "감지와 편집이 모두 iPhone에서 돌아요. 계정도 없어요."]],
+    "ja": [["試合まるごと、", "ラリーだけ。", "試合例: 動画 15:09 → ラリー 2:53"],
+           ["ダブルスの相方に", "そのまま送る", "ラリーだけをつないだ動画で、ポイントごとに見返せます。"],
+           ["打球音で", "ラリーを検出", "テニス・パデル・ピックルボール・バドミントン。待ち時間は自動でカット。"],
+           ["ワンタップで", "30秒リール", "縦型で、ベストラリーから。すぐ投稿できます。"],
+           ["スロー・静止・", "決めの一打をリプレイ", "ワンタップでその一打にズームとスローが付きます。"],
+           ["字幕・ズーム・", "スタンプ。無料。", "編集機能はすべて無料。好きな位置に字幕、キーフレーム、カラー。"],
+           ["動画は", "あなたのiPhoneだけに", "検出も編集もiPhoneの中だけ。アカウントも不要です。"]],
+    "es": [["TODO EL PARTIDO.", "SOLO LOS PUNTOS.", "Partido de ejemplo: 15:09 de vídeo, 2:53 de puntos."],
+           ["ENVÍASELO", "A TU PAREJA", "Todos los puntos en un vídeo, de punto en punto."],
+           ["LO ENCUENTRA POR", "EL SONIDO DE LA BOLA", "Tenis, pádel, pickleball, bádminton. Los tiempos muertos se cortan solos."],
+           ["UN REEL DE 30 S", "CON UN TOQUE", "En vertical, el mejor punto primero, listo para publicar."],
+           ["CÁMARA LENTA, PAUSA,", "REPETICIÓN DEL GANADOR", "Un toque añade zoom y cámara lenta al golpe."],
+           ["SUBTÍTULOS, ZOOM,", "STICKERS. GRATIS.", "Todo el editor es gratis. Texto donde quieras, fotogramas clave, color."],
+           ["TU VÍDEO", "SE QUEDA EN TU MÓVIL", "La detección y la edición ocurren en tu iPhone. Sin cuenta."]],
+    "pt": [["A PARTIDA INTEIRA.", "SÓ OS PONTOS.", "Partida de exemplo: 15:09 de vídeo, 2:53 de pontos."],
+           ["MANDE PARA", "SUA DUPLA", "Todos os pontos em um vídeo, de ponto em ponto."],
+           ["ACHADOS PELO", "SOM DA BOLA", "Tênis, padel, pickleball, badminton. O tempo morto é cortado sozinho."],
+           ["UM REEL DE 30 S", "EM UM TOQUE", "Na vertical, o melhor ponto primeiro, pronto para postar."],
+           ["CÂMERA LENTA, PAUSA,", "REPLAY DO VENCEDOR", "Um toque coloca zoom e câmera lenta no golpe."],
+           ["LEGENDAS, ZOOM,", "FIGURINHAS. GRÁTIS.", "O editor inteiro é grátis. Texto onde quiser, quadros-chave, cor."],
+           ["SEU VÍDEO", "FICA NO SEU CELULAR", "Detecção e edição acontecem no seu iPhone. Sem conta."]],
+    "de": [["DAS GANZE MATCH.", "NUR DIE BALLWECHSEL.", "Beispielmatch: 15:09 Video, 2:53 Ballwechsel."],
+           ["SCHICK ES", "DEINEM PARTNER", "Alle Ballwechsel in einem Video, Punkt für Punkt."],
+           ["AM KLANG", "DES BALLS ERKANNT", "Tennis, Padel, Pickleball, Badminton. Pausen werden automatisch geschnitten."],
+           ["EIN 30-S-REEL", "MIT EINEM TIPPEN", "Hochkant, der beste Ballwechsel zuerst, bereit zum Posten."],
+           ["ZEITLUPE, STANDBILD,", "SIEGSCHLAG-REPLAY", "Ein Tippen legt Zoom und Zeitlupe auf den Schlag."],
+           ["UNTERTITEL, ZOOM,", "STICKER. KOSTENLOS.", "Der ganze Editor ist kostenlos. Text überall, Keyframes, Farbe."],
+           ["DEIN VIDEO", "BLEIBT AUF DEINEM HANDY", "Erkennung und Schnitt laufen auf deinem iPhone. Kein Konto."]],
+    "fr": [["TOUT LE MATCH.", "JUSTE LES ÉCHANGES.", "Match d'exemple : 15:09 de vidéo, 2:53 d'échanges."],
+           ["ENVOYEZ-LE", "À VOTRE PARTENAIRE", "Tous les échanges dans une vidéo, point par point."],
+           ["REPÉRÉS AU", "BRUIT DE LA BALLE", "Tennis, padel, pickleball, badminton. Les temps morts sont coupés pour vous."],
+           ["UN REEL DE 30 S", "EN UN TOUCHER", "À la verticale, le meilleur échange d'abord, prêt à publier."],
+           ["RALENTI, ARRÊT,", "REPLAY DU COUP GAGNANT", "Un toucher ajoute zoom et ralenti sur le coup."],
+           ["SOUS-TITRES, ZOOM,", "STICKERS. GRATUIT.", "Tout l'éditeur est gratuit. Texte partout, images clés, couleur."],
+           ["VOTRE VIDÉO", "RESTE SUR VOTRE TÉLÉPHONE", "Détection et montage se font sur votre iPhone. Sans compte."]],
+    "it": [["TUTTA LA PARTITA.", "SOLO GLI SCAMBI.", "Partita d'esempio: 15:09 di video, 2:53 di scambi."],
+           ["MANDALA AL", "TUO COMPAGNO", "Tutti gli scambi in un video, punto per punto."],
+           ["TROVATI DAL", "SUONO DELLA PALLA", "Tennis, padel, pickleball, badminton. I tempi morti si tagliano da soli."],
+           ["UN REEL DA 30 S", "CON UN TOCCO", "In verticale, lo scambio migliore per primo, pronto da pubblicare."],
+           ["RALLENTY, FERMO,", "REPLAY DEL VINCENTE", "Un tocco aggiunge zoom e rallenty al colpo."],
+           ["SOTTOTITOLI, ZOOM,", "STICKER. GRATIS.", "Tutto l'editor è gratis. Testo ovunque, fotogrammi chiave, colore."],
+           ["IL TUO VIDEO", "RESTA SUL TUO TELEFONO", "Rilevamento e montaggio avvengono sul tuo iPhone. Nessun account."]],
+    "zh-Hans": [["整场比赛，", "只留回合。", "示例比赛：视频 15:09 → 回合 2:53"],
+                ["直接发给", "双打搭档", "只含回合的一段视频，可一分一分地看。"],
+                ["凭击球声", "找出回合", "网球、板式网球、匹克球、羽毛球。空档自动剪掉。"],
+                ["轻点一下", "30 秒竖版视频", "竖屏，最佳回合打头，随时发布。"],
+                ["慢动作·定格·", "致胜一击回放", "轻点一下，就给那一击加上缩放和慢动作。"],
+                ["字幕·缩放·", "贴纸，全部免费", "编辑器全部免费。随处加字，关键帧，调色。"],
+                ["视频只在", "你的手机里", "识别和剪辑都在 iPhone 上完成。无需账号。"]],
 ]
-// 2.1: the Challenges tab, before the season frame.
-let challenge: [String: [String]] = [
-    "en": ["BEAT YOUR", "LAST MONTH", "Monthly goals set from your own matches. Tap one to replay the rallies behind it."],
-    "ko": ["지난달의 나를", "넘어서기", "내 경기 기록으로 매달 도전이 생깁니다. 누르면 그 랠리를 바로 봅니다."],
-    "ja": ["先月の自分を", "超える", "自分の試合記録から毎月チャレンジが生まれます。タップでそのラリーを再生。"],
-    "es": ["SUPERA TU", "MES PASADO", "Retos mensuales a partir de tus propios partidos. Toca uno para ver esos puntos."],
-    "pt": ["SUPERE SEU", "MÊS PASSADO", "Desafios mensais a partir das suas partidas. Toque em um para rever os pontos."],
-    "de": ["SCHLAG DEINEN", "LETZTEN MONAT", "Monatsziele aus deinen eigenen Matches. Tippe eins an und sieh die Ballwechsel dazu."],
-    "fr": ["BATTEZ VOTRE", "MOIS DERNIER", "Des défis mensuels tirés de vos propres matchs. Touchez-en un pour revoir les échanges."],
-    "it": ["BATTI IL TUO", "MESE SCORSO", "Sfide mensili create dalle tue partite. Toccane una per rivedere gli scambi."],
-    "zh-Hans": ["超越", "上个月的自己", "每月挑战来自你自己的比赛记录。轻点即可回看对应的回合。"],
-    "pt-PT": ["SUPERE O SEU", "MÊS PASSADO", "Desafios mensais a partir dos seus jogos. Toque num para rever os pontos."],
-]
-for (k, v) in challenge { copy[k]?.insert(v, at: 6) }
-// Storefront variants: British spelling for UK/Australia/Canada, Latin American
-// words for Mexico and the US Spanish index.
-copy["en-GB"] = copy["en"]!.map { $0.map { $0.replacingOccurrences(of: "color", with: "colour") } }
-copy["es-MX"] = copy["es"]!.map { $0.map { $0.replacingOccurrences(of: "vídeo", with: "video")
-                                              .replacingOccurrences(of: "pista", with: "cancha") } }
-let files = ["s7_rallies.png", "hero.jpg", "s5_editor_text.png", "s2_session.png", "s6_editor_zoom.png", "s3_reel.png", "s8_challenges.png", "s4_season.png"]
+let files = ["hero_still.jpg", "s2_partner.png", "s3_found.png", "s4_reel.png", "s5_moments.png", "s6_captions.png", "s7_privacy.png"]
 let frames: [Frame] = files.enumerated().map { i, f in
     let c = (copy[locale] ?? copy["en"]!)[i]
-    return Frame(file: f, headline: [c[0], c[1]], sub: c[2], full: f == "hero.jpg")
+    return Frame(file: f, headline: [c[0], c[1]], sub: c[2], full: f == "hero_still.jpg")
+}
+
+/// Frame 1: the footage fills the frame, headline on a top scrim, and the
+/// before/after bars on a bottom one. The bars are the measured run, drawn to
+/// scale (2:53 is 19% of 15:09).
+func drawHero(_ f: Frame, _ g: CGContext, _ cg: CGImage) {
+    // Portrait window on the player (left third of the 4K frame).
+    let iw = CGFloat(cg.width), ih = CGFloat(cg.height)
+    let cropW = ih * W / H
+    let cx = iw * 0.36
+    let crop = CGRect(x: max(0, min(iw - cropW, cx - cropW / 2)), y: 0, width: cropW, height: ih)
+    if let part = cg.cropping(to: crop) { g.draw(part, in: CGRect(x: 0, y: 0, width: W, height: H)) }
+    func scrim(_ y0: CGFloat, _ y1: CGFloat, _ a0: CGFloat, _ a1: CGFloat) {
+        let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                              colors: [NSColor.black.withAlphaComponent(a0).cgColor,
+                                       NSColor.black.withAlphaComponent(a1).cgColor] as CFArray,
+                              locations: [0, 1])!
+        g.drawLinearGradient(grad, start: CGPoint(x: 0, y: y0), end: CGPoint(x: 0, y: y1), options: [])
+    }
+    scrim(H, H * 0.62, 0.85, 0)
+    scrim(0, H * 0.34, 0.9, 0)
+
+    let margin: CGFloat = 90
+    var y = H - 210
+    var size: CGFloat = 150
+    while size > 80, f.headline.contains(where: {
+        NSAttributedString(string: $0, attributes: [.font: display(size), .kern: 1.5]).size().width > W - margin * 2
+    }) { size -= 4 }
+    for (i, line) in f.headline.enumerated() {
+        let font = display(size)
+        NSAttributedString(string: line, attributes: [.font: font, .kern: 1.5,
+            .foregroundColor: i == 1 ? volt : NSColor.white]).draw(at: CGPoint(x: margin, y: y - font.ascender))
+        y -= size * 1.12
+    }
+
+    // Bars, bottom up: caption, rallies bar, video bar.
+    let barW = W - margin * 2, barH: CGFloat = 46
+    let video: Double = 909, rallies: Double = 172.6
+    let label = body(44, .semibold)
+    let parts = f.sub.replacingOccurrences(of: "：", with: ": ").components(separatedBy: ":")
+    let caption = parts.count > 1 ? parts[0] : ""
+    NSAttributedString(string: caption, attributes: [.font: body(36), .foregroundColor: dim])
+        .draw(at: CGPoint(x: margin, y: 150))
+    func bar(_ y: CGFloat, _ frac: CGFloat, _ color: NSColor, _ name: String, _ time: String) {
+        let track = CGPath(roundedRect: CGRect(x: margin, y: y, width: barW, height: barH),
+                           cornerWidth: barH / 2, cornerHeight: barH / 2, transform: nil)
+        g.setFillColor(NSColor.white.withAlphaComponent(0.14).cgColor); g.addPath(track); g.fillPath()
+        let fill = CGPath(roundedRect: CGRect(x: margin, y: y, width: max(barH, barW * frac), height: barH),
+                          cornerWidth: barH / 2, cornerHeight: barH / 2, transform: nil)
+        g.setFillColor(color.cgColor); g.addPath(fill); g.fillPath()
+        NSAttributedString(string: name, attributes: [.font: label, .foregroundColor: NSColor.white])
+            .draw(at: CGPoint(x: margin, y: y + barH + 14))
+        let t = NSAttributedString(string: time, attributes: [.font: display(64), .foregroundColor: color == volt ? volt : NSColor.white])
+        t.draw(at: CGPoint(x: margin + barW - t.size().width, y: y + barH + 6))
+    }
+    let names = ["ko": ["영상", "랠리만"], "ja": ["動画", "ラリーだけ"], "es": ["Vídeo", "Solo los puntos"],
+                 "pt": ["Vídeo", "Só os pontos"], "de": ["Video", "Nur die Ballwechsel"],
+                 "fr": ["Vidéo", "Juste les échanges"], "it": ["Video", "Solo gli scambi"],
+                 "zh-Hans": ["视频", "只留回合"]][locale] ?? ["Video", "Just the rallies"]
+    bar(430, 1, rgb(150, 150, 156), names[0], "15:09")
+    bar(240, CGFloat(rallies / video), volt, names[1], "2:53")
 }
 
 func draw(_ f: Frame, index: Int) {
@@ -187,26 +227,18 @@ func draw(_ f: Frame, index: Int) {
                              endRadius: W * 0.95, options: [])
     }
 
-    let margin: CGFloat = 90
-    var y = H - 250     // AppKit's origin is bottom-left; we lay out downward
-
-    // A "NEW" chip over the editor frame. Outlined, not filled: a solid volt
-    // capsule is the app's primary-button shape. 2.0: the rallies frame is new;
-    // the editor frame keeps it because 1.2.0 never shipped.
-    if index == 0 || index == 2 {
-        let word = ["es": "NUEVO", "pt": "NOVO", "de": "NEU", "fr": "NOUVEAU",
-                    "it": "NUOVO", "zh": "新功能"][String(locale.prefix(2))] ?? "NEW"
-        let t = NSAttributedString(string: word, attributes: [.font: body(38, .bold),
-                                                               .foregroundColor: volt, .kern: 2])
-        let ts = t.size()
-        let chip = CGRect(x: margin, y: H - 175, width: ts.width + 52, height: ts.height + 22)
-        let p = CGPath(roundedRect: chip, cornerWidth: chip.height / 2, cornerHeight: chip.height / 2,
-                       transform: nil)
-        g.setStrokeColor(volt.cgColor); g.setLineWidth(3); g.addPath(p); g.strokePath()
-        t.draw(at: CGPoint(x: chip.minX + 26, y: chip.minY + 11))
-        y -= 40
+    // Frame 1 is its own layout: footage full-bleed with the before/after bars.
+    if f.full, let img = NSImage(contentsOf: shots.appendingPathComponent(f.file)),
+       let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+        drawHero(f, g, cg)
+        NSGraphicsContext.restoreGraphicsState()
+        save(rep, f, index)
+        return
     }
 
+    let margin: CGFloat = 90
+    var y = H - 250     // AppKit's origin is bottom-left; we lay out downward
+    // Apple bars "NEW" in previews; the old chip is gone from screenshots too.
     // Headline. Sized to dominate: in search results this frame is a thumbnail
     // and the words are the only thing that survives the shrink.
     // One size for both lines, shrunk until the longest fits: "DALLA PARTITA
@@ -272,9 +304,12 @@ func draw(_ f: Frame, index: Int) {
     }
 
     NSGraphicsContext.restoreGraphicsState()
-    let url = outDir.appendingPathComponent(String(format: "%02d_%@.png", index + 1,
-                                                   f.file.replacingOccurrences(of: ".png", with: "")
-                                                        .replacingOccurrences(of: ".jpg", with: "")))
+    save(rep, f, index)
+}
+
+func save(_ rep: NSBitmapImageRep, _ f: Frame, _ index: Int) {
+    let name = f.file.replacingOccurrences(of: ".png", with: "").replacingOccurrences(of: ".jpg", with: "")
+    let url = outDir.appendingPathComponent(String(format: "%02d_%@.png", index + 1, name))
     if let data = rep.representation(using: .png, properties: [:]) {
         try? data.write(to: url)
         print("wrote", url.lastPathComponent)
